@@ -8,6 +8,9 @@ cc_library(
     ),
     hdrs = glob(["*.hpp"]),
     visibility = ["//visibility:public"],
+    deps = [
+      "@fmt",
+    ],
 )
 
 cc_test(
