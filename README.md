@@ -1,2 +1,3 @@
 # superbp
-Super Scalar Branch Predictor
+
+Superscalar Branch Predictor
