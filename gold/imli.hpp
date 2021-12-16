@@ -126,7 +126,7 @@
 
 #include "dolc.hpp"
 
-#define SUBENTRIES 1
+#define SUBENTRIES 2
 
 #define UWIDTH 1
 #define CWIDTH 3
