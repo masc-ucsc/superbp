@@ -7,6 +7,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 namespace {
+
 class Gold_test : public ::testing::Test {
 protected:
   void SetUp() override {
@@ -21,6 +22,7 @@ protected:
 
 };
 
+/*
 TEST_F(Gold_test, Trivial_Folded_history_test1) {
 
   Folded_history Folded_history_inst;
@@ -52,64 +54,46 @@ TEST_F(Gold_test, Trivial_Loop_entry_test1) {
   EXPECT_EQ (Loop_entry_inst.dir, false);
 
 }
-
-TEST_F(Gold_test, Trivial_Global_entry_test1) {
-   // Dummy - to be done
-  int blogb  = 24, log2fetchwidth = 3, bwidth = 3, nhist = 6;
-  bool sc = true;
-  IMLI IMLI_inst(blogb, log2fetchwidth, bwidth, nhist, sc);
-  //fmt::print("hello world\n");
-
-  //EXPECT_NE(10,100) << "Test failure user message";
-  int predictorsize = IMLI_inst.predictorsize();
-  EXPECT_NE (0, predictorsize ) << "PredictorSize = " << predictorsize;
-
-  AddrType PC = 0x0123456789abcdef;   // random value - unaligned, but ok
-
-  int bindex = IMLI_inst.bindex(PC);
-  EXPECT_EQ(bindex, ((PC) & ((1 << (blogb)) - 1)) );
-
-  int lindex = IMLI_inst.lindex(PC);
-  EXPECT_EQ(lindex, ((PC & ((1 << (LOGL - 2)) - 1)) << 2));
-  bool isloop = IMLI_inst.getloop(PC);
-  EXPECT_NE (isloop, true);
-}
+*/
 
 TEST_F(Gold_test, Trivial_Bimodal_test1) {
 
   // Dummy - to be done
-  int blogb  = 24, log2fetchwidth = 3, bwidth = 3, nhist = 6;
-  bool sc = true;
-  IMLI IMLI_inst(blogb, log2fetchwidth, bwidth, nhist, sc);
-  //fmt::print("hello world\n");
+  int ls  = 10, lfw = 3, bw = 2;
+  // 1000 entries, each entry has 8 sub entries for superscalar, each subentry = 2 bits
+  // Index gets 13 lsbs of pc - ignores alignment ???
+  Bimodal Bimodal_inst(ls, lfw, bw);
+  printf ("bm_size = %d \n", Bimodal_inst.getsize());
 
-  //EXPECT_NE(10,100) << "Test failure user message";
-  int predictorsize = IMLI_inst.predictorsize();
-  EXPECT_NE (0, predictorsize ) << "PredictorSize = " << predictorsize;
-
-  AddrType PC = 0x0123456789abcdef;   // random value - unaligned, but ok
-
-  int bindex = IMLI_inst.bindex(PC);
-  EXPECT_EQ(bindex, ((PC) & ((1 << (blogb)) - 1)) );
-
-  int lindex = IMLI_inst.lindex(PC);
-  EXPECT_EQ(lindex, ((PC & ((1 << (LOGL - 2)) - 1)) << 2));
-  bool isloop = IMLI_inst.getloop(PC);
-  EXPECT_NE (isloop, true);
+  Bimodal_inst.dump();
+  printf("\n");
+   
+  uint32_t fetchpc = 0xabcd1234;
+  //printf ("Index for pc = %x = %x \n", fetchpc, Bimodal_inst.checkIndex(fetchpc));
+  //printf ("Index for pc = %x = %x\n", fetchpc+4, Bimodal_inst.checkIndex(fetchpc+4));
+  Bimodal_inst.select(fetchpc);
+  for ( int i = 0; i <= 7; i++)
+  {
+	printf ("outer loop - %d\n", i);
+	for ( int j = 0; j <= 4; j++)
+  	{
+    printf ("inner loop - %d\n", j);
+  	printf ("Prediction = %s, confidence = %s, actual = T \n", Bimodal_inst.predict() ? "T": "NT", Bimodal_inst.highconf() ? "high" : "low");
+  	Bimodal_inst.update(true);
+  	Bimodal_inst.dump();
+  	printf("\n"); 
+  	}
+  	printf ("Prediction = %s, confidence = %s, actual = NT \n", Bimodal_inst.predict() ? "T": "NT", Bimodal_inst.highconf() ? "high" : "low");
+    Bimodal_inst.update(false);
+  	Bimodal_inst.dump();
+  	printf("\n"); 
+  }
 }
 
 
+/*
 TEST_F(Gold_test, Trivial_imli_test1) {
 
-  // instantiate IMLI, some configuration and test the basic API so that it it
-  // learns. It is also a way to showcase the API
-     /*IMLI(int _blogb, int _log2fetchwidth, int _bwidth, int _nhist, bool _sc)
-      : bimodal(_blogb, _log2fetchwidth, _bwidth)
-      , blogb(_blogb)
-      , log2fetchwidth(_log2fetchwidth)
-      , bwidth(_bwidth)
-      , nhist(_nhist>=MAXHIST?MAXHIST:_nhist)
-      , sc(_sc)*/
   int blogb  = 24, log2fetchwidth = 3, bwidth = 3, nhist = 6;
   bool sc = true;
   IMLI IMLI_inst(blogb, log2fetchwidth, bwidth, nhist, sc);
@@ -129,6 +113,6 @@ TEST_F(Gold_test, Trivial_imli_test1) {
   bool isloop = IMLI_inst.getloop(PC);
   EXPECT_NE (isloop, true);
 }
-
+*/
 
 } // namespace
