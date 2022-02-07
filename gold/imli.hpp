@@ -126,7 +126,7 @@
 
 #include "dolc.hpp"
 
-#define SUBENTRIES 2
+#define SUBENTRIES 8
 
 #define UWIDTH 1
 #define CWIDTH 3
@@ -458,9 +458,9 @@ public:
   }
 
   void dump() {
-    fprintf(stderr, "nsub=%d tag=%x hit=%d thit=%d u=%d loff=%d", nsub, tag, hit, thit, u[0], last_boff);
+    fprintf(stderr, "nsub=%d tag=%x hit=%d thit=%d u=%d loff=%d \n", nsub, tag, hit, thit, u[0], last_boff);
     for(int i = 0; i < nsub; i++)
-      fprintf(stderr, ": off=%d ctr=%d", boff[i], ctr[i]);
+      fprintf(stderr, ": off=%d ctr=%d \n", boff[i], ctr[i]);
   }
 
   bool isHit() const {

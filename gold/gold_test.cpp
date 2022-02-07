@@ -6,6 +6,9 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+#include "inst_opcode.hpp"
+
 namespace {
 
 class Gold_test : public ::testing::Test {
@@ -56,11 +59,12 @@ TEST_F(Gold_test, Trivial_Loop_entry_test1) {
 }
 */
 
+/*
 TEST_F(Gold_test, Trivial_Bimodal_test1) {
 
   // Dummy - to be done
   int ls  = 10, lfw = 3, bw = 2;
-  // 1000 entries, each entry has 8 sub entries for superscalar, each subentry = 2 bits
+  // 1024 entries, each entry has 8 sub entries for superscalar, each subentry = 2 bits
   // Index gets 13 lsbs of pc - ignores alignment ???
   Bimodal Bimodal_inst(ls, lfw, bw);
   printf ("bm_size = %d \n", Bimodal_inst.getsize());
@@ -89,30 +93,37 @@ TEST_F(Gold_test, Trivial_Bimodal_test1) {
   	printf("\n"); 
   }
 }
+*/
 
 
-/*
-TEST_F(Gold_test, Trivial_imli_test1) {
 
-  int blogb  = 24, log2fetchwidth = 3, bwidth = 3, nhist = 6;
-  bool sc = true;
-  IMLI IMLI_inst(blogb, log2fetchwidth, bwidth, nhist, sc);
+TEST_F(Gold_test, Trivial_Global_entry_test1) {
+
+
+  Global_entry Global_entry_inst;
   //fmt::print("hello world\n");
 
-  //EXPECT_NE(10,100) << "Test failure user message";
-  int predictorsize = IMLI_inst.predictorsize();
-  EXPECT_NE (0, predictorsize ) << "PredictorSize = " << predictorsize;
-
-  AddrType PC = 0x0123456789abcdef;   // random value - unaligned, but ok
-
-  int bindex = IMLI_inst.bindex(PC);
-  EXPECT_EQ(bindex, ((PC) & ((1 << (blogb)) - 1)) );
-
-  int lindex = IMLI_inst.lindex(PC);
-  EXPECT_EQ(lindex, ((PC & ((1 << (LOGL - 2)) - 1)) << 2));
-  bool isloop = IMLI_inst.getloop(PC);
-  EXPECT_NE (isloop, true);
+  Global_entry_inst.allocate(8);
+  int tableid = 4; // table id
+  uint32_t tag = 0x05050a0a; // tag
+  bool taken = true; 
+  Global_entry_inst.reset(tableid, tag, taken);
+  printf("************************* Initial value ********************* \n");
+  Global_entry_inst.dump();
+  
+  AddrType t = 0x05050a0a;
+  int b = 4;
+  
+  for (int i = 0; i < 8; i++)
+  {
+ 	Global_entry_inst.select(t,b);
+ 	bool prediction = Global_entry_inst.ctr_isTaken();
+ 	printf ("prediction = %s \n", prediction ? "taken":"not taken");
+ 	Global_entry_inst.ctr_update(tableid, !(taken));
+ 	printf("\n******************** Value after branch = %d ********************* \n", i+1);
+ 	Global_entry_inst.dump();
+  }
 }
-*/
+
 
 } // namespace
