@@ -67,7 +67,7 @@
 #define MINHIST 5
 
 #elif IMLI_256K
-//nhist = 6
+//nhist = 6           // Probably = # of tage tables
 #define LOOPPREDICTOR //  use loop  predictor
 #define LOCALH        // use local histories
 #define IMLIMode          // using IMLI component
@@ -686,10 +686,10 @@ public:
 class IMLI {
 public:
   Bimodal    bimodal; // (BLOGB,LOG2FETCHWIDTH,BWIDTH);
-  const int  blogb;
+  const int  blogb;   // log2entries of Bimodal predictor - not tage tables
   const int  log2fetchwidth;
-  const int  bwidth;
-  const int  nhist;
+  const int  bwidth;     // width of bimodal counter
+  const int  nhist;      // # of tage tables
   const bool sc;
 
 #ifdef POSTPREDICT
@@ -697,7 +697,7 @@ public:
 #define POSTPBITS 5
 #define CTRBITS 3 // Chop 2 bits
 
-  uint32_t postpsize;
+  uint32_t postpsize; // 1024
   int8_t * postp;
   uint32_t ppi;
 
@@ -836,8 +836,8 @@ public:
     ch_t[1] = new Folded_history[nhist + 1];
 
     gtable = new Global_entry *[nhist + 1];
-    m      = new int[nhist + 1];
-    TB     = new int[nhist + 1];
+    m      = new int[nhist + 1];   // history length for each tage table
+    TB     = new int[nhist + 1];   // tag width for each table
     logg   = new int[nhist + 1];
     GI     = new int[nhist + 1];
     GTAG   = new uint64_t[nhist + 1];
@@ -944,20 +944,20 @@ public:
   void reinit() {
 
 #ifdef POSTPREDICT
-    postpsize = 1 << ((1 + POSTPEXTRA) * CTRBITS + 1);
+    postpsize = 1 << ((1 + POSTPEXTRA) * CTRBITS + 1); // 1024
     postp     = new int8_t[postpsize];
     for(int i = 0; i < postpsize; i++) {
-      postp[i] = -(((i >> 1) >> (CTRBITS - 1)) & 1);
+      postp[i] = -(((i >> 1) >> (CTRBITS - 1)) & 1); // -(  ( (i/2)/ 4) & 1   )
     }
 #endif
 
 #ifdef IMLISIC
-    for(int i = 0; i < INB; i++)
+    for(int i = 0; i < INB; i++) // INB = 1
       Im[i] = 10; // the IMLIcounter is limited to 10 bits
 #endif
 
 #ifdef IMLIOH
-    for(int i = 0; i < FNB; i++)
+    for(int i = 0; i < FNB; i++)  // FNB = 1
       Fm[i] = 2;
 #endif
 
@@ -967,16 +967,16 @@ public:
       if (MAXHIST<=nhist)
         m[i] = i;
       else
-        m[i] = (int)(((double)MINHIST * pow((double)(MAXHIST) / (double)MINHIST, (double)(i - 1) / (double)((nhist - 1)))) + 0.5);
+        m[i] = (int)(((double)MINHIST * pow((double)(MAXHIST) / (double)MINHIST, (double)(i - 1) / (double)((nhist - 1)))) + 0.5); // ratio of history lengths
     }
 
     for(int i = 1; i <= nhist; i++) {
-      TB[i]   = TBITS + (i / 2);
-      logg[i] = LOGG;
+      TB[i]   = TBITS + (i / 2);    // TBITS = 16 for size = 256k
+      logg[i] = LOGG;               // LOGG = 11 for size = 256k, each tage table has = 2^11 entries
     }
 
 #ifdef LOOPPREDICTOR
-    ltable = new Loop_entry[1 << (LOGL)];
+    ltable = new Loop_entry[1 << (LOGL)];  // LOGL = 6 => 64 entries Loop predictor
 #endif
 
     // int galloc[]= {0, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2};
@@ -985,37 +985,38 @@ public:
     int ngalloc  = 3;
 
     for(int i = 1; i <= nhist; i++) {
-      gtable[i] = new Global_entry[1 << (logg[i])];
+      gtable[i] = new Global_entry[1 << (logg[i])];    // nhist tage tables, each with 2^LOGG Global_entries
       for(int j = 0; j < (1 << logg[i]); j++) {
-        int s;
+        int s;         // # of sub-entries in a Global_entry - Check - Is it not = fetchwidth ?
         if(i >= ngalloc)
           s = galloc[ngalloc];
         else
           s = galloc[i];
-        gtable[i][j].allocate(s);
+          
+        gtable[i][j].allocate(s);   // allocate and initialize (s) subentries of j-th Global_entry in i-th gtable
       }
     }
 
-    for(int i = 1; i <= nhist; i++) {
-      ch_i[i].init(m[i], (logg[i]));
-      ch_t[0][i].init(ch_i[i].OLENGTH, TB[i]);
-      ch_t[1][i].init(ch_i[i].OLENGTH, TB[i] - 1);
+    for(int i = 1; i <= nhist; i++) {		// Initialize Folded history S/W variables, not actual H/W - init arguments - original_length and compressed length
+      ch_i[i].init(m[i], (logg[i]));        // For index, compressed length = # of index bits = LOGG
+      ch_t[0][i].init(ch_i[i].OLENGTH, TB[i]);     // For tags, comtressed length = # of tag bits = TB[I]
+      ch_t[1][i].init(ch_i[i].OLENGTH, TB[i] - 1);  // Check - Why TB[i]-1 ?
     }
 #ifdef LOOPPREDICTOR
     LVALID   = false;
     WITHLOOP = -1;
 #endif
-    Seed = 0;
+    //Seed = 0;
 
     TICK  = 0;
     phist = 0;
     Seed  = 0;
 
-    for(int i = 0; i < HISTBUFFERLENGTH; i++)
+    for(int i = 0; i < HISTBUFFERLENGTH; i++)  // 4096 int ? initialize each to 0
       ghist[0] = 0;
-    ptghist = 0;
+    ptghist = 0;   // Check - what is it for ?
 
-    for(int i = 0; i < (1 << LOGSIZEUP); i++)
+    for(int i = 0; i < (1 << LOGSIZEUP); i++) // = 0 - Threshold for update counters
       Pupdatethreshold[i] = 35;
 
     for(int i = 0; i < GNB; i++)
@@ -1930,7 +1931,7 @@ public:
     }
   }
 
-  void TrackOtherInst(AddrType PC, Inst_opcode opType, AddrType branchTarget) {
+  void TrackOtherInst(AddrType PC, Inst_opcode opType, AddrType branchTarget) {   // Check - Why ?
 
     fetchBoundaryOffsetOthers(PC);
 
