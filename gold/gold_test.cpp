@@ -9,6 +9,8 @@
 
 #include "inst_opcode.hpp"
 
+//#define DEBUG_PRINTS
+
 #define MISPREDICTIONRATE_STATS_AFTER_TRAINING
 #ifdef MISPREDICTIONRATE_STATS_AFTER_TRAINING
 #define TRAINING_LENGTH 512
@@ -148,7 +150,7 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   AddrType branchTarget = 0x05050aa0;
   bool bias;
   uint32_t sign;
-  bool no_alloc = true; // Check ??
+  bool no_alloc = false; // Check ??- Allocate on a mispredicttion
   bool resolveDir;
   uint32_t correct_predicitons = 0, mispredictions = 0;
   
@@ -245,18 +247,18 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
 
 #ifdef IF_ELSE_IN_IF_ELSE
 /*
-  if (i %3)            	// b1 - pc = 0x05050a0a, taken target = 0x05050b0b - 2048 occurences
+  if (i > 4096)            	// b1 - pc = 0x05050a0a, taken target = 0x05050b0b - 2048 occurences
   	{
-      if (i % 9)       	// b2 - pc = 0x05050a0c, taken target = 0x05050ae0 - 2/3 *2048 occurences
+      if (i > 6144)       	// b2 - pc = 0x05050a0c, taken target = 0x05050ae0 - 2/3 *2048 occurences
       ....
       else             	// pc = 0x05050ae0,
       .... 
     }
   else                 	// pc = 0x05050b0b,
     {
-      if (i % 5)       	// b3 - pc = 0x05050b0f, taken target = 0x05050bf0 - 1/3 *2048 occurences
+      if (i > 2048)       	// b3 - pc = 0x05050b0f, taken target = 0x05050bf0 - 1/3 *2048 occurences
       ....
-      else if (i % 4)	// b4 - pc = 0x05050bf0, taken target = 0x05050c0b - 1/5 * 1/3 *2048 occurences
+      else if (i > 1024)	// b4 - pc = 0x05050bf0, taken target = 0x05050c0b - 1/5 * 1/3 *2048 occurences
       .... 
     }
                         // pc = 0x05050c0b
@@ -267,8 +269,8 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   AddrType b2_branchTarget = 0x05050ae0; 
   AddrType b3_PC = 0x05050b0f;      
   AddrType b3_branchTarget = 0x05050bf0; 
-  AddrType b4_PC = 0x05050bf0;        
-  AddrType b4_branchTarget = 0x05050c0b; 
+  AddrType b4_PC = 0x05060bf0;        
+  AddrType b4_branchTarget = 0x05060c0b; 
   
   bool bias;
   uint32_t sign;
@@ -284,12 +286,17 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   for (int i = 0; i < 8192; i++)
   {
   	b1_predDir = IMLI_inst.getPrediction(b1_PC, bias,  sign);
+  	#ifdef DEBUG_PRINTS
   	printf ("b1 Prediction = \t\t%32s \n", b1_predDir ? "predicted taken" : "predicted not taken");
-  	if (i % 3)
+  	#endif
+  	if (i > 4096)
   		b1_resolveDir = false;
   	else
   		b1_resolveDir = true;  	
+  	#ifdef DEBUG_PRINTS
   	printf ("b1 Actual outcome = \t%32s \n", b1_resolveDir ? "taken" : "not taken");
+  	#endif
+  	printf ("===============================================================================================\n");
   	
   #ifdef MISPREDICTIONRATE_STATS_AFTER_TRAINING
   if (i >= TRAINING_LENGTH-1)
@@ -306,12 +313,17 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   	if (!b1_resolveDir)
   	{
   		b2_predDir = IMLI_inst.getPrediction(b2_PC, bias,  sign);
+  		#ifdef DEBUG_PRINTS
   		printf ("b2 Prediction = \t\t%32s \n", b2_predDir ? "predicted taken" : "predicted not taken");
-  		if (i % 9)
+  		#endif
+  		if (i > 6144)
   			b2_resolveDir = false;
   		else
   			b2_resolveDir = true;  	
+  		#ifdef DEBUG_PRINTS
   		printf ("b2 Actual outcome = \t%32s \n", b2_resolveDir ? "taken" : "not taken");
+  		#endif
+  		printf ("===============================================================================================\n");
   		
   		#ifdef MISPREDICTIONRATE_STATS_AFTER_TRAINING
   		if (i >= TRAINING_LENGTH-1)
@@ -328,8 +340,10 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   	else
   	{
   		b3_predDir = IMLI_inst.getPrediction(b3_PC, bias,  sign);
+  		#ifdef DEBUG_PRINTS
   		printf ("b3 Prediction = \t\t%32s \n", b3_predDir ? "predicted taken" : "predicted not taken");
-  		if (i % 5)
+  		#endif
+  		if (i > 2048)
   			{
   				b3_resolveDir = false;
   			}
@@ -338,13 +352,14 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   				b3_resolveDir = true;  
   				
   				b4_predDir = IMLI_inst.getPrediction(b4_PC, bias,  sign);
-  				if (i % 4)
+  				if (i > 1024)
   					b4_resolveDir = false;
   				else
   					b4_resolveDir = true; 
   					
   				printf ("b4 Prediction = \t\t%32s \n", b4_predDir ? "predicted taken" : "predicted not taken");
   				printf ("b4 Actual outcome = \t%32s \n", b4_resolveDir ? "taken" : "not taken");
+  				printf ("===============================================================================================\n");
   		
   				#ifdef MISPREDICTIONRATE_STATS_AFTER_TRAINING
   				if (i >= TRAINING_LENGTH-1)
@@ -358,7 +373,10 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   
   				IMLI_inst.updatePredictor(b4_PC, b4_resolveDir, b4_predDir, b4_branchTarget, no_alloc); 	
   			}	
+  		#ifdef DEBUG_PRINTS
   		printf ("b3 Actual outcome = \t%32s \n", b3_resolveDir ? "taken" : "not taken");
+  		#endif
+  		printf ("===============================================================================================\n");
   		
   		#ifdef MISPREDICTIONRATE_STATS_AFTER_TRAINING
   		if (i >= TRAINING_LENGTH-1)
@@ -373,12 +391,14 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   		IMLI_inst.updatePredictor(b3_PC, b3_resolveDir, b3_predDir, b3_branchTarget, no_alloc);
   	}
   } // end of for
-  
+
+#ifdef DEBUG_PRINTS
   printf ("b1_correct_predicitons = %u, b1_mispredictions = %u, b1_misprediction_rate = %f\n", b1_correct_predicitons, b1_mispredictions, (float)b1_mispredictions/(b1_correct_predicitons + b1_mispredictions));
   printf ("b2_correct_predicitons = %u, b2_mispredictions = %u, b2_misprediction_rate = %f\n", b2_correct_predicitons, b2_mispredictions, (float)b2_mispredictions/(b2_correct_predicitons + b2_mispredictions));
   printf ("b3_correct_predicitons = %u, b3_mispredictions = %u, b3_misprediction_rate = %f\n", b3_correct_predicitons, b3_mispredictions, (float)b3_mispredictions/(b3_correct_predicitons + b3_mispredictions));
+#endif // DEBUG_PRINTS
   printf ("b4_correct_predicitons = %u, b4_mispredictions = %u, b4_misprediction_rate = %f\n", b4_correct_predicitons, b4_mispredictions, (float)b4_mispredictions/(b4_correct_predicitons + b4_mispredictions));
-#endif  
+#endif  // IF_ELSE_IN_IF_ELSE
 
 } // TEST_F
 
