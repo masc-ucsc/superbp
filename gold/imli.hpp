@@ -33,9 +33,18 @@
 
 #pragma once
 
-//#define MEDIUM_TAGE 1
+#define DEBUG
+#ifdef DEBUG
+#include <stdio.h>
+//#define DEBUG_TAGE_INDEX
+#define DEBUG_TAGE_PREDICTION
+//#define DEBUG_LOOP_PREDICTOR
+//#define DEBUG_SC
+#endif
+
+#define MEDIUM_TAGE 1
 //#define IMLI_150K 1
-#define IMLI_256K 1
+//#define IMLI_256K 1
 //#define MEGA_IMLI 1
 
 #if defined(MEGA_IMLI) && defined(MEDIUM_TAGE)
@@ -1280,6 +1289,9 @@ public:
     for(int i = 1; i <= nhist; i++) {
       GI[i]   = gindex(pcSign(lastBoundaryPC,i), i, phist, ch_i, false);
       GTAG[i] = ((GI[i - 1] << (logg[i] / 2)) ^ GI[i - 1]) & ((1 << TB[i]) - 1);
+      #ifdef DEBUG_TAGE_INDEX
+      printf("For bank %d, index = %d and tag = %lu \n", i, GI[i], GTAG[i]);
+      #endif
     }
   }
 
@@ -1405,7 +1417,6 @@ public:
 
   uint32_t dohash(uint32_t addr, uint16_t offset) {
     uint32_t sign = (addr << 1) ^ offset;
-
     return sign;
   }
 
@@ -1438,9 +1449,16 @@ public:
 
     fetchBoundaryOffsetBranch(PC);
     setTAGEPred();
-
+#ifdef DEBUG_TAGE_PREDICTION
+if ((PC == 0x05050b0f) && ((GI[HitBank]) || (GI[AltBank])) )
+{
+	printf ("PC = %s \n", (PC == 0x05050a0a) ? "b1_PC" : (PC == 0x05050a0c) ? "b2_PC" : (PC == 0x05050b0f) ? "b3_PC" : (PC == 0x05060bf0) ? "b4_PC" : "Hakuna Matata" );
+	printf("Hit Bank = %d, index = %d and tag = %lu \n", HitBank, GI[HitBank], GTAG[HitBank]);
+	printf("Alt bank = %d, index = %d and tag = %lu \n", AltBank, GI[AltBank], GTAG[AltBank]);
+	printf("LongestMatchPred = %d, pred_taken = %d, alttaken = %d, tage_pred = %d \n", LongestMatchPred, pred_taken, alttaken, tage_pred);
+  }
+#endif
     pred_taken = tage_pred;
-
 #if 0
     bias = !WeakConf;
 #else
@@ -1452,12 +1470,26 @@ public:
     predloop   = getloop(PC); // loop prediction
     pred_taken = ((WITHLOOP >= 0) && (LVALID)) ? predloop : pred_taken;
     if((WITHLOOP >= 0) && (LVALID))
+    {
       bias = true;
+      #ifdef DEBUG_LP
+      if (PC == 0x05060bf0)
+      printf("Looppredictor used\n");
+      #endif
+    }
+    #ifdef DEBUG_LP
+     else if (PC == 0x05060bf0)
+      printf("TAGE used\n");
+      #endif
 #endif
 
     pred_inter = pred_taken;
 
     if(!sc) {
+    	#ifdef DEBUG_SC
+      if (PC == 0x05050b0f)
+      printf("Return since !sc\n");
+      #endif
       return (pred_taken);
     }
 
