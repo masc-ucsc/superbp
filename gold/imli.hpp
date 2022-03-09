@@ -36,16 +36,18 @@
 #define DEBUG
 #ifdef DEBUG
 #include <stdio.h>
+//#define DEBUG_HISTORY_UPDATE
 //#define DEBUG_TAGE_INDEX
-#define DEBUG_TAGE_PREDICTION
+//#define DEBUG_TAGE_PREDICTION
 //#define DEBUG_LOOP_PREDICTOR
 //#define DEBUG_SC
+//#define DEBUG_TAGE_UPDATE
 #endif
 
-#define MEDIUM_TAGE 1
+//#define MEDIUM_TAGE 1
 //#define IMLI_150K 1
 //#define IMLI_256K 1
-//#define MEGA_IMLI 1
+#define MEGA_IMLI 1
 
 #if defined(MEGA_IMLI) && defined(MEDIUM_TAGE)
 #error "Pick one"
@@ -1301,7 +1303,7 @@ public:
     return cid;
   }
 
-  void setTAGEPred() {
+  void setTAGEPred(AddrType PC) {
 
     HitBank = 0;
     AltBank = 0;
@@ -1311,6 +1313,11 @@ public:
         HitBank          = i;
       }
     }
+
+#ifdef DEBUG_TAGE_PREDICTION
+if (PC == 0x05050b0f)
+printf ("LongestMatchPred from TAGE = %s\n", LongestMatchPred ? "Taken" : "Not Taken");
+#endif
 
     for(int i = HitBank - 1; i > 0; i--) {
       if(gtable[i][GI[i]].isHit()) {
@@ -1448,7 +1455,7 @@ public:
   bool getPrediction(AddrType PC, bool &bias, uint32_t &sign) {
 
     fetchBoundaryOffsetBranch(PC);
-    setTAGEPred();
+    setTAGEPred(PC);
 #ifdef DEBUG_TAGE_PREDICTION
 if ((PC == 0x05050b0f) && ((GI[HitBank]) || (GI[AltBank])) )
 {
@@ -1761,6 +1768,10 @@ if ((PC == 0x05050b0f) && ((GI[HitBank]) || (GI[AltBank])) )
     if(true) {
 
       bool ALLOC = ((tage_pred != resolveDir) & (HitBank < nhist));
+      #ifdef DEBUG_TAGE_UPDATE
+      if (PC == 0x05050b0f)
+      printf ("tage_pred = %d, resolveDir = %d, ALLOC = %d\n", tage_pred, resolveDir, ALLOC);
+      #endif
       if(pred_taken == resolveDir)
         if((MYRANDOM() & 31) != 0)
           ALLOC = false;

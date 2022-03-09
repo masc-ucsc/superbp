@@ -9,7 +9,7 @@
 
 #include "inst_opcode.hpp"
 
-//#define DEBUG_PRINTS
+#define DEBUG_PRINTS
 
 #define MISPREDICTIONRATE_STATS_AFTER_TRAINING
 #ifdef MISPREDICTIONRATE_STATS_AFTER_TRAINING
@@ -353,8 +353,27 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   		else
   			{
   				b3_resolveDir = true;  
-  				
-  				IMLI_inst.fetchBoundaryBegin(b4_PC);
+			}
+  		//#ifdef DEBUG_PRINTS
+  		printf ("b3 Actual outcome = \t%32s \n", b3_resolveDir ? "taken" : "not taken");
+  		//#endif
+  		printf ("===============================================================================================\n");
+  		
+  		#ifdef MISPREDICTIONRATE_STATS_AFTER_TRAINING
+  		if (i >= TRAINING_LENGTH-1)
+  		#endif
+  		{
+  			if (b3_predDir == b3_resolveDir)
+  				b3_correct_predicitons++;
+  			else
+  				b3_mispredictions++;
+  		}
+  
+  		IMLI_inst.updatePredictor(b3_PC, b3_resolveDir, b3_predDir, b3_branchTarget, no_alloc);
+  		
+  		if (b3_resolveDir)
+  		{
+  		  		IMLI_inst.fetchBoundaryBegin(b4_PC);
   				b4_predDir = IMLI_inst.getPrediction(b4_PC, bias,  sign);
   				if (i < 7000)
   					b4_resolveDir = false;
@@ -377,24 +396,8 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   						b4_mispredictions++;
   				}
   
-  				IMLI_inst.updatePredictor(b4_PC, b4_resolveDir, b4_predDir, b4_branchTarget, no_alloc); 	
-  			}	
-  		//#ifdef DEBUG_PRINTS
-  		printf ("b3 Actual outcome = \t%32s \n", b3_resolveDir ? "taken" : "not taken");
-  		//#endif
-  		printf ("===============================================================================================\n");
-  		
-  		#ifdef MISPREDICTIONRATE_STATS_AFTER_TRAINING
-  		if (i >= TRAINING_LENGTH-1)
-  		#endif
-  		{
-  			if (b3_predDir == b3_resolveDir)
-  				b3_correct_predicitons++;
-  			else
-  				b3_mispredictions++;
+  				IMLI_inst.updatePredictor(b4_PC, b4_resolveDir, b4_predDir, b4_branchTarget, no_alloc); 
   		}
-  
-  		IMLI_inst.updatePredictor(b3_PC, b3_resolveDir, b3_predDir, b3_branchTarget, no_alloc);
   	}
   } // end of for
 
