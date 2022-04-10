@@ -26,8 +26,8 @@
 // IMLI Tests
 //#define FOR_IN_FOR_ROUGH
 #define IF_ELSE_IN_IF_ELSE
-//#define TWO_TAKEN_BRANCHES_IN_ONE_PACKET
-// Bad example
+//#define SUPERSCALAR_BASIC_SOTA
+// Bad example - incomplete
 //#define FOR_IN_FOR_PROPER
 
 
@@ -83,33 +83,9 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
 #include "test_imli_if_else_in_if_else.hpp"
 #endif  // IF_ELSE_IN_IF_ELSE
 
-#ifdef TWO_TAKEN_BRANCHES_IN_ONE_PACKET
-/*
-TODO
-if b1 is taken, b2 is as well
-b1 - pc = 0x05050a0a, taken target = 0x05050b0b 
-b2 - pc = 0x05050b0c, taken target = 0x05050ce0
-*/
-  AddrType b1_PC = 0x05050a0a;      
-  AddrType b1_branchTarget = 0x05050b0b; 
-  AddrType b2_PC = 0x05050b0c;        
-  AddrType b2_branchTarget = 0x05050ce0; 
-  
-  bool bias;
-  uint32_t sign;
-  bool no_alloc = true; // Check ??
-  bool b1_resolveDir, b2_resolveDir;
-  bool b1_predDir, b2_predDir;
-  uint32_t b1_correct_predicitons = 0, b1_mispredictions = 0;
-  uint32_t b2_correct_predicitons = 0, b2_mispredictions = 0;
-
-  int counter = 0;
-  
-  for (int i = 0; i < 5000; i++)
-  {
-  
-  }  
-#endif // TWO_BRANCHES_IN_ONE_PACKET
+#ifdef SUPERSCALAR_BASIC_SOTA
+#include "test_imli_superscalar_basic.hpp"  
+#endif // SUPERSCALAR_BASIC_SOTA
 
 } // TEST_F
 #endif // IMLI_TEST

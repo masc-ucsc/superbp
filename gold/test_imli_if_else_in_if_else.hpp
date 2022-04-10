@@ -67,7 +67,7 @@
   	
   	if (!b1_resolveDir)
   	{
-  	    IMLI_inst.fetchBoundaryBegin(b2_PC);
+  	    //IMLI_inst.fetchBoundaryBegin(b2_PC);
   		b2_predDir = IMLI_inst.getPrediction(b2_PC, bias,  sign);
   		#ifdef DEBUG_PRINTS
   		printf ("b2 Prediction = \t\t%32s \n", b2_predDir ? "predicted taken" : "predicted not taken");
