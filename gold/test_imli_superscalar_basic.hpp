@@ -38,9 +38,18 @@ For update - update all PCs till the first taken branch
   {
   	IMLI_inst.fetchBoundaryBegin(packet_PC);
   	
-  	if (is_ftq_full()) {printf("FTQ full, stall \n");}
+  	#ifdef CPP
+  	if (ftq_inst.is_ftq_full()) {printf("FTQ full, stall \n"); return;}
+  	#else
+  	if (is_ftq_full()) {printf("FTQ full, stall \n"); return;}
+  	#endif
   	b1_predDir = IMLI_inst.getPrediction(b1_PC, bias,  sign);
+  	#ifdef CPP
+  	ftq_inst.allocate_ftq_entry(b1_PC, b1_branchTarget, IMLI_inst);
+  	#else
   	allocate_ftq_entry(b1_PC, b1_branchTarget, IMLI_inst);
+  	#endif
+  	printf ("ftq entry allocated \n");
   	
   	if (i < 4096)
   	{
@@ -55,9 +64,21 @@ For update - update all PCs till the first taken branch
   				b1_mispredictions++;
   		}
   		
-  		if (is_ftq_full()) {printf("FTQ full, stall \n");}
+  		#ifdef CPP
+  		if (ftq_inst.is_ftq_full()) {printf("FTQ full, stall \n"); return;}
+  		#else
+  		if (is_ftq_full()) {printf("FTQ full, stall \n"); return;}
+  		#endif
+  		
   		b2_predDir = IMLI_inst.getPrediction(b2_PC, bias,  sign);
+  		
+  		#ifdef CPP
+  		ftq_inst.allocate_ftq_entry(b1_PC, b1_branchTarget, IMLI_inst);
+  		#else
   		allocate_ftq_entry(b1_PC, b1_branchTarget, IMLI_inst);
+  		#endif
+  		printf ("ftq entry allocated \n");
+  		
   		if (i < 2048) // b2 - NT
   			b2_resolveDir = false;
   		else // b2 - T
@@ -73,9 +94,22 @@ For update - update all PCs till the first taken branch
   				b2_mispredictions++;
   		}
   		
+  		#ifdef CPP
+  		ftq_inst.get_ftq_data(IMLI_inst);
+  		#else
   		get_ftq_data(IMLI_inst);
+  		#endif
+  		printf ("ftq entry deallocated \n");
+  		
   		IMLI_inst.updatePredictor(b1_PC, b1_resolveDir, b1_predDir, b1_branchTarget, no_alloc);
+  		
+  		#ifdef CPP
+  		ftq_inst.get_ftq_data(IMLI_inst);
+  		#else
   		get_ftq_data(IMLI_inst);
+  		#endif
+  		printf ("ftq entry deallocated \n");
+  		
   		IMLI_inst.updatePredictor(b2_PC, b2_resolveDir, b2_predDir, b2_branchTarget, no_alloc);
   	} // b1 - NT
   	else // b1 - T

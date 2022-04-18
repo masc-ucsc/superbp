@@ -16,6 +16,10 @@
 #define TRAINING_LENGTH 512
 #endif
 
+#ifdef CPP
+#define NUM_FTQ_ENTRIES 32
+#endif // CPP
+
 // Submodule tests
 //#define FOLDED_HISTORY_TEST
 //#define LOOP_ENTRY_TEST
@@ -25,8 +29,8 @@
 
 // IMLI Tests
 //#define FOR_IN_FOR_ROUGH
-#define IF_ELSE_IN_IF_ELSE
-//#define SUPERSCALAR_BASIC_SOTA
+//#define IF_ELSE_IN_IF_ELSE
+#define SUPERSCALAR_BASIC_SOTA
 // Bad example - incomplete
 //#define FOR_IN_FOR_PROPER
 
@@ -70,6 +74,10 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
   int blogb = 10, log2fetchwidth = 3, bwidth = 3, nhist = 6;
   bool sc = false;
   IMLI IMLI_inst( blogb, log2fetchwidth, bwidth, nhist, sc);
+  
+  #ifdef CPP
+  ftq ftq_inst(NUM_FTQ_ENTRIES);
+  #endif // CPP
   
 #ifdef FOR_IN_FOR_ROUGH
 #include "test_imli_for_in_for_rough.hpp"

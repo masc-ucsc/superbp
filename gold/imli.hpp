@@ -1683,6 +1683,8 @@ Obvious saves - PC -> Target
  
  IMLIcount, 
  
+ ch_i, ch_t[0], ch_t[1], 
+ 
  */
 
   void updatePredictor(AddrType PC, bool resolveDir, bool predDir, AddrType branchTarget, bool no_alloc) {
@@ -1999,6 +2001,9 @@ Obvious saves - PC -> Target
   }
 };
 
+#define FTQ
+#ifdef FTQ
+
 typedef struct {
 	AddrType branch_PC;
 	AddrType branch_target; // Check
@@ -2011,16 +2016,23 @@ typedef struct {
 }ftq_entry;
 
 typedef ftq_entry *ftq_entry_ptr;
-#define NUM_FTQ_ENTRIES 32
+
+//#define CPP
+#ifdef CPP
 class ftq {
 private : 
-ftq_entry_ptr ftq[NUM_FTQ_ENTRIES];
-
-static uint8_t next_allocate_index; // To be written/ allocated next
-static uint8_t next_free_index; // To be read/ freed next
-bool ftq_full;
+//ftq_entry_ptr ftq[NUM_FTQ_ENTRIES];
+ftq_entry_ptr* ftq_inst;
+uint8_t next_allocate_index; // To be written/ allocated next
+uint8_t next_free_index; // To be read/ freed next
+bool ftq_full = false;
 
 public :
+
+ftq (uint32_t NUM_FTQ_ENTRIES) {
+	ftq_inst = new ftq_entry_ptr[NUM_FTQ_ENTRIES];
+}
+
 bool is_ftq_full(void)
 {
 	return ftq_full;
@@ -2040,9 +2052,59 @@ void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_i
 	ptr->HitBank = IMLI_inst.HitBank;
 	ptr->AltBank = IMLI_inst.AltBank;
 	
-	ftq[next_allocate_index++] = ptr;
+	ftq_inst[next_allocate_index] = ptr;
+	next_allocate_index++;
 	return;
 }
+void get_ftq_data(IMLI& IMLI_inst)
+{
+	ftq_entry_ptr ptr = ftq_inst[next_free_index];
+	
+	IMLI_inst.pred_taken 		= ptr->pred_taken;
+	IMLI_inst.tage_pred 		= ptr->tage_pred;
+	IMLI_inst.LongestMatchPred 	= ptr->LongestMatchPred;
+	IMLI_inst.alttaken 			= ptr->alttaken;
+	IMLI_inst.HitBank 			= ptr->HitBank;
+	IMLI_inst.AltBank 			= ptr->AltBank;
+
+	free(ptr);
+	ftq_inst[next_free_index] = NULL;
+	next_free_index++;
+	return;
+} // get_ftq_data() over
+}; // class ftq over
+#else // not CPP																																					
+
+#define NUM_FTQ_ENTRIES 32
+
+ftq_entry_ptr ftq[NUM_FTQ_ENTRIES];
+uint8_t next_allocate_index; // To be written/ allocated next
+uint8_t next_free_index; // To be read/ freed next
+bool ftq_full = false;
+
+bool is_ftq_full(void)
+{
+	return ftq_full;
+}
+
+void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_inst)
+{
+	// next_entry_index is updated in the end of the function, so still called "next" when it is already being updated in this function 
+	ftq_entry_ptr ptr = (ftq_entry_ptr) malloc (sizeof(ftq_entry) );
+	ptr->branch_PC = branch_PC;
+	ptr->branch_target = branch_target; // Actually, after Execute
+	ptr->pred_taken = IMLI_inst.pred_taken;
+	ptr->tage_pred = IMLI_inst.tage_pred;
+	ptr->LongestMatchPred = IMLI_inst.LongestMatchPred;
+	ptr->alttaken = IMLI_inst.alttaken;
+	ptr->HitBank = IMLI_inst.HitBank;
+	ptr->AltBank = IMLI_inst.AltBank;
+	
+	ftq[next_allocate_index] = ptr;
+	next_allocate_index = (next_allocate_index+1) % NUM_FTQ_ENTRIES;
+	return;
+}
+
 void get_ftq_data(IMLI& IMLI_inst)
 {
 	ftq_entry_ptr ptr = ftq[next_free_index];
@@ -2055,8 +2117,11 @@ void get_ftq_data(IMLI& IMLI_inst)
 	IMLI_inst.AltBank 			= ptr->AltBank;
 
 	free(ptr);
-	ftq[next_free_index++] = NULL;
+	ftq[next_free_index] = NULL;
+	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
 	return;
 } // get_ftq_data() over
-}; // class ftq over
 
+#endif // not CPP over
+
+#endif // FTQ
