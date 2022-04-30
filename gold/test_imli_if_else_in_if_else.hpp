@@ -28,7 +28,7 @@
   
   bool bias;
   uint32_t sign;
-  bool no_alloc = true; // Check ??
+  bool no_alloc = false; // Check ??
   bool b1_resolveDir, b2_resolveDir, b3_resolveDir, b4_resolveDir;
   bool b1_predDir, b2_predDir, b3_predDir, b4_predDir;
   uint32_t b1_correct_predicitons = 0, b1_mispredictions = 0;

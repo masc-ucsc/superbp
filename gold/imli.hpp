@@ -764,7 +764,7 @@ public:
 #define SHIFTFUTURE 6 // (PC<<6) +IMLIcount to index the Outer History table
 #define PASTSIZE 16
   int8_t PIPE[PASTSIZE];     // the PIPE vector
-#define OHHISTTABLESIZE 1024 //
+#define OHHISTTABLESIZE 1024
   int8_t ohhisttable[OHHISTTABLESIZE];
 #ifdef STRICTSIZE
 #define LOGFNB 7 // 64 entries
@@ -1816,6 +1816,7 @@ Obvious saves - PC -> Target
       ALLOC = ALLOC & noAlloc; //flag to alloc and noAlloc
 
       if(ALLOC) {
+      printf("ALLOC is true \n");
 
         int T = 1; // nhist; // Seznec has 1
 
@@ -1934,7 +1935,7 @@ Obvious saves - PC -> Target
         }
       }
 #endif
-
+      bimodal.select(PC);
       if(HitBank > 0) {
         gtable[HitBank][GI[HitBank]].ctr_update(HitBank, resolveDir);
         if(gtable[HitBank][GI[HitBank]].u_get() == 0 && AltBank > 0) {
@@ -2003,7 +2004,7 @@ Obvious saves - PC -> Target
 
 #define FTQ
 #ifdef FTQ
-
+// Not saved - Loop predictor, GTAG,  
 typedef struct {
 	AddrType branch_PC;
 	AddrType branch_target; // Check
@@ -2013,6 +2014,25 @@ typedef struct {
 	bool alttaken; 
 	int HitBank;
 	int AltBank;
+	long long IMLIcount;
+	long long phist;
+	long long GHIST;
+	
+	Folded_history *ch_i;
+	Folded_history *ch_t_0;
+	Folded_history *ch_t_1;
+	
+	/*long long L_shist[NLOCAL];
+	long long S_slhist[NSECLOCAL];
+	long long T_slhist[NSECLOCAL];
+	long long HSTACK[16];
+	int       pthstack;
+	
+	int8_t* PIPE; // [IMLI_inst.PASTSIZE];     // the PIPE vector
+  	int8_t* ohhisttable; // [OHHISTTABLESIZE];*/
+  	
+  	//int* GI; //     = new int[nhist + 1];
+  	//int8_t *use_alt_on_na; //[SIZEUSEALT][2];
 }ftq_entry;
 
 typedef ftq_entry *ftq_entry_ptr;
@@ -2043,14 +2063,18 @@ void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_i
 {
 	// next_entry_index is updated in the end of the function, so still called "next" when it is already being updated in this function 
 	ftq_entry_ptr ptr = (ftq_entry_ptr) malloc (sizeof(ftq_entry) );
-	ptr->branch_PC = branch_PC;
-	ptr->branch_target = branch_target; // Actually, after Execute
-	ptr->pred_taken = IMLI_inst.pred_taken;
-	ptr->tage_pred = IMLI_inst.tage_pred;
-	ptr->LongestMatchPred = IMLI_inst.LongestMatchPred;
-	ptr->alttaken = IMLI_inst.alttaken;
-	ptr->HitBank = IMLI_inst.HitBank;
-	ptr->AltBank = IMLI_inst.AltBank;
+	
+	ptr->branch_PC 			= branch_PC;
+	ptr->branch_target 		= branch_target; // Actually, after Execute
+	ptr->pred_taken 		= IMLI_inst.pred_taken;
+	ptr->tage_pred 			= IMLI_inst.tage_pred;
+	ptr->LongestMatchPred 	= IMLI_inst.LongestMatchPred;
+	ptr->alttaken 			= IMLI_inst.alttaken;
+	ptr->HitBank 			= IMLI_inst.HitBank;
+	ptr->AltBank 			= IMLI_inst.AltBank;
+	ptr->IMLIcount 			= IMLI_inst.IMLIcount;
+	ptr->phist 				= IMLI_inst.phist;
+	ptr->GHIST 				= IMLI_inst.GHIST;
 	
 	ftq_inst[next_allocate_index] = ptr;
 	next_allocate_index++;
@@ -2066,25 +2090,28 @@ void get_ftq_data(IMLI& IMLI_inst)
 	IMLI_inst.alttaken 			= ptr->alttaken;
 	IMLI_inst.HitBank 			= ptr->HitBank;
 	IMLI_inst.AltBank 			= ptr->AltBank;
-
+	IMLI_inst.IMLIcount			= ptr->IMLIcount;
+	IMLI_inst.phist				= ptr->phist;
+	IMLI_inst.GHIST				= ptr->GHIST;
+	
 	free(ptr);
 	ftq_inst[next_free_index] = NULL;
 	next_free_index++;
 	return;
 } // get_ftq_data() over
 }; // class ftq over
-#else // not CPP																																					
-
+#else // not CPP																														
+#include <cstring>
 #define NUM_FTQ_ENTRIES 32
 
 ftq_entry_ptr ftq[NUM_FTQ_ENTRIES];
 uint8_t next_allocate_index; // To be written/ allocated next
 uint8_t next_free_index; // To be read/ freed next
-bool ftq_full = false;
+uint8_t filled_ftq_entries;
 
 bool is_ftq_full(void)
 {
-	return ftq_full;
+	return (filled_ftq_entries == NUM_FTQ_ENTRIES);
 }
 
 void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_inst)
@@ -2100,8 +2127,35 @@ void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_i
 	ptr->HitBank = IMLI_inst.HitBank;
 	ptr->AltBank = IMLI_inst.AltBank;
 	
+	int nhist = IMLI_inst.nhist;
+	ptr->ch_i   = new Folded_history[nhist + 1];
+	memcpy(ptr->ch_i, IMLI_inst.ch_i, ((nhist + 1)*sizeof(Folded_history)));
+    ptr->ch_t_0 = new Folded_history[nhist + 1];
+    memcpy(ptr->ch_t_0, IMLI_inst.ch_t[0], ((nhist + 1)*sizeof(Folded_history)));
+    ptr->ch_t_1 = new Folded_history[nhist + 1];
+    memcpy(ptr->ch_t_1, IMLI_inst.ch_t[1], ((nhist + 1)*sizeof(Folded_history)));
+    
+    /*memcpy(ptr->L_shist, L_shist, (NLOCAL*sizeof(long long))); // long long L_shist[NLOCAL];
+	memcpy(ptr->S_slhist, S_slhist, (NSECLOCAL*sizeof(long long))); // long long S_slhist[NSECLOCAL];
+	memcpy(ptr->T_slhist, T_slhist, (NSECLOCAL*sizeof(long long))); // long long T_slhist[NSECLOCAL];
+	memcpy(ptr->HSTACK, HSTACK, (16*sizeof(long long))); // long long HSTACK[16];
+	ptr->pthstack = pthstack;
+	
+	ptr->PIPE = new int8_t[PASTSIZE]; 
+	memcpy(ptr->PIPE, IMLI_inst.PIPE, (PASTSIZE*sizeof(int8_t)));
+  	ptr->ohhisttable = new int8_t[OHHISTTABLESIZE] ;
+	memcpy(ptr->ohhisttable, IMLI_inst.ohhisttable, (OHHISTTABLESIZE*sizeof(int8_t)));*/
+	
+	/*ptr->GI = new int[nhist + 1];
+	memcpy(ptr->GI, IMLI_inst.GI, (nhist+1)*sizeof(int));*/
+	/*ptr->use_alt_on_na = new int8_t[SIZEUSEALT * 2]; //int8_t *[SIZEUSEALT][2]
+	memcpy(ptr->use_alt_on_na, IMLI_inst.use_alt_on_na, (SIZEUSEALT * 2)*sizeof(int8_t));*/
+	
+	//ptr->pos_p = IMLI_inst.bimodal.pos_p;
+	
 	ftq[next_allocate_index] = ptr;
 	next_allocate_index = (next_allocate_index+1) % NUM_FTQ_ENTRIES;
+	filled_ftq_entries++;
 	return;
 }
 
@@ -2115,12 +2169,77 @@ void get_ftq_data(IMLI& IMLI_inst)
 	IMLI_inst.alttaken 			= ptr->alttaken;
 	IMLI_inst.HitBank 			= ptr->HitBank;
 	IMLI_inst.AltBank 			= ptr->AltBank;
+	
+	int nhist = IMLI_inst.nhist;
+	memcpy(IMLI_inst.ch_i, ptr->ch_i, ((nhist + 1)*sizeof(Folded_history)));
+	delete(ptr->ch_i);
+	memcpy(IMLI_inst.ch_t[0], ptr->ch_t_0, ((nhist + 1)*sizeof(Folded_history)));
+	delete(ptr->ch_t_0);
+	memcpy(IMLI_inst.ch_t[1], ptr->ch_t_1, ((nhist + 1)*sizeof(Folded_history)));
+	delete(ptr->ch_t_1);
+	
+	/*memcpy(L_shist, ptr->L_shist, (NLOCAL*sizeof(long long))); // long long L_shist[NLOCAL];
+	memcpy(S_slhist, ptr->S_slhist, (NSECLOCAL*sizeof(long long))); // long long S_slhist[NSECLOCAL];
+	memcpy(T_slhist, ptr->T_slhist, (NSECLOCAL*sizeof(long long))); // long long T_slhist[NSECLOCAL];
+	memcpy(HSTACK, ptr->HSTACK, (16*sizeof(long long))); // long long HSTACK[16];
+	pthstack = ptr->pthstack;
+	
+	memcpy(IMLI_inst.PIPE, ptr->PIPE, (PASTSIZE*sizeof(int8_t)));
+	delete(ptr->PIPE);
+	memcpy(IMLI_inst.ohhisttable, ptr->ohhisttable, (OHHISTTABLESIZE*sizeof(int8_t)));
+	delete(ptr->ohhisttable);*/
+	
+	/*memcpy(IMLI_inst.GI, ptr->GI, (nhist+1)*sizeof(int));
+	delete(ptr->GI);*/
+	/*memcpy(IMLI_inst.use_alt_on_na, ptr->use_alt_on_na, (SIZEUSEALT * 2)*sizeof(int8_t));
+	delete(ptr->use_alt_on_na);*/
+	
+	//IMLI_inst.bimodal.pos_p = ptr->pos_p;
+	
+	free(ptr);
+	ftq[next_free_index] = NULL;
+	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
+	filled_ftq_entries--;
+	return;
+} // get_ftq_data() over
+
+void deallocate_ftq_entry(void)
+{
+	ftq_entry_ptr ptr = ftq[next_free_index];
 
 	free(ptr);
 	ftq[next_free_index] = NULL;
 	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
+	
+	filled_ftq_entries--;
 	return;
-} // get_ftq_data() over
+} // deallocate_ftq_entry() over
+
+void nuke()
+{
+	ftq_entry_ptr ptr;
+	
+	//uint8_t i = next_free_index;
+	while ( filled_ftq_entries != 0)
+	{
+		ptr = ftq[next_free_index];
+				
+		delete(ptr->ch_i);
+		delete(ptr->ch_t_0);
+		delete(ptr->ch_t_1);
+		/*delete(ptr->PIPE);
+		delete(ptr->ohhisttable);*/
+		// delete(ptr->GI);
+		//delete(ptr->use_alt_on_na);
+	
+		free(ptr);
+		ftq[next_free_index] = NULL;
+		next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
+		filled_ftq_entries--;
+	}
+	next_allocate_index = 0;
+	next_free_index = 0;
+}
 
 #endif // not CPP over
 
