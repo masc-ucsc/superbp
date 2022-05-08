@@ -30,7 +30,7 @@
 // IMLI Tests
 //#define FOR_IN_FOR_ROUGH
 //#define IF_ELSE_IN_IF_ELSE
-#define SUPERSCALAR_BASIC_SOTA
+#define SUPERSCALAR_SOTA
 // Bad example - incomplete
 //#define FOR_IN_FOR_PROPER
 
@@ -91,8 +91,8 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
 #include "test_imli_if_else_in_if_else.hpp"
 #endif  // IF_ELSE_IN_IF_ELSE
 
-#ifdef SUPERSCALAR_BASIC_SOTA
-#include "test_imli_superscalar_basic.hpp"  
+#ifdef SUPERSCALAR_SOTA
+#include "test_imli_superscalar_sota.hpp"  
 #endif // SUPERSCALAR_BASIC_SOTA
 
 } // TEST_F
