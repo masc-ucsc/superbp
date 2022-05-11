@@ -1708,7 +1708,8 @@ Obvious saves - PC -> Target
       printf("\n");
     }
 #endif
-
+	bimodal.select(PC);
+	
 #ifdef LOOPPREDICTOR
     if(LVALID) {
       if(pred_taken != predloop)
@@ -1935,7 +1936,7 @@ Obvious saves - PC -> Target
         }
       }
 #endif
-      bimodal.select(PC);
+      
       if(HitBank > 0) {
         gtable[HitBank][GI[HitBank]].ctr_update(HitBank, resolveDir);
         if(gtable[HitBank][GI[HitBank]].u_get() == 0 && AltBank > 0) {
@@ -2022,7 +2023,8 @@ typedef struct {
 	Folded_history *ch_t_0;
 	Folded_history *ch_t_1;
 	
-	/*long long L_shist[NLOCAL];
+	#if 0
+	long long L_shist[NLOCAL];
 	long long S_slhist[NSECLOCAL];
 	long long T_slhist[NSECLOCAL];
 	long long HSTACK[16];
@@ -2031,8 +2033,10 @@ typedef struct {
 	int8_t* PIPE; // [IMLI_inst.PASTSIZE];     // the PIPE vector
   	int8_t* ohhisttable; // [OHHISTTABLESIZE];*/
   	
-  	//int* GI; //     = new int[nhist + 1];
-  	//int8_t *use_alt_on_na; //[SIZEUSEALT][2];
+  	int* GI; //     = new int[nhist + 1];
+  	int8_t *use_alt_on_na; //[SIZEUSEALT][2];
+  	
+  	#endif
 }ftq_entry;
 
 typedef ftq_entry *ftq_entry_ptr;
@@ -2135,7 +2139,8 @@ void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_i
     ptr->ch_t_1 = new Folded_history[nhist + 1];
     memcpy(ptr->ch_t_1, IMLI_inst.ch_t[1], ((nhist + 1)*sizeof(Folded_history)));
     
-    /*memcpy(ptr->L_shist, L_shist, (NLOCAL*sizeof(long long))); // long long L_shist[NLOCAL];
+    #if 0
+    memcpy(ptr->L_shist, L_shist, (NLOCAL*sizeof(long long))); // long long L_shist[NLOCAL];
 	memcpy(ptr->S_slhist, S_slhist, (NSECLOCAL*sizeof(long long))); // long long S_slhist[NSECLOCAL];
 	memcpy(ptr->T_slhist, T_slhist, (NSECLOCAL*sizeof(long long))); // long long T_slhist[NSECLOCAL];
 	memcpy(ptr->HSTACK, HSTACK, (16*sizeof(long long))); // long long HSTACK[16];
@@ -2144,14 +2149,15 @@ void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_i
 	ptr->PIPE = new int8_t[PASTSIZE]; 
 	memcpy(ptr->PIPE, IMLI_inst.PIPE, (PASTSIZE*sizeof(int8_t)));
   	ptr->ohhisttable = new int8_t[OHHISTTABLESIZE] ;
-	memcpy(ptr->ohhisttable, IMLI_inst.ohhisttable, (OHHISTTABLESIZE*sizeof(int8_t)));*/
+	memcpy(ptr->ohhisttable, IMLI_inst.ohhisttable, (OHHISTTABLESIZE*sizeof(int8_t)));
 	
-	/*ptr->GI = new int[nhist + 1];
-	memcpy(ptr->GI, IMLI_inst.GI, (nhist+1)*sizeof(int));*/
-	/*ptr->use_alt_on_na = new int8_t[SIZEUSEALT * 2]; //int8_t *[SIZEUSEALT][2]
-	memcpy(ptr->use_alt_on_na, IMLI_inst.use_alt_on_na, (SIZEUSEALT * 2)*sizeof(int8_t));*/
+	ptr->GI = new int[nhist + 1];
+	memcpy(ptr->GI, IMLI_inst.GI, (nhist+1)*sizeof(int));
+	ptr->use_alt_on_na = new int8_t[SIZEUSEALT * 2]; //int8_t *[SIZEUSEALT][2]
+	memcpy(ptr->use_alt_on_na, IMLI_inst.use_alt_on_na, (SIZEUSEALT * 2)*sizeof(int8_t));
 	
 	//ptr->pos_p = IMLI_inst.bimodal.pos_p;
+	#endif
 	
 	ftq[next_allocate_index] = ptr;
 	next_allocate_index = (next_allocate_index+1) % NUM_FTQ_ENTRIES;
@@ -2178,7 +2184,8 @@ void get_ftq_data(IMLI& IMLI_inst)
 	memcpy(IMLI_inst.ch_t[1], ptr->ch_t_1, ((nhist + 1)*sizeof(Folded_history)));
 	delete(ptr->ch_t_1);
 	
-	/*memcpy(L_shist, ptr->L_shist, (NLOCAL*sizeof(long long))); // long long L_shist[NLOCAL];
+	#if 0
+	memcpy(L_shist, ptr->L_shist, (NLOCAL*sizeof(long long))); // long long L_shist[NLOCAL];
 	memcpy(S_slhist, ptr->S_slhist, (NSECLOCAL*sizeof(long long))); // long long S_slhist[NSECLOCAL];
 	memcpy(T_slhist, ptr->T_slhist, (NSECLOCAL*sizeof(long long))); // long long T_slhist[NSECLOCAL];
 	memcpy(HSTACK, ptr->HSTACK, (16*sizeof(long long))); // long long HSTACK[16];
@@ -2187,14 +2194,15 @@ void get_ftq_data(IMLI& IMLI_inst)
 	memcpy(IMLI_inst.PIPE, ptr->PIPE, (PASTSIZE*sizeof(int8_t)));
 	delete(ptr->PIPE);
 	memcpy(IMLI_inst.ohhisttable, ptr->ohhisttable, (OHHISTTABLESIZE*sizeof(int8_t)));
-	delete(ptr->ohhisttable);*/
+	delete(ptr->ohhisttable);
 	
-	/*memcpy(IMLI_inst.GI, ptr->GI, (nhist+1)*sizeof(int));
-	delete(ptr->GI);*/
-	/*memcpy(IMLI_inst.use_alt_on_na, ptr->use_alt_on_na, (SIZEUSEALT * 2)*sizeof(int8_t));
-	delete(ptr->use_alt_on_na);*/
+	memcpy(IMLI_inst.GI, ptr->GI, (nhist+1)*sizeof(int));
+	delete(ptr->GI);
+	memcpy(IMLI_inst.use_alt_on_na, ptr->use_alt_on_na, (SIZEUSEALT * 2)*sizeof(int8_t));
+	delete(ptr->use_alt_on_na);
 	
 	//IMLI_inst.bimodal.pos_p = ptr->pos_p;
+	#endif
 	
 	free(ptr);
 	ftq[next_free_index] = NULL;
