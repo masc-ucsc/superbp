@@ -38,7 +38,7 @@
 #include <stdio.h>
 //#define DEBUG_HISTORY_UPDATE
 //#define DEBUG_TAGE_INDEX
-//#define DEBUG_TAGE_PREDICTION
+#define DEBUG_TAGE_PREDICTION
 //#define DEBUG_LOOP_PREDICTOR
 //#define DEBUG_SC
 //#define DEBUG_TAGE_UPDATE
@@ -1293,7 +1293,7 @@ public:
       GI[i]   = gindex(pcSign(lastBoundaryPC,i), i, phist, ch_i, false);
       GTAG[i] = ((GI[i - 1] << (logg[i] / 2)) ^ GI[i - 1]) & ((1 << TB[i]) - 1);
       #ifdef DEBUG_TAGE_INDEX
-      printf("For bank %d, index = %d and tag = %lu \n", i, GI[i], GTAG[i]);
+      printf("For bank %d, index = %x and tag = %lx \n", i, GI[i], GTAG[i]);
       #endif
     }
   }
@@ -1316,7 +1316,7 @@ public:
     }
 
 #ifdef DEBUG_TAGE_PREDICTION
-if (PC == 0x05050b0f)
+if ( (PC == 0x05050a02) )
 printf ("LongestMatchPred from TAGE = %s\n", LongestMatchPred ? "Taken" : "Not Taken");
 #endif
 
@@ -1458,11 +1458,11 @@ printf ("LongestMatchPred from TAGE = %s\n", LongestMatchPred ? "Taken" : "Not T
     fetchBoundaryOffsetBranch(PC);
     setTAGEPred(PC);
 #ifdef DEBUG_TAGE_PREDICTION
-if ((PC == 0x05050b0f) && ((GI[HitBank]) || (GI[AltBank])) )
+if ((PC == 0x05050a02) && ((GI[HitBank]) || (GI[AltBank])) )
 {
-	printf ("PC = %s \n", (PC == 0x05050a0a) ? "b1_PC" : (PC == 0x05050a0c) ? "b2_PC" : (PC == 0x05050b0f) ? "b3_PC" : (PC == 0x05060bf0) ? "b4_PC" : "Hakuna Matata" );
-	printf("Hit Bank = %d, index = %d and tag = %lu \n", HitBank, GI[HitBank], GTAG[HitBank]);
-	printf("Alt bank = %d, index = %d and tag = %lu \n", AltBank, GI[AltBank], GTAG[AltBank]);
+	printf ("PC = %s \n", (PC == 0x05050a02) ? "b1_PC" : (PC == 0x05050a04) ? "b2_PC" : (PC == 0x05050b0f) ? "b3_PC" : (PC == 0x05060bf0) ? "b4_PC" : "Hakuna Matata" );
+	printf("Hit Bank = %d, index = %x and tag = %lu \n", HitBank, GI[HitBank], GTAG[HitBank]);
+	printf("Alt bank = %d, index = %x and tag = %lu \n", AltBank, GI[AltBank], GTAG[AltBank]);
 	printf("LongestMatchPred = %d, pred_taken = %d, alttaken = %d, tage_pred = %d \n", LongestMatchPred, pred_taken, alttaken, tage_pred);
   }
 #endif
@@ -1785,7 +1785,7 @@ Obvious saves - PC -> Target
 
       bool ALLOC = ((tage_pred != resolveDir) & (HitBank < nhist));
       #ifdef DEBUG_TAGE_UPDATE
-      if (PC == 0x05050b0f)
+      if (PC == 0x05050a02)
       printf ("tage_pred = %d, resolveDir = %d, ALLOC = %d\n", tage_pred, resolveDir, ALLOC);
       #endif
       if(pred_taken == resolveDir)
@@ -1814,7 +1814,7 @@ Obvious saves - PC -> Target
       }
 
       bool noAlloc = no_alloc;
-      ALLOC = ALLOC & noAlloc; //flag to alloc and noAlloc
+      ALLOC = ALLOC & (!noAlloc); //flag to alloc and noAlloc
 
       if(ALLOC) {
       printf("ALLOC is true \n");
