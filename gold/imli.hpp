@@ -38,10 +38,10 @@
 #include <stdio.h>
 //#define DEBUG_HISTORY_UPDATE
 //#define DEBUG_TAGE_INDEX
-#define DEBUG_TAGE_PREDICTION
+//#define DEBUG_TAGE_PREDICTION
 //#define DEBUG_LOOP_PREDICTOR
 //#define DEBUG_SC
-//#define DEBUG_TAGE_UPDATE
+#define DEBUG_TAGE_UPDATE
 #endif
 
 //#define MEDIUM_TAGE 1
@@ -1293,7 +1293,7 @@ public:
       GI[i]   = gindex(pcSign(lastBoundaryPC,i), i, phist, ch_i, false);
       GTAG[i] = ((GI[i - 1] << (logg[i] / 2)) ^ GI[i - 1]) & ((1 << TB[i]) - 1);
       #ifdef DEBUG_TAGE_INDEX
-      printf("For bank %d, index = %x and tag = %lx \n", i, GI[i], GTAG[i]);
+      printf("DEBUG_TAGE_INDEX - For bank %d, index = %x and tag = %lx \n", i, GI[i], GTAG[i]);
       #endif
     }
   }
@@ -1317,7 +1317,7 @@ public:
 
 #ifdef DEBUG_TAGE_PREDICTION
 if ( (PC == 0x05050a02) )
-printf ("LongestMatchPred from TAGE = %s\n", LongestMatchPred ? "Taken" : "Not Taken");
+printf ("DEBUG_TAGE_PREDICTION - LongestMatchPred from TAGE = %s\n", LongestMatchPred ? "Taken" : "Not Taken");
 #endif
 
     for(int i = HitBank - 1; i > 0; i--) {
@@ -1460,10 +1460,10 @@ printf ("LongestMatchPred from TAGE = %s\n", LongestMatchPred ? "Taken" : "Not T
 #ifdef DEBUG_TAGE_PREDICTION
 if ((PC == 0x05050a02) && ((GI[HitBank]) || (GI[AltBank])) )
 {
-	printf ("PC = %s \n", (PC == 0x05050a02) ? "b1_PC" : (PC == 0x05050a04) ? "b2_PC" : (PC == 0x05050b0f) ? "b3_PC" : (PC == 0x05060bf0) ? "b4_PC" : "Hakuna Matata" );
-	printf("Hit Bank = %d, index = %x and tag = %lu \n", HitBank, GI[HitBank], GTAG[HitBank]);
-	printf("Alt bank = %d, index = %x and tag = %lu \n", AltBank, GI[AltBank], GTAG[AltBank]);
-	printf("LongestMatchPred = %d, pred_taken = %d, alttaken = %d, tage_pred = %d \n", LongestMatchPred, pred_taken, alttaken, tage_pred);
+	printf ("DEBUG_TAGE_PREDICTION - PC = %s \n", (PC == 0x05050a02) ? "b1_PC" : (PC == 0x05050a04) ? "b2_PC" : (PC == 0x05050b0f) ? "b3_PC" : (PC == 0x05060bf0) ? "b4_PC" : "Hakuna Matata" );
+	printf("DEBUG_TAGE_PREDICTION - Hit Bank = %d, index = %#x and tag = %#lx \n", HitBank, GI[HitBank], GTAG[HitBank]);
+	printf("DEBUG_TAGE_PREDICTION - Alt bank = %d, index = %#x and tag = %#lx \n", AltBank, GI[AltBank], GTAG[AltBank]);
+	printf("DEBUG_TAGE_PREDICTION - LongestMatchPred = %d, pred_taken = %d, alttaken = %d, tage_pred = %d \n", LongestMatchPred, pred_taken, alttaken, tage_pred);
   }
 #endif
     pred_taken = tage_pred;
@@ -1708,7 +1708,9 @@ Obvious saves - PC -> Target
       printf("\n");
     }
 #endif
-	bimodal.select(PC);
+	//bimodal.select(PC);
+	//setTAGEIndex();
+	fetchBoundaryOffsetBranch(PC);
 	
 #ifdef LOOPPREDICTOR
     if(LVALID) {
@@ -1786,7 +1788,7 @@ Obvious saves - PC -> Target
       bool ALLOC = ((tage_pred != resolveDir) & (HitBank < nhist));
       #ifdef DEBUG_TAGE_UPDATE
       if (PC == 0x05050a02)
-      printf ("tage_pred = %d, resolveDir = %d, ALLOC = %d\n", tage_pred, resolveDir, ALLOC);
+      printf ("DEBUG_TAGE_UPDATE - tage_pred = %d, resolveDir = %d, ALLOC = %d, pred_taken = %d \n", tage_pred, resolveDir, ALLOC, pred_taken);
       #endif
       if(pred_taken == resolveDir)
         if((MYRANDOM() & 31) != 0)
@@ -1817,7 +1819,9 @@ Obvious saves - PC -> Target
       ALLOC = ALLOC & (!noAlloc); //flag to alloc and noAlloc
 
       if(ALLOC) {
-      printf("ALLOC is true \n");
+      #ifdef DEBUG_TAGE_UPDATE
+      printf("DEBUG_TAGE_UPDATE - ALLOC is true \n");
+      #endif
 
         int T = 1; // nhist; // Seznec has 1
 
@@ -1829,6 +1833,9 @@ Obvious saves - PC -> Target
         int NA      = 0;
 
         int weakBank = HitBank + A;
+        #ifdef DEBUG_TAGE_UPDATE
+        printf("DEBUG_TAGE_UPDATE - weakBank = %d \n", weakBank);
+        #endif // DEBUG_TAGE_UPDATE
 #ifdef SUBENTRIES
         bool skip[nhist+1];
         for(auto &e:skip) {
@@ -1837,7 +1844,7 @@ Obvious saves - PC -> Target
 
         // First try tag (but not offset hit)
         for(int i = weakBank; i <= nhist; i += 1) {
-
+        
           if(gtable[i][GI[i]].isTagHit()) {
             weakBank = i;
 
@@ -1846,6 +1853,9 @@ Obvious saves - PC -> Target
 
             skip[i] = true;
             // gtable[i][GI[i]].dump(); printf(" alloc pc=%x\n",PC);
+            #ifdef DEBUG_TAGE_UPDATE
+        	printf("DEBUG_TAGE_UPDATE - Trying Bank = %d, skip = %s \n", i, skip[i] ? "true" : "false");
+        	#endif // DEBUG_TAGE_UPDATE
 
             NA++;
             T--;
@@ -1857,6 +1867,9 @@ Obvious saves - PC -> Target
 
         // Then allocate a new tag if still not good enough
         if(T > 0) {
+        	#ifdef DEBUG_TAGE_UPDATE
+        	printf("T > 0, allocating \n");
+        	#endif // DEBUG_TAGE_UPDATE
           weakBank = HitBank + A;
           for(int i = weakBank; i <= nhist; i += 1) {
 
