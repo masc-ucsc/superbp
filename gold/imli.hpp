@@ -36,13 +36,16 @@
 #define DEBUG
 #ifdef DEBUG
 #include <stdio.h>
-//#define DEBUG_HISTORY_UPDATE
+#define DEBUG_HISTORY_AT_PREDICTION
+#define DEBUG_HISTORY_UPDATE
 #define DEBUG_BIMODAL_PREDICTION
 #define DEBUG_TAGE_INDEX
 #define DEBUG_TAGE_PREDICTION
 //#define DEBUG_LOOP_PREDICTOR
 //#define DEBUG_SC
 #define DEBUG_TAGE_UPDATE
+#define DEBUG_PREDICTION
+#define DEBUG_UPDATE
 #endif
 
 //#define MEDIUM_TAGE 1
@@ -1134,6 +1137,9 @@ public:
 
   int gindex(unsigned int PC, int bank, long long hist, Folded_history *ch_i, bool use_dolc_next) {
     int index;
+    #ifdef DEBUG_HISTORY_AT_PREDICTION
+    printf("DEBUG_HISTORY_AT_PREDICTION - Used ch_i = %x \n", ch_i[bank].comp);	
+    #endif
 #ifdef USE_DOLC
     // Dual bank per bank (lower bit is PC based)
     uint64_t sign1 = idolc.getSign(logg[bank], m[bank]);
@@ -1323,8 +1329,7 @@ public:
     }
 
 #ifdef DEBUG_TAGE_PREDICTION
-if ( (PC == 0x05050a02) )
-printf ("DEBUG_TAGE_PREDICTION - LongestMatchPred from TAGE = %s\n", LongestMatchPred ? "Taken" : "Not Taken");
+printf ("DEBUG_TAGE_PREDICTION - PC = %lx, LongestMatchPred from TAGE = %s, HitBank = %d\n", PC, LongestMatchPred ? "Taken" : "Not Taken", HitBank);
 #endif
 
     for(int i = HitBank - 1; i > 0; i--) {
@@ -1349,8 +1354,8 @@ printf ("DEBUG_TAGE_PREDICTION - LongestMatchPred from TAGE = %s\n", LongestMatc
       else
         alttaken = bimodal.predict();
     } else {
-      alttaken         = bimodal.predict();
-      LongestMatchPred = alttaken;
+      	alttaken         = bimodal.predict();
+      	LongestMatchPred = alttaken;
     }
 #else
     // computes the prediction and the alternate prediction
@@ -1365,6 +1370,9 @@ printf ("DEBUG_TAGE_PREDICTION - LongestMatchPred from TAGE = %s\n", LongestMatc
       // USE_ALT_ON_NA is positive  use the alternate prediction
       int  index          = INDUSEALT ^ LongestMatchPred;
       bool Huse_alt_on_na = (use_alt_on_na[index][HitBank > (nhist / 3)] >= 0);
+      #ifdef DEBUG_TAGE_PREDICTION
+printf ("DEBUG_TAGE_PREDICTION - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "True" : "False");
+#endif
 
       if(!Huse_alt_on_na || !gtable[HitBank][GI[HitBank]].ctr_weak()) {
         tage_pred = LongestMatchPred;
@@ -1386,6 +1394,9 @@ printf ("DEBUG_TAGE_PREDICTION - LongestMatchPred from TAGE = %s\n", LongestMatc
       alttaken         = bimodal.predict();
       tage_pred        = alttaken;
       LongestMatchPred = alttaken;
+      #ifdef DEBUG_BIMODAL_PREDICTION
+      printf ("DEBUG_BIMODAL_PREDICTION - HitBank = 0, Bimodal prediction = alttaken = %s overrode TAGE & set to LongestMatchPred \n", alttaken ? "Taken" : "Not Taken" );
+      #endif
     }
 #if 0
     static int conta_h=0;
@@ -1470,7 +1481,7 @@ if ( ((GI[HitBank]) || (GI[AltBank])) )
 	printf ("DEBUG_TAGE_PREDICTION - PC = %s \n", (PC == 0x05050a02) ? "b1_PC" : (PC == 0x05050a04) ? "b2_PC" : (PC == 0x05050b0f) ? "b3_PC" : (PC == 0x05060bf0) ? "b4_PC" : "Hakuna Matata" );
 	printf("DEBUG_TAGE_PREDICTION - Hit Bank = %d, index = %#x and tag = %#lx \n", HitBank, GI[HitBank], GTAG[HitBank]);
 	printf("DEBUG_TAGE_PREDICTION - Alt bank = %d, index = %#x and tag = %#lx \n", AltBank, GI[AltBank], GTAG[AltBank]);
-	printf("DEBUG_TAGE_PREDICTION - LongestMatchPred = %d, tage_pred = %d, pred_taken = %d, alttaken = %d\n", LongestMatchPred, pred_taken, alttaken, tage_pred);
+	printf("DEBUG_TAGE_PREDICTION - LongestMatchPred = %d, tage_pred = %d, alttaken = %d\n", LongestMatchPred, alttaken, tage_pred);
   }
 #endif
     pred_taken = tage_pred;
@@ -1501,10 +1512,13 @@ if ( ((GI[HitBank]) || (GI[AltBank])) )
     pred_inter = pred_taken;
 
     if(!sc) {
-    	#ifdef DEBUG_SC
-      if (PC == 0x05050b0f)
+      #ifdef DEBUG_SC
       printf("Return since !sc\n");
       #endif
+    #ifdef DEBUG_PREDICTION
+    printf ("Predict taken = %d \n", pred_taken);
+	printf ("************************************ Prediction returned ***************************************\n");
+	#endif
       return (pred_taken);
     }
 
@@ -1667,7 +1681,11 @@ if ( ((GI[HitBank]) || (GI[AltBank])) )
       Y--;
       ghist[Y & (HISTBUFFERLENGTH - 1)] = DIR;
       X                                 = (X << 1) ^ PATHBIT;
+    
       for(int i = 1; i <= nhist; i++) {
+    #ifdef DEBUG_HISTORY_UPDATE
+    printf("DEBUG_HISTORY_UPDATE - For nhist = %d, used ch_i = %x, ch_t_0 = %x, ch_t_1 = %x\n", i, H[i].comp, G[i].comp, J[i].comp);	
+    #endif
         H[i].update(ghist, Y);
         G[i].update(ghist, Y);
         J[i].update(ghist, Y);
@@ -1717,6 +1735,7 @@ Obvious saves - PC -> Target
 #endif
 	//bimodal.select(PC);
 	//setTAGEIndex();
+    
 	fetchBoundaryOffsetBranch(PC);
 	
 #ifdef LOOPPREDICTOR
@@ -1897,6 +1916,9 @@ Obvious saves - PC -> Target
 #else
               gtable[i][GI[i]].reset(i, GTAG[i], resolveDir);
 #endif
+			#ifdef DEBUG_TAGE_UPDATE
+        	printf("Allocated Bank = %d, index = %x \n", i, GI[i]);
+        	#endif // DEBUG_TAGE_UPDATE
 
               NA++;
 
@@ -1984,6 +2006,10 @@ Obvious saves - PC -> Target
     HistoryUpdate(PC, iBALU_LBRANCH, resolveDir, branchTarget, phist, ptghist, ch_i, ch_t[0], ch_t[1], L_shist[INDLOCAL],
                   S_slhist[INDSLOCAL], T_slhist[INDTLOCAL], HSTACK[pthstack], GHIST);
     // END PREDICTOR UPDATE
+    
+          #ifdef DEBUG_UPDATE
+			printf ("************************************ Update returned ******************************************\n");
+			#endif
   }
 
 #define GINDEX                                                                                                                  \
