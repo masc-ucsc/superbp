@@ -37,8 +37,9 @@
 #ifdef DEBUG
 #include <stdio.h>
 //#define DEBUG_HISTORY_UPDATE
-//#define DEBUG_TAGE_INDEX
-//#define DEBUG_TAGE_PREDICTION
+#define DEBUG_BIMODAL_PREDICTION
+#define DEBUG_TAGE_INDEX
+#define DEBUG_TAGE_PREDICTION
 //#define DEBUG_LOOP_PREDICTOR
 //#define DEBUG_SC
 #define DEBUG_TAGE_UPDATE
@@ -395,6 +396,9 @@ public:
   }
 
   bool predict() const {
+    #ifdef DEBUG_BIMODAL_PREDICTION
+    printf ("DEBUG_BIMODAL_PREDICTION - Bimodal prediction = %s\n", (pred[pos_p] >= 0) ? "Taken" : "Not taken");
+    #endif
     return pred[pos_p] >= 0;
   }
   bool highconf() const {
@@ -403,6 +407,9 @@ public:
 
   void select(uint32_t fetchPC_) {
     pos_p = getIndex(fetchPC_);
+    #ifdef DEBUG_BIMODAL_PREDICTION
+    printf ("DEBUG_BIMODAL_PREDICTION - Bimodal index = %x\n", pos_p);
+    #endif
   }
 
   void select(uint32_t fetchPC_, uint8_t boff_) {
@@ -1458,12 +1465,12 @@ printf ("DEBUG_TAGE_PREDICTION - LongestMatchPred from TAGE = %s\n", LongestMatc
     fetchBoundaryOffsetBranch(PC);
     setTAGEPred(PC);
 #ifdef DEBUG_TAGE_PREDICTION
-if ((PC == 0x05050a02) && ((GI[HitBank]) || (GI[AltBank])) )
+if ( ((GI[HitBank]) || (GI[AltBank])) )
 {
 	printf ("DEBUG_TAGE_PREDICTION - PC = %s \n", (PC == 0x05050a02) ? "b1_PC" : (PC == 0x05050a04) ? "b2_PC" : (PC == 0x05050b0f) ? "b3_PC" : (PC == 0x05060bf0) ? "b4_PC" : "Hakuna Matata" );
 	printf("DEBUG_TAGE_PREDICTION - Hit Bank = %d, index = %#x and tag = %#lx \n", HitBank, GI[HitBank], GTAG[HitBank]);
 	printf("DEBUG_TAGE_PREDICTION - Alt bank = %d, index = %#x and tag = %#lx \n", AltBank, GI[AltBank], GTAG[AltBank]);
-	printf("DEBUG_TAGE_PREDICTION - LongestMatchPred = %d, pred_taken = %d, alttaken = %d, tage_pred = %d \n", LongestMatchPred, pred_taken, alttaken, tage_pred);
+	printf("DEBUG_TAGE_PREDICTION - LongestMatchPred = %d, tage_pred = %d, pred_taken = %d, alttaken = %d\n", LongestMatchPred, pred_taken, alttaken, tage_pred);
   }
 #endif
     pred_taken = tage_pred;
@@ -1787,8 +1794,7 @@ Obvious saves - PC -> Target
 
       bool ALLOC = ((tage_pred != resolveDir) & (HitBank < nhist));
       #ifdef DEBUG_TAGE_UPDATE
-      if (PC == 0x05050a02)
-      printf ("DEBUG_TAGE_UPDATE - tage_pred = %d, resolveDir = %d, ALLOC = %d, pred_taken = %d \n", tage_pred, resolveDir, ALLOC, pred_taken);
+      printf ("DEBUG_TAGE_UPDATE - PC = %lx, tage_pred = %d, resolveDir = %d, ALLOC = %d, pred_taken = %d \n", PC, tage_pred, resolveDir, ALLOC, pred_taken);
       #endif
       if(pred_taken == resolveDir)
         if((MYRANDOM() & 31) != 0)
