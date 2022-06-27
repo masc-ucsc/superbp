@@ -1329,8 +1329,8 @@ public:
       }
     }
 
-#ifdef DEBUG_TAGE_PREDICTION_0
-printf ("DEBUG_TAGE_PREDICTION - PC = %lx, LongestMatchPred from TAGE = %s, HitBank = %d\n", PC, LongestMatchPred ? "Taken" : "Not Taken", HitBank);
+#ifdef DEBUG_TAGE_PREDICTION
+printf ("DEBUG_TAGE_PREDICTION - PC = %#lx, HitBank = %d, Hit Index = %d, HitBank LongestMatchPred = %s\n", PC, HitBank, GI[HitBank], LongestMatchPred ? "Taken" : "Not Taken");
 #endif
 
     for(int i = HitBank - 1; i > 0; i--) {
@@ -1339,6 +1339,9 @@ printf ("DEBUG_TAGE_PREDICTION - PC = %lx, LongestMatchPred from TAGE = %s, HitB
         break;
       }
     }
+#ifdef DEBUG_TAGE_PREDICTION
+printf ("DEBUG_TAGE_PREDICTION - PC = %#lx, AltBank = %d, AltIndex = %d \n", PC, AltBank, GI[AltBank]);
+#endif
 
 #ifdef POSTPREDICT
     int WeakBank = 0;
@@ -1366,6 +1369,10 @@ printf ("DEBUG_TAGE_PREDICTION - PC = %lx, LongestMatchPred from TAGE = %s, HitB
         alttaken = (gtable[AltBank][GI[AltBank]].ctr_isTaken());
       else
         alttaken = bimodal.predict();
+        
+#ifdef DEBUG_TAGE_PREDICTION
+printf ("DEBUG_TAGE_PREDICTION - PC = %#lx - Before DEBUG_TAGE_Huse_alt_on_na - alttaken = %d \n", PC, alttaken);
+#endif
 
       // if the entry is recognized as a newly allocated entry and
       // USE_ALT_ON_NA is positive  use the alternate prediction
@@ -1379,6 +1386,9 @@ printf ("DEBUG_TAGE_Huse_alt_on_na - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "T
         tage_pred = LongestMatchPred;
         HighConf  = gtable[HitBank][GI[HitBank]].ctr_highconf();
         WeakConf  = gtable[HitBank][GI[HitBank]].ctr_weak();
+        #ifdef DEBUG_TAGE_PREDICTION
+		printf ("DEBUG_TAGE_PREDICTION - !Huse_alt_on_na || !gtable[HitBank][GI[HitBank]].ctr_weak() = true \n");
+		#endif
       } else {
         tage_pred = alttaken;
         if(AltBank) {
@@ -1395,8 +1405,8 @@ printf ("DEBUG_TAGE_Huse_alt_on_na - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "T
       alttaken         = bimodal.predict();
       tage_pred        = alttaken;
       LongestMatchPred = alttaken;
-      #ifdef DEBUG_BIMODAL_PREDICTION
-      printf ("DEBUG_BIMODAL_PREDICTION - HitBank = 0, Bimodal prediction = alttaken = %s overrode TAGE & set to LongestMatchPred \n", alttaken ? "Taken" : "Not Taken" );
+      #ifdef DEBUG_TAGE_PREDICTION
+      printf ("DEBUG_TAGE_PREDICTION - HitBank = 0, Bimodal prediction = tage prediction = alttaken = %s overrode TAGE & set to LongestMatchPred \n", alttaken ? "Taken" : "Not Taken" );
       #endif
     }
 #if 0
@@ -1419,6 +1429,18 @@ printf ("DEBUG_TAGE_Huse_alt_on_na - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "T
     // printf("postp[%d]=%d\n", ppi, postp[ppi]);
     tage_pred = (postp[ppi] >= 0);
 #endif
+
+/*
+#ifdef DEBUG_TAGE_PREDICTION
+//if ( ((GI[HitBank]) || (GI[AltBank])) )
+{
+	printf ("DEBUG_TAGE_PREDICTION - PC = %#lx \n", PC );
+	printf("DEBUG_TAGE_PREDICTION - Hit Bank = %d, index = %#x and tag = %#lx \n", HitBank, GI[HitBank], GTAG[HitBank]);
+	printf("DEBUG_TAGE_PREDICTION - Alt bank = %d, index = %#x and tag = %#lx \n", AltBank, GI[AltBank], GTAG[AltBank]);
+	printf("DEBUG_TAGE_PREDICTION - LongestMatchPred = %d, tage_pred = %d, alttaken = %d\n", LongestMatchPred, alttaken, tage_pred);
+}
+#endif
+*/
   }
   // compute the prediction
 
@@ -1476,15 +1498,6 @@ printf ("DEBUG_TAGE_Huse_alt_on_na - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "T
 
     fetchBoundaryOffsetBranch(PC);
     setTAGEPred(PC);
-#ifdef DEBUG_TAGE_PREDICTION
-if ( ((GI[HitBank]) || (GI[AltBank])) )
-{
-	printf ("DEBUG_TAGE_PREDICTION - PC = %#lx \n", PC );
-	//printf("DEBUG_TAGE_PREDICTION - Hit Bank = %d, index = %#x and tag = %#lx \n", HitBank, GI[HitBank], GTAG[HitBank]);
-	//printf("DEBUG_TAGE_PREDICTION - Alt bank = %d, index = %#x and tag = %#lx \n", AltBank, GI[AltBank], GTAG[AltBank]);
-	printf("DEBUG_TAGE_PREDICTION - LongestMatchPred = %d, tage_pred = %d, alttaken = %d\n", LongestMatchPred, alttaken, tage_pred);
-}
-#endif
 
     pred_taken = tage_pred;
 #if 0
@@ -2010,9 +2023,9 @@ Obvious saves - PC -> Target
                   S_slhist[INDSLOCAL], T_slhist[INDTLOCAL], HSTACK[pthstack], GHIST);
     // END PREDICTOR UPDATE
     
-          #ifdef DEBUG_UPDATE
+     	#ifdef DEBUG_UPDATE
 			printf ("************************************ Update returned ******************************************\n");
-			#endif
+		#endif
   }
 
 #define GINDEX                                                                                                                  \
