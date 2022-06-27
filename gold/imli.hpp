@@ -36,16 +36,17 @@
 #define DEBUG
 #ifdef DEBUG
 #include <stdio.h>
-#define DEBUG_HISTORY_AT_PREDICTION
-#define DEBUG_HISTORY_UPDATE
-#define DEBUG_BIMODAL_PREDICTION
-#define DEBUG_TAGE_INDEX
+//#define DEBUG_HISTORY_AT_PREDICTION
+//#define DEBUG_HISTORY_UPDATE
+//#define DEBUG_BIMODAL_PREDICTION
+//#define DEBUG_TAGE_INDEX
 #define DEBUG_TAGE_PREDICTION
-//#define DEBUG_LOOP_PREDICTOR
+//#define DEBUG_TAGE_Huse_alt_on_na
+//#define DEBUG_LP
 //#define DEBUG_SC
-#define DEBUG_TAGE_UPDATE
-#define DEBUG_PREDICTION
-#define DEBUG_UPDATE
+//#define DEBUG_TAGE_UPDATE
+//#define DEBUG_PREDICTION
+//#define DEBUG_UPDATE
 #endif
 
 //#define MEDIUM_TAGE 1
@@ -1328,7 +1329,7 @@ public:
       }
     }
 
-#ifdef DEBUG_TAGE_PREDICTION
+#ifdef DEBUG_TAGE_PREDICTION_0
 printf ("DEBUG_TAGE_PREDICTION - PC = %lx, LongestMatchPred from TAGE = %s, HitBank = %d\n", PC, LongestMatchPred ? "Taken" : "Not Taken", HitBank);
 #endif
 
@@ -1370,8 +1371,8 @@ printf ("DEBUG_TAGE_PREDICTION - PC = %lx, LongestMatchPred from TAGE = %s, HitB
       // USE_ALT_ON_NA is positive  use the alternate prediction
       int  index          = INDUSEALT ^ LongestMatchPred;
       bool Huse_alt_on_na = (use_alt_on_na[index][HitBank > (nhist / 3)] >= 0);
-      #ifdef DEBUG_TAGE_PREDICTION
-printf ("DEBUG_TAGE_PREDICTION - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "True" : "False");
+      #ifdef DEBUG_TAGE_Huse_alt_on_na
+printf ("DEBUG_TAGE_Huse_alt_on_na - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "True" : "False");
 #endif
 
       if(!Huse_alt_on_na || !gtable[HitBank][GI[HitBank]].ctr_weak()) {
@@ -1478,12 +1479,13 @@ printf ("DEBUG_TAGE_PREDICTION - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "True"
 #ifdef DEBUG_TAGE_PREDICTION
 if ( ((GI[HitBank]) || (GI[AltBank])) )
 {
-	printf ("DEBUG_TAGE_PREDICTION - PC = %s \n", (PC == 0x05050a02) ? "b1_PC" : (PC == 0x05050a04) ? "b2_PC" : (PC == 0x05050b0f) ? "b3_PC" : (PC == 0x05060bf0) ? "b4_PC" : "Hakuna Matata" );
-	printf("DEBUG_TAGE_PREDICTION - Hit Bank = %d, index = %#x and tag = %#lx \n", HitBank, GI[HitBank], GTAG[HitBank]);
-	printf("DEBUG_TAGE_PREDICTION - Alt bank = %d, index = %#x and tag = %#lx \n", AltBank, GI[AltBank], GTAG[AltBank]);
+	printf ("DEBUG_TAGE_PREDICTION - PC = %#lx \n", PC );
+	//printf("DEBUG_TAGE_PREDICTION - Hit Bank = %d, index = %#x and tag = %#lx \n", HitBank, GI[HitBank], GTAG[HitBank]);
+	//printf("DEBUG_TAGE_PREDICTION - Alt bank = %d, index = %#x and tag = %#lx \n", AltBank, GI[AltBank], GTAG[AltBank]);
 	printf("DEBUG_TAGE_PREDICTION - LongestMatchPred = %d, tage_pred = %d, alttaken = %d\n", LongestMatchPred, alttaken, tage_pred);
-  }
+}
 #endif
+
     pred_taken = tage_pred;
 #if 0
     bias = !WeakConf;
@@ -1499,14 +1501,15 @@ if ( ((GI[HitBank]) || (GI[AltBank])) )
     {
       bias = true;
       #ifdef DEBUG_LP
-      if (PC == 0x05060bf0)
       printf("Looppredictor used\n");
       #endif
     }
-    #ifdef DEBUG_LP
-     else if (PC == 0x05060bf0)
+    else
+    {
+      #ifdef DEBUG_LP     
       printf("TAGE used\n");
       #endif
+    }
 #endif
 
     pred_inter = pred_taken;
@@ -1516,7 +1519,7 @@ if ( ((GI[HitBank]) || (GI[AltBank])) )
       printf("Return since !sc\n");
       #endif
     #ifdef DEBUG_PREDICTION
-    printf ("Predict taken = %d \n", pred_taken);
+    printf ("Predict taken = %d for PC = %#lx\n", pred_taken, PC);
 	printf ("************************************ Prediction returned ***************************************\n");
 	#endif
       return (pred_taken);

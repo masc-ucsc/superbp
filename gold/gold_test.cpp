@@ -92,8 +92,8 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
 #endif  // IF_ELSE_IN_IF_ELSE
 
 #ifdef SUPERSCALAR_SOTA
-//#include "get_update_get_update.hpp"
-#include "test_imli_superscalar_sota.hpp"  
+#include "get_update_get_update.hpp"
+//#include "test_imli_superscalar_sota.hpp"  
 #endif // SUPERSCALAR_BASIC_SOTA
 
 } // TEST_F
