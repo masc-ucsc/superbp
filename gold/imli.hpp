@@ -36,11 +36,13 @@
 #define DEBUG
 #ifdef DEBUG
 #include <stdio.h>
+//#define DEBUG_BOFF
+#define DEBUG_PHIST
 //#define DEBUG_HISTORY_AT_PREDICTION
 //#define DEBUG_HISTORY_UPDATE
 //#define DEBUG_BIMODAL_PREDICTION
 //#define DEBUG_TAGE_INDEX
-#define DEBUG_TAGE_PREDICTION
+//#define DEBUG_TAGE_PREDICTION
 //#define DEBUG_TAGE_Huse_alt_on_na
 //#define DEBUG_LP
 //#define DEBUG_SC
@@ -1485,6 +1487,9 @@ printf ("DEBUG_TAGE_Huse_alt_on_na - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "T
   void fetchBoundaryOffsetBranch(AddrType PC) {
 
     int boff = fetchBoundaryOffsetOthers(PC);
+    #ifdef DEBUG_BOFF
+    printf("DEBUG_BOFF - For PC = %#lx, boff = %d\n", PC, boff);
+    #endif
 
     // bimodal.select(GI[0],boff);
     bimodal.select(PC);
@@ -1495,6 +1500,10 @@ printf ("DEBUG_TAGE_Huse_alt_on_na - Huse_alt_on_na = %s\n", Huse_alt_on_na ? "T
   }
 
   bool getPrediction(AddrType PC, bool &bias, uint32_t &sign) {
+  
+  	#ifdef DEBUG_PHIST
+	printf ("DEBUG_PHIST - for PC = %#lx predict, phist =%#llx \n", PC, phist);
+	#endif
 
     fetchBoundaryOffsetBranch(PC);
     setTAGEPred(PC);
@@ -1753,6 +1762,9 @@ Obvious saves - PC -> Target
 	//setTAGEIndex();
     
 	fetchBoundaryOffsetBranch(PC);
+	#ifdef DEBUG_PHIST
+	printf ("DEBUG_PHIST - for PC = %#lx update, phist =%#llx \n", PC, phist);
+	#endif
 	
 #ifdef LOOPPREDICTOR
     if(LVALID) {
