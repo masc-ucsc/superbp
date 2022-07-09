@@ -2194,22 +2194,24 @@ bool is_ftq_full(void)
 void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_inst)
 {
 	// next_entry_index is updated in the end of the function, so still called "next" when it is already being updated in this function 
-	ftq_entry_ptr ptr = (ftq_entry_ptr) malloc (sizeof(ftq_entry) );
-	ptr->branch_PC = branch_PC;
-	ptr->branch_target = branch_target; // Actually, after Execute
-	ptr->pred_taken = IMLI_inst.pred_taken;
-	ptr->tage_pred = IMLI_inst.tage_pred;
-	ptr->LongestMatchPred = IMLI_inst.LongestMatchPred;
-	ptr->alttaken = IMLI_inst.alttaken;
-	ptr->HitBank = IMLI_inst.HitBank;
-	ptr->AltBank = IMLI_inst.AltBank;
+	ftq_entry_ptr ptr 		= (ftq_entry_ptr) malloc (sizeof(ftq_entry) );
+	ptr->branch_PC 			= branch_PC;
+	ptr->branch_target 		= branch_target; // Actually, after Execute
+	ptr->pred_taken 		= IMLI_inst.pred_taken;
+	ptr->tage_pred 			= IMLI_inst.tage_pred;
+	ptr->LongestMatchPred 	= IMLI_inst.LongestMatchPred;
+	ptr->alttaken 			= IMLI_inst.alttaken;
+	ptr->HitBank 			= IMLI_inst.HitBank;
+	ptr->AltBank 			= IMLI_inst.AltBank;
+	ptr->phist 				= IMLI_inst.phist;
+	ptr->GHIST 				= IMLI_inst.GHIST;
 	
-	int nhist = IMLI_inst.nhist;
-	ptr->ch_i   = new Folded_history[nhist + 1];
+	int nhist 				= IMLI_inst.nhist;
+	ptr->ch_i   			= new Folded_history[nhist + 1];
 	memcpy(ptr->ch_i, IMLI_inst.ch_i, ((nhist + 1)*sizeof(Folded_history)));
-    ptr->ch_t_0 = new Folded_history[nhist + 1];
+    ptr->ch_t_0 			= new Folded_history[nhist + 1];
     memcpy(ptr->ch_t_0, IMLI_inst.ch_t[0], ((nhist + 1)*sizeof(Folded_history)));
-    ptr->ch_t_1 = new Folded_history[nhist + 1];
+    ptr->ch_t_1 			= new Folded_history[nhist + 1];
     memcpy(ptr->ch_t_1, IMLI_inst.ch_t[1], ((nhist + 1)*sizeof(Folded_history)));
     
     #if 0
@@ -2242,12 +2244,16 @@ void get_ftq_data(IMLI& IMLI_inst)
 {
 	ftq_entry_ptr ptr = ftq[next_free_index];
 	
+//	PC							= ptr->branch_PC;
+//	branchTarget    			= ptr->branch_target; // Actually, after Execute
 	IMLI_inst.pred_taken 		= ptr->pred_taken;
 	IMLI_inst.tage_pred 		= ptr->tage_pred;
 	IMLI_inst.LongestMatchPred 	= ptr->LongestMatchPred;
 	IMLI_inst.alttaken 			= ptr->alttaken;
 	IMLI_inst.HitBank 			= ptr->HitBank;
 	IMLI_inst.AltBank 			= ptr->AltBank;
+	IMLI_inst.phist				= ptr->phist;
+	IMLI_inst.GHIST				= ptr->GHIST;
 	
 	int nhist = IMLI_inst.nhist;
 	memcpy(IMLI_inst.ch_i, ptr->ch_i, ((nhist + 1)*sizeof(Folded_history)));
