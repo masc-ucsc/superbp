@@ -2074,6 +2074,13 @@ Obvious saves - PC -> Target
     HistoryUpdate(PC, opType, taken, branchTarget, phist, ptghist, ch_i, ch_t[0], ch_t[1], L_shist[INDLOCAL], S_slhist[INDSLOCAL],
                   T_slhist[INDTLOCAL], HSTACK[pthstack], GHIST);
   }
+  
+  void fetchPredict(AddrType fetchPC, int fetch_width, std::vector<bool> &prediction_vector, bool bias, uint32_t sign) {
+	
+	for(int i = 0; i < fetch_width; i++) {
+		prediction_vector.push_back(getPrediction( (fetchPC + i), bias,  sign));
+	}
+}
 };
 
 #define FTQ
