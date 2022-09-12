@@ -31,6 +31,7 @@
 //#define FOR_IN_FOR_ROUGH
 //#define IF_ELSE_IN_IF_ELSE
 #define SUPERSCALAR_SOTA
+//#define SUPERSCALAR_SUPERBP
 // Bad example - incomplete
 //#define FOR_IN_FOR_PROPER
 
@@ -71,7 +72,7 @@ protected:
 
 TEST_F(Gold_test, Trivial_IMLI_test) {
 
-  int blogb = 10, log2fetchwidth = 3, bwidth = 3, nhist = 6;
+  int fetch_width = 8, blogb = 10, log2fetchwidth = 3, bwidth = 3, nhist = 6;
   bool sc = false;
   IMLI IMLI_inst( blogb, log2fetchwidth, bwidth, nhist, sc);
   
@@ -92,9 +93,13 @@ TEST_F(Gold_test, Trivial_IMLI_test) {
 #endif  // IF_ELSE_IN_IF_ELSE
 
 #ifdef SUPERSCALAR_SOTA
-//#include "get_update_get_update.hpp"
-#include "test_imli_superscalar_sota.hpp"  
+#include "get_update_get_update.hpp"
+//#include "test_imli_superscalar_sota.hpp"  
 #endif // SUPERSCALAR_BASIC_SOTA
+
+#ifdef SUPERSCALAR_SUPERBP
+#include "test_imli_superscalar_superbp_scratch.hpp"
+#endif
 
 } // TEST_F
 #endif // IMLI_TEST

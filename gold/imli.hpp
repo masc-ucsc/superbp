@@ -303,6 +303,9 @@ int8_t FirstH, SecondH, ThirdH;
 #define SIZEUSEALT (1 << (LOGSIZEUSEALT))
 #define INDUSEALT ((pcSign(lastBoundaryPC)) & (SIZEUSEALT - 1))
 
+class IMLI;
+void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_inst);
+
 // utility class for index computation
 // this is the cyclic shift register for folding
 // a long global history into a smaller number of bits; see P. Michaud's PPM-like predictor at CBP-1
@@ -2075,10 +2078,20 @@ Obvious saves - PC -> Target
                   T_slhist[INDTLOCAL], HSTACK[pthstack], GHIST);
   }
   
-  void fetchPredict(AddrType fetchPC, int fetch_width, std::vector<bool> &prediction_vector, bool bias, uint32_t sign) {
+  void fetchPredict(AddrType packet_PC, int fetch_width, std::vector<bool> &prediction_vector, bool bias, uint32_t sign, AddrType* targets, IMLI& IMLI_inst) {
 	
 	for(int i = 0; i < fetch_width; i++) {
-		prediction_vector.push_back(getPrediction( (fetchPC + i), bias,  sign));
+		prediction_vector.push_back(getPrediction( (packet_PC + i), bias,  sign));
+		// Allocate ftq entry - presently only doing for branch instructions, since the dequeue is done only for them
+		// Finally both enqueue and dequeue shuld be for all instructions (fetchPC) 
+		if (i == 1)
+		{
+			allocate_ftq_entry(packet_PC+i, *(targets+i), IMLI_inst);
+		}
+	if (i == 4)
+		{
+			allocate_ftq_entry(packet_PC+i, *(targets+i), IMLI_inst);
+		}
 	}
 }
 };
