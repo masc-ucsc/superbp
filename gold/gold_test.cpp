@@ -30,8 +30,8 @@
 // IMLI Tests
 //#define FOR_IN_FOR_ROUGH
 //#define IF_ELSE_IN_IF_ELSE
-#define SUPERSCALAR_SOTA
-//#define SUPERSCALAR_SUPERBP
+//#define SUPERSCALAR_SOTA
+#define SUPERSCALAR_SUPERBP
 // Bad example - incomplete
 //#define FOR_IN_FOR_PROPER
 

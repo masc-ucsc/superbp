@@ -2084,11 +2084,7 @@ Obvious saves - PC -> Target
 		prediction_vector.push_back(getPrediction( (packet_PC + i), bias,  sign));
 		// Allocate ftq entry - presently only doing for branch instructions, since the dequeue is done only for them
 		// Finally both enqueue and dequeue shuld be for all instructions (fetchPC) 
-		if (i == 1)
-		{
-			allocate_ftq_entry(packet_PC+i, *(targets+i), IMLI_inst);
-		}
-	if (i == 4)
+		if ( (i == 1) || (i == 4) )
 		{
 			allocate_ftq_entry(packet_PC+i, *(targets+i), IMLI_inst);
 		}
