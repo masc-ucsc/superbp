@@ -1,5 +1,6 @@
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
 git_repository(
     name = "com_google_googletest",
@@ -29,6 +30,14 @@ git_repository(
     name = "com_github_gflags_gflags",
     remote = "https://github.com/gflags/gflags.git",
     tag = "v2.2.2",
+)
+
+new_git_repository(
+    name = "dromajo_masc",
+    branch = "main",
+    remote = "https://github.com/masc-ucsc/dromajo",
+    commit = "753f4c43bda3dfd05becadd81bd0041cec240910",
+    build_file = "dromajo_masc/BUILD",
 )
 
 http_archive(
