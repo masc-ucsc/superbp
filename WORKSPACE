@@ -1,6 +1,5 @@
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
 git_repository(
     name = "com_google_googletest",
@@ -32,12 +31,15 @@ git_repository(
     tag = "v2.2.2",
 )
 
-new_git_repository(
-    name = "dromajo_masc",
-    branch = "main",
-    remote = "https://github.com/masc-ucsc/dromajo",
-    commit = "753f4c43bda3dfd05becadd81bd0041cec240910",
-    build_file = "dromajo_masc/BUILD",
+http_archive(
+    name = "dromajo",
+    build_file = "BUILD.dromajo",
+    patches = ["//external:dromajo.patch"],
+    sha256 = "03aa13c7479b74804eae15a51d2df66b4cd49eb2cdb3a0119521268fc7160167",
+    strip_prefix = "dromajo-753f4c43bda3dfd05becadd81bd0041cec240910",
+    urls = [
+        "https://github.com/masc-ucsc/dromajo/archive/753f4c43bda3dfd05becadd81bd0041cec240910.zip",
+    ],
 )
 
 http_archive(

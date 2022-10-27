@@ -27,7 +27,7 @@ cc_binary(
     srcs = ["gold_bench.cpp"],
     deps = [
       ":gold",
-      "//external:dromajo_masc",
-        "@com_google_benchmark//:benchmark",
+      "@dromajo",
+      "@com_google_benchmark//:benchmark",
     ],
 )
