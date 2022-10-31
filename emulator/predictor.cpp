@@ -1,5 +1,8 @@
-#include "predictor.h"
-#include "batage.cc"
+
+#include "fmt/format.h"
+
+#include "predictor.hpp"
+#include "batage.hpp"
 
 #define VERBOSE
 
@@ -8,28 +11,28 @@ PREDICTOR::PREDICTOR(void)
 {
 #ifdef VERBOSE
   hist.printconfig();
-  printf("total bits = %d\n",pred.size()+hist.size());
+  fmt::print("total bits = {}\n",pred.size()+hist.size());
 #endif
 }
 
 
 bool
-PREDICTOR::GetPrediction(UINT64 PC)
+PREDICTOR::GetPrediction(uint64_t PC)
 {
   return pred.predict(PC,hist);
 }
 
 
 void
-PREDICTOR::UpdatePredictor(UINT64 PC, OpType opType, bool resolveDir, bool predDir, UINT64 branchTarget)
+PREDICTOR::UpdatePredictor(uint64_t PC, bool resolveDir, bool predDir, uint64_t branchTarget)
 {
-  pred.update(PC,resolveDir,hist);
-  hist.update(branchTarget,resolveDir);
+  pred.update(static_cast<uint32_t>(PC),resolveDir,hist, false);
+  hist.update(static_cast<uint32_t>(branchTarget),resolveDir);
 }
 
 
 void
-PREDICTOR::TrackOtherInst(UINT64 PC, OpType opType, bool branchDir, UINT64 branchTarget)
+PREDICTOR::TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget)
 {
   // also update the global history with unconditional branches
   hist.update(branchTarget,true);

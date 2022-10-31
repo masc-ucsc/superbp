@@ -20,15 +20,18 @@
 
 #define BRANCHPROF
 #ifdef BRANCHPROF
-        FILE* pc_trace;
-        
+
+#endif
+
+FILE* pc_trace;
+
 void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
 {
         static uint64_t last_last_pc;
 	static uint8_t branch_flag = 0;
 	//for (int i = 0; i < m->ncpus; ++i)
 	{
- 		
+
  		if (branch_flag)
  		{
  			if (last_pc-last_last_pc == 4)
@@ -37,7 +40,7 @@ void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
  				fprintf (pc_trace, "%32s\n", "Taken Branch");
  			branch_flag = 0;
  		}
- 			
+
  		fprintf (pc_trace, "%20lx\t|%20x\t", last_pc, insn_raw);
  		if (insn_raw < 0x100)
  		{
@@ -47,8 +50,8 @@ void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
  		{
  			fprintf (pc_trace, "|");
  		}
- 					
- 		if ( ((insn_raw & 0x7fff) == 0x73)) 
+
+ 		if ( ((insn_raw & 0x7fff) == 0x73))
  		{
  			if (( ((insn_raw & 0xffffff80) == 0x0)) ) 				// ECall
  			{
@@ -59,7 +62,7 @@ void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
  				fprintf (pc_trace, "%32s\n", "ERET type");
  			}
  		}
- 		
+
  		else if (((insn_raw & 0x70) == 0x60))
  		{
  			if (((insn_raw & 0xf) == 0x3))
@@ -70,7 +73,7 @@ void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
  			{
  				if((insn_raw & 0xf) == 0x7)
  				{
- 					if  (((insn_raw & 0xf80)>>7) == 0x0)    
+ 					if  (((insn_raw & 0xf80)>>7) == 0x0)
  					{
  						fprintf (pc_trace, "%32s\n", "Return");
  					}
@@ -85,16 +88,15 @@ void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
  				}
  			}
  		}
- 		else // Non CTI 
+ 		else // Non CTI
  		{
  			fprintf (pc_trace, "%32s\n", "Non - CTI");
  		}
- 			
+
  		//fprintf (pc_trace, "\n");
  		last_last_pc = last_pc;
  	}
 }
-#endif
 
 
 int iterate_core(RISCVMachine *m, int hartid) {
@@ -111,7 +113,7 @@ int iterate_core(RISCVMachine *m, int hartid) {
     int      priv     = riscv_get_priv_level(cpu);
     uint32_t insn_raw = -1;
     (void)riscv_read_insn(cpu, &insn_raw, last_pc);
- 
+
 #ifdef BRANCHPROF
 	for (int i = 0; i < m->ncpus; ++i)
 	{
@@ -172,7 +174,7 @@ static void sigintr_handler(int dummy) {
     exit(1);
 }
 
-int dromajo_main(void) {
+int main(int argc, char **argv) {
     const char *port_name = NULL;
     int         port_num = 0;
     for (;;) {
@@ -205,7 +207,7 @@ int dromajo_main(void) {
 
 #ifdef BRANCHPROF
         pc_trace = fopen("pc_trace.txt", "w+");
-        if (pc_trace == nullptr) 
+        if (pc_trace == nullptr)
         {
             	fprintf(dromajo_stderr, "\nerror: could not open pc_trace.txt for dumping trace\n");
             	exit(-3);
@@ -215,7 +217,7 @@ int dromajo_main(void) {
         	fprintf(dromajo_stderr, "\nOpened dromajo_simpoint.bb for dumping trace\n");
         	fprintf (pc_trace, "%20s\t\t|%20s\t|%32s\n", "PC", "Instruction", "Instructiontype");
         }
-    
+
 #endif
 
     execution_start_ts = get_current_time_in_seconds();
@@ -246,8 +248,6 @@ int dromajo_main(void) {
     virt_machine_end(m);
 #ifdef BRANCHPROF
     fclose (pc_trace);
-#endif
-
 #endif
 
 return 0;

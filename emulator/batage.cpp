@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <algorithm>
-#include "batage.h"
 
+#include "batage.hpp"
 
 #define SIMFASTER
 

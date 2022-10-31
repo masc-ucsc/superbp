@@ -33,7 +33,7 @@ git_repository(
 
 http_archive(
     name = "dromajo",
-    build_file = "BUILD.dromajo",
+    build_file = "dromajo.BUILD",
     patches = ["//external:dromajo.patch"],
     sha256 = "03aa13c7479b74804eae15a51d2df66b4cd49eb2cdb3a0119521268fc7160167",
     strip_prefix = "dromajo-753f4c43bda3dfd05becadd81bd0041cec240910",
