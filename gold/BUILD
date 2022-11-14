@@ -18,6 +18,7 @@ cc_test(
     srcs = ["gold_test.cpp"],
     deps = [
       ":gold",
+      "//batage:batage",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -16,8 +16,8 @@
 #define BATAGE_TEST
 
 #ifdef BATAGE_TEST
-#include "../emulator/predictor.hpp"
-#include "../emulator/batage.hpp"
+#include "predictor.hpp"
+#include "batage.hpp"
 #endif
 
 #ifdef IMLI_TEST
@@ -77,7 +77,7 @@ protected:
 #endif
 
 #ifdef BATAGE_TEST
-PREDICTOR(); // Check - must be emulator ?
+PREDICTOR bp(); // Check - must be emulator ?
 #endif
 
 #ifdef IMLI_TEST

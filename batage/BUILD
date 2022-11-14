@@ -3,7 +3,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
 
 cc_library(
-    name = "emul",
+    name = "batage",
     srcs = glob(
         ["*.cpp"],
         exclude = ["*_test*.cpp", "*_bench*.cpp", "emulator.cpp"],
@@ -13,17 +13,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//gold:gold",
-        "//batage:batage",
         "@dromajo",
     ]
 )
 
-cc_binary(
-    name = "emulator",
-    srcs = [
-        "emulator.cpp",
-    ],
-    deps = [
-        ":emul",
-    ],
-)
