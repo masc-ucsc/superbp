@@ -17,30 +17,42 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
+#include "predictor.hpp"
 
 #define BRANCHPROF
 #ifdef BRANCHPROF
-
-#endif
-
+PREDICTOR bp;
+bool predDir, resolveDir;
+uint64_t branchTarget;
+bool taken_flag;
 FILE* pc_trace;
 
 void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
 {
         static uint64_t last_last_pc;
 	static uint8_t branch_flag = 0;
+	
+	 branchTarget = last_pc;
+	
 	//for (int i = 0; i < m->ncpus; ++i)
 	{
 
  		if (branch_flag)
  		{
  			if (last_pc-last_last_pc == 4)
+ 			{
  				fprintf (pc_trace, "%32s\n", "Not Taken Branch");
+ 				resolveDir = false;
+ 			}
  			else
+ 			{
  				fprintf (pc_trace, "%32s\n", "Taken Branch");
+ 				resolveDir = true;
+ 			}
+ 			//branchTarget = last_pc;
+ 			//bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
  			branch_flag = 0;
  		}
-
  		fprintf (pc_trace, "%20lx\t|%20x\t", last_pc, insn_raw);
  		if (insn_raw < 0x100)
  		{
@@ -50,6 +62,9 @@ void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
  		{
  			fprintf (pc_trace, "|");
  		}
+ 		
+ 		bp.UpdatePredictor(last_last_pc, resolveDir, predDir, branchTarget);
+		predDir = bp.GetPrediction(last_pc);
 
  		if ( ((insn_raw & 0x7fff) == 0x73))
  		{
@@ -61,12 +76,14 @@ void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
  			{
  				fprintf (pc_trace, "%32s\n", "ERET type");
  			}
+ 			resolveDir = true;
  		}
 
  		else if (((insn_raw & 0x70) == 0x60))
  		{
  			if (((insn_raw & 0xf) == 0x3))
  			{
+ 				//predDir = bp.GetPrediction(last_pc);
  				branch_flag = 1;
  			}
  			else // Jump
@@ -86,18 +103,21 @@ void print_branch_info (uint64_t last_pc, uint32_t insn_raw)
  				{
  					fprintf (pc_trace, "%32s\n", "PC relative Fxn Call");
  				}
+ 				resolveDir = true;
  			}
  		}
  		else // Non CTI
  		{
  			fprintf (pc_trace, "%32s\n", "Non - CTI");
+ 			resolveDir = false;
  		}
 
  		//fprintf (pc_trace, "\n");
+ 			
  		last_last_pc = last_pc;
  	}
 }
-
+#endif
 
 int iterate_core(RISCVMachine *m, int hartid) {
     if (m->common.maxinsns-- <= 0)
@@ -206,6 +226,7 @@ int main(int argc, char **argv) {
       gdb_stub(m, port_num);
 
 #ifdef BRANCHPROF
+	//PREDICTOR bp;
         pc_trace = fopen("pc_trace.txt", "w+");
         if (pc_trace == nullptr)
         {

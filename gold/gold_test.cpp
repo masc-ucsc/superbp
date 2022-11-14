@@ -1,6 +1,4 @@
 
-#include "imli.hpp"
-
 #include <string>
 #include "fmt/format.h"
 
@@ -8,6 +6,23 @@
 #include "gtest/gtest.h"
 
 #include "inst_opcode.hpp"
+
+// Submodule tests
+//#define FOLDED_HISTORY_TEST
+//#define LOOP_ENTRY_TEST
+//#define BIMODAL_TEST
+//#define GLOBAL_ENTRY_TEST
+//#define IMLI_TEST
+#define BATAGE_TEST
+
+#ifdef BATAGE_TEST
+#include "../emulator/predictor.hpp"
+#include "../emulator/batage.hpp"
+#endif
+
+#ifdef IMLI_TEST
+#include "imli.hpp"
+#endif
 
 #define DEBUG_PRINTS
 
@@ -19,13 +34,6 @@
 #ifdef CPP
 #define NUM_FTQ_ENTRIES 32
 #endif // CPP
-
-// Submodule tests
-//#define FOLDED_HISTORY_TEST
-//#define LOOP_ENTRY_TEST
-//#define BIMODAL_TEST
-//#define GLOBAL_ENTRY_TEST
-#define IMLI_TEST
 
 // IMLI Tests
 //#define FOR_IN_FOR_ROUGH
@@ -68,13 +76,17 @@ protected:
 #include "global_entry_test.hpp"
 #endif
 
+#ifdef BATAGE_TEST
+PREDICTOR(); // Check - must be emulator ?
+#endif
+
 #ifdef IMLI_TEST
 
 TEST_F(Gold_test, Trivial_IMLI_test) {
 
   int fetch_width = 8, blogb = 10, log2fetchwidth = 3, bwidth = 3, nhist = 6;
   bool sc = false;
-  IMLI IMLI_inst( blogb, log2fetchwidth, bwidth, nhist, sc);
+  //IMLI IMLI_inst( blogb, log2fetchwidth, bwidth, nhist, sc);
   
   #ifdef CPP
   ftq ftq_inst(NUM_FTQ_ENTRIES);
