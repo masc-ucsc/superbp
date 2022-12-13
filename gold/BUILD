@@ -28,7 +28,7 @@ cc_binary(
     srcs = ["gold_bench.cpp"],
     deps = [
       ":gold",
-      "@dromajo",
+      # "@dromajo",
       "@com_google_benchmark//:benchmark",
     ],
 )
