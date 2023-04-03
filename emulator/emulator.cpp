@@ -25,7 +25,10 @@ PREDICTOR bp;
 bool predDir, resolveDir;
 uint64_t branchTarget;
 bool taken_flag;
-FILE *pc_trace;
+#define PC_TRACE
+#ifdef PC_TRACE
+FILE* pc_trace;
+#endif
 
 void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
   static uint64_t last_last_pc;
@@ -38,16 +41,21 @@ void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
 
     if (branch_flag) {
       if (last_pc - last_last_pc == 4) {
+	#ifdef PC_TRACE
         fprintf(pc_trace, "%32s\n", "Not Taken Branch");
+ 				#endif
         resolveDir = false;
       } else {
+	#ifdef PC_TRACE
         fprintf(pc_trace, "%32s\n", "Taken Branch");
+ 				#endif
         resolveDir = true;
       }
       // branchTarget = last_pc;
       // bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
       branch_flag = 0;
     }
+ 		#ifdef PC_TRACE
     fprintf(pc_trace, "%20lx\t|%20x\t", last_pc, insn_raw);
     if (insn_raw < 0x100) {
       fprintf(pc_trace, "\t|");
@@ -55,10 +63,13 @@ void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
       fprintf(pc_trace, "|");
     }
 
+ 		#endif
+    predDir = bp.GetPrediction(last_last_pc);
     bp.UpdatePredictor(last_last_pc, resolveDir, predDir, branchTarget);
-    predDir = bp.GetPrediction(last_pc);
+    //predDir = bp.GetPrediction(last_pc);
 
     if (((insn_raw & 0x7fff) == 0x73)) {
+      #ifdef PC_TRACE
       if ((((insn_raw & 0xffffff80) == 0x0))) // ECall
       {
         fprintf(pc_trace, "%32s\n", "ECALL type");
@@ -68,6 +79,7 @@ void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
       {
         fprintf(pc_trace, "%32s\n", "ERET type");
       }
+ 			#endif
       resolveDir = true;
     }
 
@@ -77,6 +89,7 @@ void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
         branch_flag = 1;
       } else // Jump
       {
+        #ifdef PC_TRACE
         if ((insn_raw & 0xf) == 0x7) {
           if (((insn_raw & 0xf80) >> 7) == 0x0) {
             fprintf(pc_trace, "%32s\n", "Return");
@@ -86,11 +99,14 @@ void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
         } else {
           fprintf(pc_trace, "%32s\n", "PC relative Fxn Call");
         }
+ 				#endif
         resolveDir = true;
       }
     } else // Non CTI
     {
+ 			#ifdef PC_TRACE
       fprintf(pc_trace, "%32s\n", "Non - CTI");
+ 			#endif
       resolveDir = false;
     }
 
@@ -205,7 +221,7 @@ int main(int argc, char **argv) {
 
 #ifdef BRANCHPROF
 
-  if (false) {
+#ifdef PC_TRACE
   // PREDICTOR bp;
   pc_trace = fopen("pc_trace.txt", "w+");
   if (pc_trace == nullptr) {
@@ -218,7 +234,7 @@ int main(int argc, char **argv) {
             "Instructiontype");
   }
 
-  }
+#endif  //PC_TRACE
 
 #endif
 
@@ -251,8 +267,10 @@ int main(int argc, char **argv) {
 
   virt_machine_end(m);
 #ifdef BRANCHPROF
+#ifdef PC_TRACE
   fclose(pc_trace);
 #endif
+#endif // BRANCHPROF
 
   return 0;
 }
