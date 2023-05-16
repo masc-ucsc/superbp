@@ -30,6 +30,7 @@ bool taken_flag;
 FILE* pc_trace;
 #endif
 
+uint64_t correct_prediction_count, misprediction_count, instruction_count;
 void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
   static uint64_t last_last_pc;
   static uint8_t branch_flag = 0;
@@ -66,7 +67,16 @@ void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
  		#endif
     predDir = bp.GetPrediction(last_last_pc);
     bp.UpdatePredictor(last_last_pc, resolveDir, predDir, branchTarget);
-    //predDir = bp.GetPrediction(last_pc);
+    if (predDir == resolveDir)
+    	{
+    		correct_prediction_count++;
+    	}
+    else 
+    	{
+    		misprediction_count++;
+    	}
+    instruction_count++;
+    
 
     if (((insn_raw & 0x7fff) == 0x73)) {
       #ifdef PC_TRACE
@@ -223,7 +233,7 @@ int main(int argc, char **argv) {
 
 #ifdef PC_TRACE
   // PREDICTOR bp;
-  pc_trace = fopen("pc_trace.txt", "w+");
+  pc_trace = fopen("pc_trace.txt", "a");
   if (pc_trace == nullptr) {
     fprintf(dromajo_stderr,
             "\nerror: could not open pc_trace.txt for dumping trace\n");
@@ -268,6 +278,7 @@ int main(int argc, char **argv) {
   virt_machine_end(m);
 #ifdef BRANCHPROF
 #ifdef PC_TRACE
+  fprintf (pc_trace, "Correct prediciton Count = %lu, mispredction count = %lu and misprediction rate = %lf and MPKI = %lf \n", correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
   fclose(pc_trace);
 #endif
 #endif // BRANCHPROF
