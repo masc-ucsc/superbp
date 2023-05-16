@@ -25,10 +25,10 @@ PREDICTOR bp;
 bool predDir, resolveDir;
 uint64_t branchTarget;
 bool taken_flag;
-#define PC_TRACE
-#ifdef PC_TRACE
+//#define PC_TRACE
+
 FILE* pc_trace;
-#endif
+
 
 uint64_t correct_prediction_count, misprediction_count, instruction_count;
 void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
@@ -230,8 +230,6 @@ int main(int argc, char **argv) {
     gdb_stub(m, port_num);
 
 #ifdef BRANCHPROF
-
-#ifdef PC_TRACE
   // PREDICTOR bp;
   pc_trace = fopen("pc_trace.txt", "a");
   if (pc_trace == nullptr) {
@@ -240,12 +238,10 @@ int main(int argc, char **argv) {
     exit(-3);
   } else {
     fprintf(dromajo_stderr, "\nOpened dromajo_simpoint.bb for dumping trace\n");
-    fprintf(pc_trace, "%20s\t\t|%20s\t|%32s\n", "PC", "Instruction",
-            "Instructiontype");
-  }
-
+#ifdef PC_TRACE
+    fprintf(pc_trace, "%20s\t\t|%20s\t|%32s\n", "PC", "Instruction", "Instructiontype");
 #endif  //PC_TRACE
-
+  }
 #endif
 
   execution_start_ts = get_current_time_in_seconds();
@@ -277,10 +273,8 @@ int main(int argc, char **argv) {
 
   virt_machine_end(m);
 #ifdef BRANCHPROF
-#ifdef PC_TRACE
   fprintf (pc_trace, "Correct prediciton Count = %lu, mispredction count = %lu and misprediction rate = %lf and MPKI = %lf \n", correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
   fclose(pc_trace);
-#endif
 #endif // BRANCHPROF
 
   return 0;
