@@ -10,7 +10,6 @@ cc_library(
     ),
     hdrs = glob(["include/*.h"]),
     includes = ["include"],
-    defines = ["SIMPOINT_BB=1", "SIMPOINT_BBhartid=1"],
     visibility = ["//visibility:public"],
     deps = [
       "@libelf"
