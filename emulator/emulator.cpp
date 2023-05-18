@@ -198,36 +198,11 @@ static void sigintr_handler(int dummy) {
 }
 
 int main(int argc, char **argv) {
-  const char *port_name = NULL;
-  int port_num = 0;
-  for (;;) {
-    int option_index = 0;
-    // clang-format off
-        static struct option long_options[] = {
-            {"gdbinit",                     required_argument, 0,  'G' } // CFG
-        };
-    // clang-format on
 
-    int c = getopt_long(argc, argv, "", long_options, &option_index);
-    if (c == -1) {
-      break;
-    }
-    switch (c) {
-    case 'G':
-      port_name = strdup(optarg);
-      port_num = atoi(port_name);
-      break;
-    default:
-      break;
-    }
-  };
-
+  
   RISCVMachine *m = virt_machine_main(argc, argv);
   if (!m)
     return 1;
-
-  if (port_num)
-    gdb_stub(m, port_num);
 
 #ifdef BRANCHPROF
   // PREDICTOR bp;
