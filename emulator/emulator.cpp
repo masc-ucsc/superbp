@@ -21,6 +21,7 @@
 
 #define BRANCHPROF
 #ifdef BRANCHPROF
+
 PREDICTOR bp;
 bool predDir, resolveDir;
 uint64_t branchTarget;
@@ -29,44 +30,76 @@ bool taken_flag;
 
 FILE* pc_trace;
 
+#define EN_BB_BR_COUNT
+#ifdef EN_BB_BR_COUNT
+uint64_t bb_count[50], br_count[250];
+uint8_t running_bb_count, running_br_count;
+#endif // EN_BB_BR_COUNT
+
+//#define SUPERSCALAR
+#ifdef SUPERSCALAR
+#define FETCH_WIDTH 4
+#endif // SUPERSCALAR
 
 uint64_t correct_prediction_count, misprediction_count, instruction_count;
-void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
-  static uint64_t last_last_pc;
-  static uint8_t branch_flag = 0;
 
-  branchTarget = last_pc;
+/*
+For getting a prediction and updating predictor, like hardware, there will be a race in software also, I think in any CC, I should read the predictor first with whatever history is there and update it after the read. That is what will happen in hardware.
+*/
+
+void print_branch_info(uint64_t pc, uint32_t insn_raw) {
+  static uint64_t last_pc;
+  static uint8_t branch_flag = 0;
+  
+  #ifdef SUPERSCALAR
+  static uint8_t inst_index_in_fetch;
+  #endif
+
+  branchTarget = pc;
 
   // for (int i = 0; i < m->ncpus; ++i)
   {
 
     if (branch_flag) {
-      if (last_pc - last_last_pc == 4) {
-	#ifdef PC_TRACE
+      if (pc - last_pc == 4) {
+	      #ifdef PC_TRACE
         fprintf(pc_trace, "%32s\n", "Not Taken Branch");
  				#endif
         resolveDir = false;
       } else {
-	#ifdef PC_TRACE
+	      #ifdef PC_TRACE
         fprintf(pc_trace, "%32s\n", "Taken Branch");
  				#endif
         resolveDir = true;
       }
-      // branchTarget = last_pc;
-      // bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
       branch_flag = 0;
     }
+    
  		#ifdef PC_TRACE
-    fprintf(pc_trace, "%20lx\t|%20x\t", last_pc, insn_raw);
+    fprintf(pc_trace, "%20lx\t|%20x\t", pc, insn_raw);
     if (insn_raw < 0x100) {
       fprintf(pc_trace, "\t|");
     } else {
       fprintf(pc_trace, "|");
     }
-
  		#endif
-    predDir = bp.GetPrediction(last_last_pc);
-    bp.UpdatePredictor(last_last_pc, resolveDir, predDir, branchTarget);
+ 		
+    predDir = bp.GetPrediction(last_pc);
+    
+    #ifdef SUPERSCALAR
+    inst_index_in_fetch++;
+    if (inst_index_in_fetch == FETCH_WIDTH)
+    {
+    	for (int i = 0; i < FETCH_WIDTH, i++)
+    	{
+    		bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
+    	}
+    	inst_index_in_fetch = 0;
+    }
+    #else // SUPERSCALAR
+    	bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
+    #endif // SUPERSCALAR
+    
     if (predDir == resolveDir)
     	{
     		correct_prediction_count++;
@@ -95,7 +128,7 @@ void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
 
     else if (((insn_raw & 0x70) == 0x60)) {
       if (((insn_raw & 0xf) == 0x3)) {
-        // predDir = bp.GetPrediction(last_pc);
+        // predDir = bp.GetPrediction(pc);
         branch_flag = 1;
       } else // Jump
       {
@@ -122,7 +155,7 @@ void print_branch_info(uint64_t last_pc, uint32_t insn_raw) {
 
     // fprintf (pc_trace, "\n");
 
-    last_last_pc = last_pc;
+    last_pc = pc;
   }
 }
 #endif
@@ -137,19 +170,19 @@ int iterate_core(RISCVMachine *m, int hartid) {
   /* Instruction that raises exceptions should be marked as such in
    * the trace of retired instructions.
    */
-  uint64_t last_pc = virt_machine_get_pc(m, hartid);
+  uint64_t pc = virt_machine_get_pc(m, hartid);
   int priv = riscv_get_priv_level(cpu);
   uint32_t insn_raw = -1;
-  (void)riscv_read_insn(cpu, &insn_raw, last_pc);
+  (void)riscv_read_insn(cpu, &insn_raw, pc);
 
 #ifdef BRANCHPROF
   for (int i = 0; i < m->ncpus; ++i) {
-    print_branch_info(last_pc, insn_raw);
+    print_branch_info(pc, insn_raw);
   }
 #endif // BRANCHPROF
 
   int keep_going = virt_machine_run(m, hartid);
-  if (last_pc == virt_machine_get_pc(m, hartid))
+  if (pc == virt_machine_get_pc(m, hartid))
     return 0;
 
   if (m->common.trace) {
@@ -158,7 +191,7 @@ int iterate_core(RISCVMachine *m, int hartid) {
   }
 
   fprintf(dromajo_stderr, "%d %d 0x%016" PRIx64 " (0x%08x)", hartid, priv,
-          last_pc, (insn_raw & 3) == 3 ? insn_raw : (uint16_t)insn_raw);
+          pc, (insn_raw & 3) == 3 ? insn_raw : (uint16_t)insn_raw);
 
   int iregno = riscv_get_most_recently_written_reg(cpu);
   int fregno = riscv_get_most_recently_written_fp_reg(cpu);
