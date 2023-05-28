@@ -39,6 +39,10 @@ uint8_t running_bb_count, running_br_count;
 //#define SUPERSCALAR
 #ifdef SUPERSCALAR
 #define FETCH_WIDTH 4
+//#define FTQ
+#ifdef FTQ
+#include "ftq.hpp"
+#endif // FTQ
 #endif // SUPERSCALAR
 
 uint64_t correct_prediction_count, misprediction_count, instruction_count;
@@ -54,6 +58,10 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
   #ifdef SUPERSCALAR
   static uint8_t inst_index_in_fetch;
   #endif
+
+  #ifdef EN_BB_BR_COUNT
+  uint8_t bb_over = 0, br_over = 0;
+  #endif // EN_BB_BR_COUNT
 
   branchTarget = pc;
 
@@ -71,6 +79,9 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
         fprintf(pc_trace, "%32s\n", "Taken Branch");
  				#endif
         resolveDir = true;
+        #ifdef EN_BB_BR_COUNT
+        br_over = 1;
+        #endif // EN_BB_BR_COUNT
       }
       branch_flag = 0;
     }
@@ -83,7 +94,81 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
       fprintf(pc_trace, "|");
     }
  		#endif
- 		
+    
+    if (((insn_raw & 0x7fff) == 0x73)) {
+      #ifdef PC_TRACE
+      if ((((insn_raw & 0xffffff80) == 0x0))) // ECall
+      {
+        fprintf(pc_trace, "%32s\n", "ECALL type");
+      } else if ((insn_raw == 0x100073) || (insn_raw == 0x200073) ||
+                 (insn_raw == 0x30200073) ||
+                 (insn_raw == 0x7b200073)) // EReturn
+      {      
+        fprintf(pc_trace, "%32s\n", "ERET type");
+      }
+ 			#endif
+      resolveDir = true;
+      #ifdef EN_BB_BR_COUNT
+      bb_over = 1; br_over = 1;
+      #endif // EN_BB_BR_COUNT
+    }
+
+    else if (((insn_raw & 0x70) == 0x60)) {
+      if (((insn_raw & 0xf) == 0x3)) {
+        branch_flag = 1;
+        #ifdef EN_BB_BR_COUNT
+        bb_over = 1;
+        #endif // EN_BB_BR_COUNT
+      } else // Jump
+      {
+        #ifdef PC_TRACE
+        if ((insn_raw & 0xf) == 0x7) {
+          if (((insn_raw & 0xf80) >> 7) == 0x0) {
+            fprintf(pc_trace, "%32s\n", "Return");
+          } else {
+            fprintf(pc_trace, "%32s\n", "Reg based Fxn Call");
+          }
+        } else {
+          fprintf(pc_trace, "%32s\n", "PC relative Fxn Call");
+        }
+ 				#endif
+        resolveDir = true;
+        #ifdef EN_BB_BR_COUNT
+        bb_over = 1; br_over = 1;
+        #endif // EN_BB_BR_COUNT
+      }
+    } else // Non CTI
+    {
+ 			#ifdef PC_TRACE
+      fprintf(pc_trace, "%32s\n", "Non - CTI");
+ 			#endif
+      resolveDir = false;
+    }
+
+    #ifdef EN_BB_BR_COUNT
+    if (bb_over == 1)
+      {
+        bb_count[running_bb_count]++;
+        running_bb_count =0;
+      }
+      else
+      {
+        running_bb_count++;
+      }
+      if (br_over == 1)
+      {
+        br_count[running_br_count]++;
+        if (bb_over == 1)
+          running_br_count = 0;
+        else
+          running_br_count = 1;
+      }
+      else
+      {
+        running_br_count++;
+      }
+      #endif // EN_BB_BR_COUNT
+
     predDir = bp.GetPrediction(last_pc);
     
     #ifdef SUPERSCALAR
@@ -109,54 +194,10 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     		misprediction_count++;
     	}
     instruction_count++;
-    
-
-    if (((insn_raw & 0x7fff) == 0x73)) {
-      #ifdef PC_TRACE
-      if ((((insn_raw & 0xffffff80) == 0x0))) // ECall
-      {
-        fprintf(pc_trace, "%32s\n", "ECALL type");
-      } else if ((insn_raw == 0x100073) || (insn_raw == 0x200073) ||
-                 (insn_raw == 0x30200073) ||
-                 (insn_raw == 0x7b200073)) // EReturn
-      {
-        fprintf(pc_trace, "%32s\n", "ERET type");
-      }
- 			#endif
-      resolveDir = true;
-    }
-
-    else if (((insn_raw & 0x70) == 0x60)) {
-      if (((insn_raw & 0xf) == 0x3)) {
-        // predDir = bp.GetPrediction(pc);
-        branch_flag = 1;
-      } else // Jump
-      {
-        #ifdef PC_TRACE
-        if ((insn_raw & 0xf) == 0x7) {
-          if (((insn_raw & 0xf80) >> 7) == 0x0) {
-            fprintf(pc_trace, "%32s\n", "Return");
-          } else {
-            fprintf(pc_trace, "%32s\n", "Reg based Fxn Call");
-          }
-        } else {
-          fprintf(pc_trace, "%32s\n", "PC relative Fxn Call");
-        }
- 				#endif
-        resolveDir = true;
-      }
-    } else // Non CTI
-    {
- 			#ifdef PC_TRACE
-      fprintf(pc_trace, "%32s\n", "Non - CTI");
- 			#endif
-      resolveDir = false;
-    }
-
-    // fprintf (pc_trace, "\n");
 
     last_pc = pc;
   }
+
 }
 #endif
 
@@ -282,6 +323,28 @@ int main(int argc, char **argv) {
   virt_machine_end(m);
 #ifdef BRANCHPROF
   fprintf (pc_trace, "Correct prediciton Count = %lu, mispredction count = %lu and misprediction rate = %lf and MPKI = %lf \n", correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
+  
+  #ifdef EN_BB_BR_COUNT
+  fprintf(pc_trace, "bb_count = \n");
+  for (int i = 0; i < 5; i++)
+  {
+    for (int j = 0; j < 10; j++)
+    {
+      fprintf(pc_trace, "%lu, ", bb_count[i*10 + j]);
+    }
+    fprintf(pc_trace, "\n");
+  }
+  fprintf(pc_trace, "br_count = \n");
+  for (int i = 0; i < 25; i++)
+  {
+    for (int j = 0; j < 10; j++)
+    {
+      fprintf(pc_trace, "%lu, ", br_count[i*10 + j]);
+    }
+    fprintf(pc_trace, "\n");
+  }
+  #endif // EN_BB_BR_COUNT
+
   fclose(pc_trace);
 #endif // BRANCHPROF
 
