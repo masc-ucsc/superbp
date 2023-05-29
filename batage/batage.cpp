@@ -497,6 +497,7 @@ batage::predict(uint32_t pc, histories & p)
     }
   }
   
+  // For superscalar - save s, p, hit 
   return s[bp].pred();
 }
 

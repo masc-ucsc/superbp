@@ -16,12 +16,15 @@
 
 class PREDICTOR {
 
- private:
+ /*private:
 
   batage pred;
-  histories hist;
+  histories hist;*/
 
  public:
+ 
+   batage pred;
+   histories hist;
 
   PREDICTOR(void);
   bool GetPrediction(uint64_t PC);  

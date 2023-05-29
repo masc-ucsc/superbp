@@ -36,12 +36,14 @@ uint64_t bb_count[50], br_count[250];
 uint8_t running_bb_count, running_br_count;
 #endif // EN_BB_BR_COUNT
 
-//#define SUPERSCALAR
+#define SUPERSCALAR
 #ifdef SUPERSCALAR
 #define FETCH_WIDTH 4
-//#define FTQ
+#define FTQ
 #ifdef FTQ
 #include "ftq.hpp"
+ftq_entry ftq_data;
+extern uint8_t filled_ftq_entries;
 #endif // FTQ
 #endif // SUPERSCALAR
 
@@ -171,20 +173,6 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
 
     predDir = bp.GetPrediction(last_pc);
     
-    #ifdef SUPERSCALAR
-    inst_index_in_fetch++;
-    if (inst_index_in_fetch == FETCH_WIDTH)
-    {
-    	for (int i = 0; i < FETCH_WIDTH, i++)
-    	{
-    		bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
-    	}
-    	inst_index_in_fetch = 0;
-    }
-    #else // SUPERSCALAR
-    	bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
-    #endif // SUPERSCALAR
-    
     if (predDir == resolveDir)
     	{
     		correct_prediction_count++;
@@ -194,6 +182,52 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     		misprediction_count++;
     	}
     instruction_count++;
+
+    #ifdef SUPERSCALAR
+	#ifdef FTQ
+	if (is_ftq_full() == false)
+    	allocate_ftq_entry(predDir, resolveDir, last_pc, branchTarget, &bp);
+    else
+    	fprintf(stderr, "%s\n", "FTQ full");
+    #endif
+    
+    /******************************************************************
+    As given, the simulator (dromajo) always fetches correctly, 
+    i.e. the FETCH_WIDTH instructions being received by the CPU are the actual dynamic code execution stream,
+    there is no wrong fetch, only wrong prediction
+    hence, all entries in FTQ are for correct instructions
+    hence -> ??? NO NEED TO NUKE UNLESS ITS REAL SUPERSCALAR RETURNING SEQUENTIAL INSTRUCTIONS FROM STATIC BINARY ???
+    Hence, for now ->
+    If branch is correctly predicted -> update MPKI + update predictor.
+    If branch is mispredicted -> update MPKI + update predictor.
+    
+    Also, update after FETCH_WIDTH instructions means update after 1 CC in Superscalar
+    Check if this needs to be delayed + split, i.e. global history to be updated after a few CC, but actual predictor table to be 		updated after commit
+    *******************************************************************/
+    inst_index_in_fetch++;
+    if (inst_index_in_fetch == FETCH_WIDTH)
+    {
+    	for (int i = 0; i < FETCH_WIDTH; i++)
+    	{
+    		if (filled_ftq_entries > 0) 
+    		{
+    			get_ftq_data(&ftq_data, &bp);
+    			last_pc = ftq_data.pc;
+    			resolveDir = ftq_data.resolveDir;
+    			predDir = ftq_data.predDir;
+    			branchTarget = ftq_data.branchTarget;
+    			bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
+    		}
+    		else
+    		{
+    		 	fprintf(stderr, "%s\n", "Pop on empty ftq");
+    		}
+    	}
+    	inst_index_in_fetch = 0;
+    }
+    #else // SUPERSCALAR
+    	bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
+    #endif // SUPERSCALAR
 
     last_pc = pc;
   }
