@@ -22,6 +22,13 @@
 #define BRANCHPROF
 #ifdef BRANCHPROF
 
+
+//#define SKIP_COUNT 2500000000 // for x264
+//#define SKIP_COUNT 1000000000 //  for perlbench_splitmail
+#define SKIP_COUNT 4000000000 // for all other benchmarks
+/*#define RUN_COUNT 1000000000 - desired
+#define RUN_COUNT 1000000 - actually used - sent as part of maxinsns to dromajo*/
+
 PREDICTOR bp;
 bool predDir, resolveDir;
 uint64_t branchTarget;
@@ -30,13 +37,13 @@ bool taken_flag;
 
 FILE* pc_trace;
 
-#define EN_BB_BR_COUNT
+//#define EN_BB_BR_COUNT
 #ifdef EN_BB_BR_COUNT
 uint64_t bb_count[50], br_count[250];
 uint8_t running_bb_count, running_br_count;
 #endif // EN_BB_BR_COUNT
 
-#define SUPERSCALAR
+//#define SUPERSCALAR
 #ifdef SUPERSCALAR
 #define FETCH_WIDTH 4
 #define FTQ
@@ -181,7 +188,7 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     	{
     		misprediction_count++;
     	}
-    instruction_count++;
+    //instruction_count++;
 
     #ifdef SUPERSCALAR
 	#ifdef FTQ
@@ -242,18 +249,22 @@ int iterate_core(RISCVMachine *m, int hartid) {
 
   RISCVCPUState *cpu = m->cpu_state[hartid];
 
-  /* Instruction that raises exceptions should be marked as such in
-   * the trace of retired instructions.
-   */
-  uint64_t pc = virt_machine_get_pc(m, hartid);
-  int priv = riscv_get_priv_level(cpu);
-  uint32_t insn_raw = -1;
-  (void)riscv_read_insn(cpu, &insn_raw, pc);
-
+	
+  	/* Instruction that raises exceptions should be marked as such in
+   	* the trace of retired instructions.
+   	*/
+  	uint64_t pc = virt_machine_get_pc(m, hartid);
+  	int priv = riscv_get_priv_level(cpu);
+  	uint32_t insn_raw = -1;
+  	(void)riscv_read_insn(cpu, &insn_raw, pc);
+  	instruction_count++;
 #ifdef BRANCHPROF
-  for (int i = 0; i < m->ncpus; ++i) {
-    print_branch_info(pc, insn_raw);
-  }
+  	if (instruction_count >= SKIP_COUNT)
+	{
+  		for (int i = 0; i < m->ncpus; ++i) {
+    	print_branch_info(pc, insn_raw);
+  		}
+	}
 #endif // BRANCHPROF
 
   int keep_going = virt_machine_run(m, hartid);
@@ -356,7 +367,7 @@ int main(int argc, char **argv) {
 
   virt_machine_end(m);
 #ifdef BRANCHPROF
-  fprintf (pc_trace, "Correct prediciton Count = %lu, mispredction count = %lu and misprediction rate = %lf and MPKI = %lf \n", correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
+  fprintf (pc_trace, "Instruction Count = %lu, Correct prediciton Count = %lu, mispredction count = %lu and misprediction rate = %lf and MPKI = %lf \n", instruction_count, correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
   
   #ifdef EN_BB_BR_COUNT
   fprintf(pc_trace, "bb_count = \n");
