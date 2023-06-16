@@ -51,7 +51,7 @@ ftq_entry ftq_data; // Only 1 instance - assuming the updates for superscalar wi
 #endif // FTQ
 #endif // SUPERSCALAR
 
-uint64_t correct_prediction_count, misprediction_count, instruction_count;
+uint64_t correct_prediction_count, misprediction_count, instruction_count, benchmark_instruction_count;
 /*
 * missPredict per branch
 * missPredict per Control Flow
@@ -221,7 +221,7 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     		misprediction = true;
     		misprediction_count++;
     	}
-    //instruction_count++;
+    benchmark_instruction_count++;
 
     #ifdef SUPERSCALAR
 	#ifdef FTQ
@@ -408,7 +408,7 @@ int main(int argc, char **argv) {
 
   virt_machine_end(m);
 #ifdef BRANCHPROF
-  fprintf (pc_trace, "branch_count = %lu\njump_count = %lu\ncti_count = %lu\nInstruction Count = %lu\nCorrect prediciton Count = %lu\nmispredction count = %lu\nmisprediction rate = %lf\nMPKI = %lf\n", branch_count, jump_count, cti_count, instruction_count, correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
+  fprintf (pc_trace, "branch_count = %lu\njump_count = %lu\ncti_count = %lu\nbenchmark_instruction_count = %lu\nInstruction Count = %lu\nCorrect prediciton Count = %lu\nmispredction count = %lu\nmisprediction rate = %lf\nMPKI = %lf\n", branch_count, jump_count, cti_count, benchmark_instruction_count, instruction_count, correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
   
   #ifdef EN_BB_BR_COUNT
   fprintf(pc_trace, "bb_count = \n");
