@@ -26,8 +26,8 @@
 
 
 //#define SKIP_COUNT 2500000000 // for x264
-//#define SKIP_COUNT 1000000000 //  for perlbench_splitmail
-#define SKIP_COUNT 4000000000 // for all other benchmarks
+#define SKIP_COUNT 1000000000 //  for perlbench_splitmail
+//#define SKIP_COUNT 4000000000 // for all other benchmarks
 /*#define RUN_COUNT 1000000000 - desired
 #define RUN_COUNT 1000000 - actually used - sent as part of maxinsns to dromajo*/
 
@@ -52,6 +52,21 @@ ftq_entry ftq_data; // Only 1 instance - assuming the updates for superscalar wi
 #endif // SUPERSCALAR
 
 uint64_t correct_prediction_count, misprediction_count, instruction_count;
+/*
+* missPredict per branch
+* missPredict per Control Flow
+* missControl per MPKI (predicted taken when it was not a control)
+* BB size
+* FetchBlock Size
+counters:
+total number of instructions
+number of branches
+number of control flow instructions
+number of mispredicts - separate for branches and jumps
+number of taken branches
+number of taken control flow instructions
+*/
+uint64_t branch_count, branch_mispredict_count, jump_count, cti_count, misscontrol_count, taken_branch_count;
 
 void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
 {
@@ -99,6 +114,7 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
         fprintf(pc_trace, "%32s\n", "Taken Branch");
  				#endif
         resolveDir = true;
+        taken_branch_count++;
         #ifdef EN_BB_BR_COUNT
         br_over = 1;
         #endif // EN_BB_BR_COUNT
@@ -136,11 +152,15 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     else if (((insn_raw & 0x70) == 0x60)) {
       if (((insn_raw & 0xf) == 0x3)) {
         branch_flag = 1;
+        branch_count++;
+        cti_count++;
         #ifdef EN_BB_BR_COUNT
         bb_over = 1;
         #endif // EN_BB_BR_COUNT
       } else // Jump
       {
+      	jump_count++;
+        cti_count++;
         #ifdef PC_TRACE
         if ((insn_raw & 0xf) == 0x7) {
           if (((insn_raw & 0xf80) >> 7) == 0x0) {
@@ -388,21 +408,7 @@ int main(int argc, char **argv) {
 
   virt_machine_end(m);
 #ifdef BRANCHPROF
-/*
-* missPredict per branch
-* missPredict per Control Flow
-* missControl per MPKI (predicted taken when it was not a control)
-* BB size
-* FetchBlock Size
-counters:
-total number of instructions
-number of branches
-number of control flow instructions
-number of mispredicts - separate for branches and jumps
-number of taken branches
-number of taken control flow instructions
-*/
-  fprintf (pc_trace, "Instruction Count = %lu, Correct prediciton Count = %lu, mispredction count = %lu and misprediction rate = %lf and MPKI = %lf \n", instruction_count, correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
+  fprintf (pc_trace, "branch_count = %lu\njump_count = %lu\ncti_count = %lu\nInstruction Count = %lu\nCorrect prediciton Count = %lu\nmispredction count = %lu\nmisprediction rate = %lf\nMPKI = %lf\n", branch_count, jump_count, cti_count, instruction_count, correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
   
   #ifdef EN_BB_BR_COUNT
   fprintf(pc_trace, "bb_count = \n");
