@@ -3,6 +3,7 @@
 #include "dromajo.h"
 
 #include "predictor.hpp"
+#include "emulator.hpp"
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -18,6 +19,7 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define BRANCHPROF
 #ifdef BRANCHPROF
@@ -37,24 +39,32 @@ bool taken_flag;
 
 FILE* pc_trace;
 
-//#define EN_BB_BR_COUNT
 #ifdef EN_BB_BR_COUNT
 uint64_t bb_count[50], br_count[250];
 uint8_t running_bb_count, running_br_count;
 #endif // EN_BB_BR_COUNT
 
-//#define SUPERSCALAR
 #ifdef SUPERSCALAR
-#define FETCH_WIDTH 4
-#define FTQ
 #ifdef FTQ
 #include "ftq.hpp"
-ftq_entry ftq_data;
-extern uint8_t filled_ftq_entries;
+ftq_entry ftq_data; // Only 1 instance - assuming the updates for superscalar will be done 1 by 1, so they may reuse the same instance
 #endif // FTQ
 #endif // SUPERSCALAR
 
 uint64_t correct_prediction_count, misprediction_count, instruction_count;
+
+void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
+{
+    bp.pred.hit 		= ftq_data_ptr->hit;
+    bp.pred.s 			= ftq_data_ptr->s;
+    bp.pred.meta 		= ftq_data_ptr->meta;
+    bp.pred.bp 			= ftq_data_ptr->bp;
+    bp.pred.bi 			= ftq_data_ptr->bi;
+    bp.pred.bi2 		= ftq_data_ptr->bi2;
+	memcpy(bp.pred.b, &((ftq_data_ptr->b)[0]), sizeof(int) * (ftq_data_ptr->b).size());
+	memcpy(bp.pred.b2, &((ftq_data_ptr->b2)[0]), sizeof(int) * (ftq_data_ptr->b2).size());
+	memcpy(bp.pred.gi, &((ftq_data_ptr->gi)[0]), sizeof(int) * NUMG);
+}
 
 /*
 For getting a prediction and updating predictor, like hardware, there will be a race in software also, I think in any CC, I should read the predictor first with whatever history is there and update it after the read. That is what will happen in hardware.
@@ -63,6 +73,7 @@ For getting a prediction and updating predictor, like hardware, there will be a 
 void print_branch_info(uint64_t pc, uint32_t insn_raw) {
   static uint64_t last_pc;
   static uint8_t branch_flag = 0;
+  bool misprediction;
   
   #ifdef SUPERSCALAR
   static uint8_t inst_index_in_fetch;
@@ -158,7 +169,7 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     if (bb_over == 1)
       {
         bb_count[running_bb_count]++;
-        running_bb_count =0;
+        running_bb_count = 0;
       }
       else
       {
@@ -182,10 +193,12 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     
     if (predDir == resolveDir)
     	{
+    		misprediction = false;
     		correct_prediction_count++;
     	}
     else 
     	{
+    		misprediction = true;
     		misprediction_count++;
     	}
     //instruction_count++;
@@ -193,10 +206,9 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     #ifdef SUPERSCALAR
 	#ifdef FTQ
 	if (is_ftq_full() == false)
-    	allocate_ftq_entry(predDir, resolveDir, last_pc, branchTarget, &bp);
+    	allocate_ftq_entry(predDir, resolveDir, last_pc, branchTarget, bp);
     else
     	fprintf(stderr, "%s\n", "FTQ full");
-    #endif
     
     /******************************************************************
     As given, the simulator (dromajo) always fetches correctly, 
@@ -205,33 +217,41 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     hence, all entries in FTQ are for correct instructions
     hence -> ??? NO NEED TO NUKE UNLESS ITS REAL SUPERSCALAR RETURNING SEQUENTIAL INSTRUCTIONS FROM STATIC BINARY ???
     Hence, for now ->
-    If branch is correctly predicted -> update MPKI + update predictor.
-    If branch is mispredicted -> update MPKI + update predictor.
+    If branch is correctly predicted -> update MPKI + update predictor - but pr, pr, up, up
+    If branch is mispredicted -> update MPKI + update predictor - pr, up, pr, up i.e. if misprediction, immediately update rather than after FETCH_WIDTH instructions and restart counter to collect FETCH_WIDTH instructions for next update
     
     Also, update after FETCH_WIDTH instructions means update after 1 CC in Superscalar
     Check if this needs to be delayed + split, i.e. global history to be updated after a few CC, but actual predictor table to be 		updated after commit
     *******************************************************************/
     inst_index_in_fetch++;
-    if (inst_index_in_fetch == FETCH_WIDTH)
+    if ( (inst_index_in_fetch == FETCH_WIDTH) || misprediction )
     {
-    	for (int i = 0; i < FETCH_WIDTH; i++)
+
+    	for (int i = 0; misprediction ? (i < inst_index_in_fetch) : (i < FETCH_WIDTH); i++)
     	{
-    		if (filled_ftq_entries > 0) 
+    		if (!is_ftq_empty()) 
     		{
-    			get_ftq_data(&ftq_data, &bp);
+    			get_ftq_data(&ftq_data);
+    			
     			last_pc = ftq_data.pc;
     			resolveDir = ftq_data.resolveDir;
     			predDir = ftq_data.predDir;
     			branchTarget = ftq_data.branchTarget;
+    			
+    			// Store the read predictor fields into the predictor
+    			copy_ftq_data_to_predictor(&ftq_data);
+
+    			// Update - Check history update
     			bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
     		}
     		else
     		{
-    		 	fprintf(stderr, "%s\n", "Pop on empty ftq");
+    	 		fprintf(stderr, "%s\n", "Pop on empty ftq");
     		}
     	}
     	inst_index_in_fetch = 0;
     }
+    #endif // FTQ
     #else // SUPERSCALAR
     	bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
     #endif // SUPERSCALAR
@@ -334,9 +354,10 @@ int main(int argc, char **argv) {
     fprintf(dromajo_stderr, "\nOpened dromajo_simpoint.bb for dumping trace\n");
 #ifdef PC_TRACE
     fprintf(pc_trace, "%20s\t\t|%20s\t|%32s\n", "PC", "Instruction", "Instructiontype");
-#endif  //PC_TRACE
+#endif  // PC_TRACE
   }
-#endif
+  
+#endif // BRANCHPROF
 
   execution_start_ts = get_current_time_in_seconds();
   execution_progress_meassure = &m->cpu_state[0]->minstret;
@@ -367,6 +388,20 @@ int main(int argc, char **argv) {
 
   virt_machine_end(m);
 #ifdef BRANCHPROF
+/*
+* missPredict per branch
+* missPredict per Control Flow
+* missControl per MPKI (predicted taken when it was not a control)
+* BB size
+* FetchBlock Size
+counters:
+total number of instructions
+number of branches
+number of control flow instructions
+number of mispredicts - separate for branches and jumps
+number of taken branches
+number of taken control flow instructions
+*/
   fprintf (pc_trace, "Instruction Count = %lu, Correct prediciton Count = %lu, mispredction count = %lu and misprediction rate = %lf and MPKI = %lf \n", instruction_count, correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
   
   #ifdef EN_BB_BR_COUNT

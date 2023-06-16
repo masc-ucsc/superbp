@@ -5,8 +5,13 @@
 
 #include "ftq.hpp"
 #include "../batage/predictor.hpp"
+#include "emulator.hpp"
 
+#ifdef SUPERBP
 ftq_entry_ptr ftq[NUM_FTQ_ENTRIES];
+#elif defined BATAGE
+ftq_entry ftq[NUM_FTQ_ENTRIES];
+#endif
 
 uint8_t next_allocate_index; // To be written/ allocated next
 uint8_t next_free_index; // To be read/ freed next
@@ -17,19 +22,23 @@ bool is_ftq_full(void)
 	return (filled_ftq_entries == NUM_FTQ_ENTRIES);
 }
 
+bool is_ftq_empty(void)
+{
+	return (filled_ftq_entries == 0);
+}
+
 #ifdef SUPERBP
 void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_inst)
 #elif defined BATAGE
-void allocate_ftq_entry (bool predDir, bool resolveDir, uint64_t pc, uint64_t branchTarget, PREDICTOR* predictor_ptr) // , histories* hist_ptr)
+void allocate_ftq_entry (const bool& predDir, const bool& resolveDir, const uint64_t& pc, const uint64_t& branchTarget, const PREDICTOR& predictor) // , histories* hist_ptr)
 #else
 void allocate_ftq_entry (void)
 #endif
 {
 	// next_entry_index is updated in the end of the function, so still called "next" when it is already being updated in this function 
-
-	ftq_entry_ptr ptr 		= (ftq_entry_ptr) malloc (sizeof(ftq_entry) );
 	
 #ifdef SUPERBP	
+	ftq_entry_ptr ptr 		= (ftq_entry_ptr) malloc (sizeof(ftq_entry) );
 	ptr->branch_PC 			= branch_PC;
 	ptr->branch_target 		= branch_target; // Actually, after Execute
 	
@@ -49,19 +58,14 @@ void allocate_ftq_entry (void)
     memcpy(ptr->ch_t_0, IMLI_inst.ch_t[0], ((nhist + 1)*sizeof(Folded_history)));
     ptr->ch_t_1 			= new Folded_history[nhist + 1];
     memcpy(ptr->ch_t_1, IMLI_inst.ch_t[1], ((nhist + 1)*sizeof(Folded_history)));
+    
 #elif defined BATAGE
-	ptr->predDir = predDir;
-	ptr->resolveDir = resolveDir;
-	ptr->pc = pc;
-	ptr->branchTarget = branchTarget;
-	
-	//ptr->hit = (predictor_ptr->pred).hit;
-	// a.insert(std::end(a), std::begin(b), std::end(b));
-	(ptr->hit).clear();
-	//(ptr->hit).insert(std::end(ptr->hit), std::begin((predictor_ptr->pred).hit), std::end((predictor_ptr->pred).hit));
+	//ftq_entry f {predDir, resolveDir, pc, branchTarget, predictor.pred.hit, predictor.pred.s, predictor.pred.meta};
+	ftq_entry f {predDir, resolveDir, pc, branchTarget, predictor};
+	// Move assignment
+	ftq[next_allocate_index] = std::move(f);
 #endif
 
-	ftq[next_allocate_index] = ptr;
 	next_allocate_index = (next_allocate_index+1) % NUM_FTQ_ENTRIES;
 	filled_ftq_entries++;
 	return;
@@ -70,14 +74,14 @@ void allocate_ftq_entry (void)
 #ifdef SUPERBP
 void get_ftq_data(IMLI& IMLI_inst)
 #elif defined BATAGE
-void get_ftq_data (ftq_entry_ptr ftq_data_ptr, PREDICTOR* predictor_ptr)
+void get_ftq_data (ftq_entry* ftq_data_ptr)
 #else 
 void get_ftq_data()
 #endif
 {
-	ftq_entry_ptr ptr = ftq[next_free_index];
-	
+		
 #ifdef SUPERBP
+	ftq_entry_ptr ptr = ftq[next_free_index];
 //	PC							= ptr->branch_PC;
 //	branchTarget    			= ptr->branch_target; // Actually, after Execute
 	IMLI_inst.pred_taken 		= ptr->pred_taken;
@@ -96,17 +100,13 @@ void get_ftq_data()
 	delete(ptr->ch_t_0);
 	memcpy(IMLI_inst.ch_t[1], ptr->ch_t_1, ((nhist + 1)*sizeof(Folded_history)));
 	delete(ptr->ch_t_1);
-#elif defined BATAGE
-	ftq_data_ptr->pc 			= ptr->pc;
-	ftq_data_ptr->predDir 		= ptr->predDir;
-	ftq_data_ptr->resolveDir 	= ptr->resolveDir;
-	ftq_data_ptr->branchTarget 	= ptr->branchTarget;
-	
-	(predictor_ptr->pred).hit 	= ptr->hit;
-#endif
-	
 	free(ptr);
 	ftq[next_free_index] = NULL;
+#elif defined BATAGE
+
+	*ftq_data_ptr = std::move(ftq[next_free_index]);
+#endif
+	
 	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
 	filled_ftq_entries--;
 	return;
@@ -114,10 +114,14 @@ void get_ftq_data()
 
 void deallocate_ftq_entry(void)
 {
+#ifdef SUPERBP
 	ftq_entry_ptr ptr = ftq[next_free_index];
 
 	free(ptr);
 	ftq[next_free_index] = NULL;
+#elif defined BATAGE
+	ftq[next_free_index].~ftq_entry();
+#endif // BATAGE
 	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
 	
 	filled_ftq_entries--;
@@ -126,24 +130,32 @@ void deallocate_ftq_entry(void)
 
 void nuke()
 {
+#ifdef SUPERBP	
 	ftq_entry_ptr ptr;
 	
 	while ( filled_ftq_entries != 0 )
 	{
 		ptr = ftq[next_free_index];
 
-#ifdef SUPERBP			
 		delete(ptr->ch_i);
 		delete(ptr->ch_t_0);
 		delete(ptr->ch_t_1);
-#elif defined BATAGE
 
-#endif
 		free(ptr);
 		ftq[next_free_index] = NULL;
+
 		next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
 		filled_ftq_entries--;
 	}
+#elif defined BATAGE
+	while ( filled_ftq_entries != 0 )
+	{
+		ftq[next_free_index].~ftq_entry();
+		next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
+		filled_ftq_entries--;
+	}
+#endif
+
 	next_allocate_index = 0;
 	next_free_index = 0;
 }

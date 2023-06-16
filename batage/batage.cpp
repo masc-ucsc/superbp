@@ -529,7 +529,7 @@ batage::update_entry(int i, bool taken)
   }
 }
 
-
+/*For superscalar - anything that is non constant & is used before/ without assigning a value must be saved in ftq*/
 void
 batage::update(uint32_t pc, bool taken, histories & p, bool noalloc = false)
 {
