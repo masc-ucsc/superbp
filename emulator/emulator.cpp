@@ -21,12 +21,12 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#define BRANCHPROF
+#define DELETE
+
 #ifdef BRANCHPROF
 
-
 //#define SKIP_COUNT 2500000000 // for x264
-#define SKIP_COUNT 1000000000 //  for perlbench_splitmail
+//#define SKIP_COUNT 1000000000 //  for perlbench_splitmail
 //#define SKIP_COUNT 4000000000 // for all other benchmarks
 /*#define RUN_COUNT 1000000000 - desired
 #define RUN_COUNT 1000000 - actually used - sent as part of maxinsns to dromajo*/
@@ -34,7 +34,6 @@
 PREDICTOR bp;
 bool predDir, resolveDir;
 uint64_t branchTarget;
-bool taken_flag;
 //#define PC_TRACE
 
 FILE* pc_trace;
@@ -51,7 +50,9 @@ ftq_entry ftq_data; // Only 1 instance - assuming the updates for superscalar wi
 #endif // FTQ
 #endif // SUPERSCALAR
 
-uint64_t correct_prediction_count, misprediction_count, instruction_count, benchmark_instruction_count;
+uint64_t correct_prediction_count, misprediction_count;
+uint64_t instruction_count; // total # of instructions - including skipped nd benchmark instructions
+uint64_t benchmark_instruction_count; // total # of benchmarked instructions only - excluding skip instructions
 /*
 * missPredict per branch
 * missPredict per Control Flow
@@ -68,6 +69,7 @@ number of taken control flow instructions
 */
 uint64_t branch_count, branch_mispredict_count, jump_count, cti_count, misscontrol_count, taken_branch_count;
 
+#ifdef FTQ
 void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
 {
     bp.pred.hit 		= ftq_data_ptr->hit;
@@ -80,13 +82,16 @@ void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
 	memcpy(bp.pred.b2, &((ftq_data_ptr->b2)[0]), sizeof(int) * (ftq_data_ptr->b2).size());
 	memcpy(bp.pred.gi, &((ftq_data_ptr->gi)[0]), sizeof(int) * NUMG);
 }
-
+#endif // FTQ
 /*
 For getting a prediction and updating predictor, like hardware, there will be a race in software also, I think in any CC, I should read the predictor first with whatever history is there and update it after the read. That is what will happen in hardware.
 */
 
 void print_branch_info(uint64_t pc, uint32_t insn_raw) {
   static uint64_t last_pc;
+  static uint32_t last_insn_raw;
+  static insn_t last_insn;
+  insn_t insn;
   static uint8_t branch_flag = 0;
   bool misprediction;
   
@@ -105,19 +110,19 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
 
     if (branch_flag) {
       if (pc - last_pc == 4) {
+      	resolveDir = false;
 	      #ifdef PC_TRACE
         fprintf(pc_trace, "%32s\n", "Not Taken Branch");
  				#endif
-        resolveDir = false;
       } else {
-	      #ifdef PC_TRACE
-        fprintf(pc_trace, "%32s\n", "Taken Branch");
- 				#endif
         resolveDir = true;
         taken_branch_count++;
         #ifdef EN_BB_BR_COUNT
         br_over = 1;
         #endif // EN_BB_BR_COUNT
+        	      #ifdef PC_TRACE
+        fprintf(pc_trace, "%32s\n", "Taken Branch");
+ 				#endif
       }
       branch_flag = 0;
     }
@@ -132,6 +137,14 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
  		#endif
     
     if (((insn_raw & 0x7fff) == 0x73)) {
+      jump_count++;
+      cti_count++;
+      insn = insn_t::jump;
+      resolveDir = true;
+      
+      #ifdef EN_BB_BR_COUNT
+      bb_over = 1; br_over = 1;
+      #endif // EN_BB_BR_COUNT
       #ifdef PC_TRACE
       if ((((insn_raw & 0xffffff80) == 0x0))) // ECall
       {
@@ -143,10 +156,6 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
         fprintf(pc_trace, "%32s\n", "ERET type");
       }
  			#endif
-      resolveDir = true;
-      #ifdef EN_BB_BR_COUNT
-      bb_over = 1; br_over = 1;
-      #endif // EN_BB_BR_COUNT
     }
 
     else if (((insn_raw & 0x70) == 0x60)) {
@@ -154,6 +163,7 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
         branch_flag = 1;
         branch_count++;
         cti_count++;
+        insn = insn_t::branch;
         #ifdef EN_BB_BR_COUNT
         bb_over = 1;
         #endif // EN_BB_BR_COUNT
@@ -161,6 +171,12 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
       {
       	jump_count++;
         cti_count++;
+        insn = insn_t::jump;
+        resolveDir = true;
+        #ifdef EN_BB_BR_COUNT
+        bb_over = 1; br_over = 1;
+        #endif // EN_BB_BR_COUNT
+        
         #ifdef PC_TRACE
         if ((insn_raw & 0xf) == 0x7) {
           if (((insn_raw & 0xf80) >> 7) == 0x0) {
@@ -172,17 +188,14 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
           fprintf(pc_trace, "%32s\n", "PC relative Fxn Call");
         }
  				#endif
-        resolveDir = true;
-        #ifdef EN_BB_BR_COUNT
-        bb_over = 1; br_over = 1;
-        #endif // EN_BB_BR_COUNT
       }
     } else // Non CTI
     {
+    	insn = insn_t::non_cti;
+   		resolveDir = false;
  			#ifdef PC_TRACE
       fprintf(pc_trace, "%32s\n", "Non - CTI");
  			#endif
-      resolveDir = false;
     }
 
     #ifdef EN_BB_BR_COUNT
@@ -220,6 +233,17 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     	{
     		misprediction = true;
     		misprediction_count++;
+    		if (last_insn == insn_t::branch)
+    			{
+    				branch_mispredict_count++; // Both mispredicted T and NT
+    			}
+    	}
+    if ( (last_insn == insn_t::non_cti) && (predDir == true))
+    	{
+    	#ifdef DELETE
+    		printf ("pc = %lx, insn_raw = %x, insn = %d, last_pc = %lx, last_insn_raw = %x, last_insn = %d, predDir = %d, resolveDir = %d\n", pc, insn_raw, insn, last_pc, last_insn_raw, last_insn, predDir, resolveDir);
+    	#endif // DELETE
+    		misscontrol_count++; // Both mispredicted T and NT
     	}
     benchmark_instruction_count++;
 
@@ -277,19 +301,25 @@ void print_branch_info(uint64_t pc, uint32_t insn_raw) {
     #endif // SUPERSCALAR
 
     last_pc = pc;
+    last_insn_raw = insn_raw;
+    last_insn = insn;
   }
 
 }
 #endif
 
 int iterate_core(RISCVMachine *m, int hartid) {
-  if (m->common.maxinsns-- <= 0)
-    /* Succeed after N instructions without failure. */
-    return 0;
+
+	/* Succeed after N instructions without failure.
+  	if (instruction_count >= m->common.skip_insns)
+  	{*/
+    	//if (benchmark_instruction_count > m->common.maxinsns)
+    	if (m->common.maxinsns-- <= 0)
+    	return 0;
+    //}
 
   RISCVCPUState *cpu = m->cpu_state[hartid];
 
-	
   	/* Instruction that raises exceptions should be marked as such in
    	* the trace of retired instructions.
    	*/
@@ -299,7 +329,7 @@ int iterate_core(RISCVMachine *m, int hartid) {
   	(void)riscv_read_insn(cpu, &insn_raw, pc);
   	instruction_count++;
 #ifdef BRANCHPROF
-  	if (instruction_count >= SKIP_COUNT)
+  	if (instruction_count >= m->common.skip_insns)
 	{
   		for (int i = 0; i < m->ncpus; ++i) {
     	print_branch_info(pc, insn_raw);
@@ -307,7 +337,8 @@ int iterate_core(RISCVMachine *m, int hartid) {
 	}
 #endif // BRANCHPROF
 
-  int keep_going = virt_machine_run(m, hartid);
+  int n_cycles = 1; // Check - this should be taken from dromajo
+  int keep_going = virt_machine_run(m, hartid, n_cycles);
   if (pc == virt_machine_get_pc(m, hartid))
     return 0;
 
@@ -376,7 +407,6 @@ int main(int argc, char **argv) {
     fprintf(pc_trace, "%20s\t\t|%20s\t|%32s\n", "PC", "Instruction", "Instructiontype");
 #endif  // PC_TRACE
   }
-  
 #endif // BRANCHPROF
 
   execution_start_ts = get_current_time_in_seconds();
@@ -408,7 +438,7 @@ int main(int argc, char **argv) {
 
   virt_machine_end(m);
 #ifdef BRANCHPROF
-  fprintf (pc_trace, "branch_count = %lu\njump_count = %lu\ncti_count = %lu\nbenchmark_instruction_count = %lu\nInstruction Count = %lu\nCorrect prediciton Count = %lu\nmispredction count = %lu\nmisprediction rate = %lf\nMPKI = %lf\n", branch_count, jump_count, cti_count, benchmark_instruction_count, instruction_count, correct_prediction_count, misprediction_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
+  fprintf (pc_trace, "branch_count = %lu\njump_count = %lu\ncti_count = %lu\nbenchmark_instruction_count = %lu\nInstruction Count = %lu\nCorrect prediciton Count = %lu\nmispredction count = %lu\nbranch_mispredict_count=%lu\nmisscontrol_count=%lu\nmisprediction rate = %lf\nMPKI = %lf\n", branch_count, jump_count, cti_count, benchmark_instruction_count, instruction_count, correct_prediction_count, misprediction_count, branch_mispredict_count, misscontrol_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
   
   #ifdef EN_BB_BR_COUNT
   fprintf(pc_trace, "bb_count = \n");
