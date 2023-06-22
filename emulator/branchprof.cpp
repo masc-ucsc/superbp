@@ -3,7 +3,7 @@
 #include "predictor.hpp"
 #include "branchprof.hpp"
 
-#define DELETE
+//#define DELETE
 
 PREDICTOR bp;
 bool predDir, last_predDir, resolveDir, last_resolveDir;
@@ -27,6 +27,7 @@ ftq_entry ftq_data; // Only 1 instance - assuming the updates for superscalar wi
 uint64_t correct_prediction_count, misprediction_count;
 extern uint64_t instruction_count; // total # of instructions - including skipped nd benchmark instructions
 uint64_t benchmark_instruction_count; // total # of benchmarked instructions only - excluding skip instructions
+
 /*
 * missPredict per branch
 * missPredict per Control Flow
@@ -66,12 +67,13 @@ void branchprof_init()
     	fprintf(pc_trace, "%20s\t\t|%20s\t|%32s\n", "PC", "Instruction", "Instructiontype");
 #endif  // PC_TRACE
   }
+	
 	return;
 }
 
 void branchprof_exit()
 {
-	fprintf (pc_trace, "branch_count = %lu\njump_count = %lu\ncti_count = %lu\nbenchmark_instruction_count = %lu\nInstruction Count = %lu\nCorrect prediciton Count = %lu\nmispredction count = %lu\nbranch_mispredict_count=%lu\nmisscontrol_count=%lu\nmisprediction rate = %lf\nMPKI = %lf\n", branch_count, jump_count, cti_count, benchmark_instruction_count, instruction_count, correct_prediction_count, misprediction_count, branch_mispredict_count, misscontrol_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)instruction_count *1000 );
+	fprintf (pc_trace, "branch_count = %lu\njump_count = %lu\ncti_count = %lu\nbenchmark_instruction_count = %lu\nInstruction Count = %lu\nCorrect prediciton Count = %lu\nmispredction count = %lu\nbranch_mispredict_count=%lu\nmisscontrol_count=%lu\nmisprediction rate = %lf\nMPKI = %lf\n", branch_count, jump_count, cti_count, benchmark_instruction_count, instruction_count, correct_prediction_count, misprediction_count, branch_mispredict_count, misscontrol_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)benchmark_instruction_count *1000 );
   
 #ifdef EN_BB_BR_COUNT
 	fprintf(pc_trace, "bb_count = \n");

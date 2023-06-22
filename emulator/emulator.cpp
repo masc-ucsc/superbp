@@ -22,19 +22,21 @@
 #ifdef BRANCHPROF
 #include "predictor.hpp"
 #include "branchprof.hpp"
+uint64_t maxinsns;
+uint64_t skip_insns;
 #endif
 
 uint64_t instruction_count; // total # of instructions - including skipped nd benchmark instructions
 
 int iterate_core(RISCVMachine *m, int hartid) {
 
-	/* Succeed after N instructions without failure.
-  	if (instruction_count >= m->common.skip_insns)
-  	{*/
-    	//if (benchmark_instruction_count > m->common.maxinsns)
-    	if (m->common.maxinsns-- <= 0)
+	/* Succeed after N instructions without failure.*/
+  	if (instruction_count >= skip_insns)
+  	{
+  	//if (m->common.maxinsns-- <= 0)
+    	if (maxinsns-- == 0)
     	return 0;
-    //}
+    }
 
   RISCVCPUState *cpu = m->cpu_state[hartid];
 
@@ -47,7 +49,7 @@ int iterate_core(RISCVMachine *m, int hartid) {
   	(void)riscv_read_insn(cpu, &insn_raw, pc);
   	instruction_count++;
 #ifdef BRANCHPROF
-  	if (instruction_count >= m->common.skip_insns)
+  	if (instruction_count >= skip_insns)
 	{
   		for (int i = 0; i < m->ncpus; ++i) {
     	handle_branch(pc, insn_raw);
@@ -114,6 +116,8 @@ int main(int argc, char **argv) {
 
 #ifdef BRANCHPROF
 	branchprof_init();
+	maxinsns = m->common.maxinsns;
+	skip_insns = m->common.skip_insns;	
 #endif // BRANCHPROF
 
   execution_start_ts = get_current_time_in_seconds();
