@@ -7,7 +7,7 @@
 
 #define SUPERSCALAR
 #ifdef SUPERSCALAR
-#define FETCH_WIDTH 4
+#define FETCH_WIDTH 16
 #define FTQ
 #endif // SUPERSCALAR
 
