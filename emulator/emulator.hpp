@@ -14,6 +14,8 @@
 // only enable when the counts are required.
 #define EN_BB_BR_COUNT
 
+//#define PC_TRACE
+
 enum class insn_t
 {
 	non_cti,

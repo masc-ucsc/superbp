@@ -3,12 +3,11 @@
 #include "predictor.hpp"
 #include "branchprof.hpp"
 
-//#define DELETE
+#define DELETE
 
 PREDICTOR bp;
 bool predDir, last_predDir, resolveDir, last_resolveDir;
 uint64_t branchTarget;
-//#define PC_TRACE
 
 FILE* pc_trace;
 
@@ -52,6 +51,9 @@ static bool misprediction;
 #ifdef EN_BB_BR_COUNT
 static uint8_t bb_over = 0, br_over = 0;
 #endif // EN_BB_BR_COUNT
+#ifdef SUPERSCALAR
+static uint8_t inst_index_in_fetch;
+#endif
 
 void branchprof_init()
 {
@@ -101,7 +103,7 @@ void branchprof_exit()
 }
 
 #ifdef FTQ
-void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
+static inline void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
 {
     bp.pred.hit 		= ftq_data_ptr->hit;
     bp.pred.s 			= ftq_data_ptr->s;
@@ -115,7 +117,7 @@ void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
 }
 #endif // FTQ
 
-void update_counters_pc_minus_1_branch()
+static inline void update_counters_pc_minus_1_branch()
 {
 		if (last_predDir == resolveDir) // branch is resolved in next CC, so check resokveDir against last_predDir
     	{
@@ -130,7 +132,38 @@ void update_counters_pc_minus_1_branch()
     	}
 }
 
-void close_pc_minus_1_branch(uint64_t pc)
+static inline void read_ftq_update_predictor ()
+{
+	if ( (inst_index_in_fetch == FETCH_WIDTH) || misprediction )
+    {
+
+    	for (int i = 0; misprediction ? (i < inst_index_in_fetch) : (i < FETCH_WIDTH); i++)
+    	{
+    		if (!is_ftq_empty()) 
+    		{
+    			get_ftq_data(&ftq_data);
+    			
+    			last_pc = ftq_data.pc;
+    			resolveDir = ftq_data.resolveDir;
+    			predDir = ftq_data.predDir;
+    			branchTarget = ftq_data.branchTarget;
+    			
+    			// Store the read predictor fields into the predictor
+    			copy_ftq_data_to_predictor(&ftq_data);
+
+    			// Update - Check history update
+    			bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
+    		}
+    		else
+    		{
+    	 		fprintf(stderr, "%s\n", "Pop on empty ftq");
+    		}
+    	}
+    	inst_index_in_fetch = 0;
+    }
+}
+
+static inline void close_pc_minus_1_branch(uint64_t pc)
 {
 	if (pc - last_pc == 4) {
 		resolveDir = false;
@@ -149,10 +182,11 @@ void close_pc_minus_1_branch(uint64_t pc)
 	}
 	
     update_counters_pc_minus_1_branch();
+    read_ftq_update_predictor();
 	return;
 }
 
-void close_pc_jump(uint32_t insn_raw)
+static inline void close_pc_jump(uint32_t insn_raw)
 {
 	jump_count++;
 	cti_count++;
@@ -186,7 +220,7 @@ void close_pc_jump(uint32_t insn_raw)
 #endif
 }
 
-void start_pc_branch()
+static inline void start_pc_branch()
 {
 	branch_flag = 1;
 	branch_count++;
@@ -196,7 +230,7 @@ void start_pc_branch()
 #endif // EN_BB_BR_COUNT
 }
 
-void close_pc_non_cti()
+static inline void close_pc_non_cti()
 {
 	resolveDir = false;
 #ifdef PC_TRACE
@@ -215,7 +249,7 @@ void print_pc_insn (uint64_t pc, uint32_t insn_raw)
 	return;
 }
 
-void update_bb_br()
+static inline void update_bb_br()
 {
 	if (bb_over == 1)
 	{
@@ -240,7 +274,7 @@ void update_bb_br()
 	}
 }
 
-void handle_nb()
+static inline void handle_nb()
 {
 	if (predDir == resolveDir)
     	{
@@ -262,11 +296,12 @@ void handle_nb()
 For getting a prediction and updating predictor, like hardware, there will be a race in software also, I think in any CC, I should read the predictor first with whatever history is there and update it after the read. That is what will happen in hardware.
 */
 void handle_branch (uint64_t pc, uint32_t insn_raw) {
-  
-#ifdef SUPERSCALAR
-  	static uint8_t inst_index_in_fetch;
-#endif
-	
+
+#ifdef DELETE
+				if ( pc == 0x665512)
+	    		printf ("pc = %lx\n", pc);
+#endif // DELETE
+
   	branchTarget = pc;
   	misprediction = false;
   	bb_over = 0, br_over = 0;
@@ -326,12 +361,12 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     	handle_nb();
     }
     
-        	#ifdef DELETE
-        	    if ( (insn == insn_t::non_cti) && (predDir == true) )
+        	#ifdef DELETE1
+        	    if ( pc == 0x665512)
     	{
     		printf ("pc = %lx, insn_raw = %x, insn = %d, last_pc = %lx, last_insn_raw = %x, last_insn = %d, predDir = %d, resolveDir = %d\n", pc, insn_raw, insn, last_pc, last_insn_raw, last_insn, predDir, resolveDir);
     		}
-    	#endif // DELETE
+    	#endif // DELETE1
     
     benchmark_instruction_count++;
 
@@ -357,33 +392,7 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     *******************************************************************/
    // TODO - misprediction for previous branch may be overwritten by present instruction, this is wrong presently, rectify
     inst_index_in_fetch++;
-    if ( (inst_index_in_fetch == FETCH_WIDTH) || misprediction )
-    {
-
-    	for (int i = 0; misprediction ? (i < inst_index_in_fetch) : (i < FETCH_WIDTH); i++)
-    	{
-    		if (!is_ftq_empty()) 
-    		{
-    			get_ftq_data(&ftq_data);
-    			
-    			last_pc = ftq_data.pc;
-    			resolveDir = ftq_data.resolveDir;
-    			predDir = ftq_data.predDir;
-    			branchTarget = ftq_data.branchTarget;
-    			
-    			// Store the read predictor fields into the predictor
-    			copy_ftq_data_to_predictor(&ftq_data);
-
-    			// Update - Check history update
-    			bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
-    		}
-    		else
-    		{
-    	 		fprintf(stderr, "%s\n", "Pop on empty ftq");
-    		}
-    	}
-    	inst_index_in_fetch = 0;
-    }
+	read_ftq_update_predictor();
     #endif // FTQ
     #else // SUPERSCALAR
     	bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
