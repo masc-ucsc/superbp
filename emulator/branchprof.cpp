@@ -15,7 +15,7 @@ FILE* pc_trace;
 #define MAX_BB_SIZE 50
 #define MAX_FB_SIZE 250
 uint64_t bb_size[MAX_BB_SIZE], fb_size[MAX_FB_SIZE];
-//uint32_t avg_bb_size, avg_fb_size;
+uint32_t sum_bb_size, sum_fb_size, bb_count, fb_count;
 uint8_t running_bb_size, running_fb_size;
 #endif // EN_BB_BR_COUNT
 
@@ -87,7 +87,7 @@ void branchprof_exit()
     	fprintf(pc_trace, "%lu, ", bb_size[i]);
   	}
   	fprintf(pc_trace, "\n");
-  	//fprintf(pc_trace, "avg_bb_size = %u \n", avg_bb_size);
+  	fprintf(pc_trace, "avg_bb_size = %lf \n", (double)sum_bb_size/bb_count);
   	
   	fprintf(pc_trace, "fb_size = \n");
   	for (int i = 0; i < MAX_FB_SIZE; i++)
@@ -95,7 +95,7 @@ void branchprof_exit()
     	fprintf(pc_trace, "%lu, ", fb_size[i]);
   	}
   	fprintf(pc_trace, "\n");
-  	//fprintf(pc_trace, "avg_fb_size = %u \n", avg_fb_size);
+  	fprintf(pc_trace, "avg_fb_size = %lf \n", (double)sum_fb_size/fb_count);
 #endif // EN_BB_BR_COUNT
 
   	fclose(pc_trace);
@@ -254,6 +254,8 @@ static inline void update_bb_br()
 	if (bb_over == 1)
 	{
 		bb_size[running_bb_size]++;
+		sum_bb_size+=running_bb_size;
+		bb_count++;
 		running_bb_size = 0;
 	}
 	else
@@ -263,6 +265,8 @@ static inline void update_bb_br()
 	if (fb_over == 1)
 	{
 		fb_size[running_fb_size]++;
+		sum_fb_size+=running_fb_size;
+		fb_count++;
 		if (bb_over == 1)
 			running_fb_size = 0;
 		else
