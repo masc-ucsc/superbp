@@ -12,8 +12,11 @@ uint64_t branchTarget;
 FILE* pc_trace;
 
 #ifdef EN_BB_BR_COUNT
-uint64_t bb_count[50], br_count[250];
-uint8_t running_bb_count, running_br_count;
+#define MAX_BB_SIZE 50
+#define MAX_FB_SIZE 250
+uint64_t bb_size[MAX_BB_SIZE], fb_size[MAX_FB_SIZE];
+//uint32_t avg_bb_size, avg_fb_size;
+uint8_t running_bb_size, running_fb_size;
 #endif // EN_BB_BR_COUNT
 
 #ifdef SUPERSCALAR
@@ -49,7 +52,7 @@ static insn_t last_insn, insn;
 static uint8_t branch_flag = 0;
 static bool misprediction;
 #ifdef EN_BB_BR_COUNT
-static uint8_t bb_over = 0, br_over = 0;
+static uint8_t bb_over = 0, fb_over = 0;
 #endif // EN_BB_BR_COUNT
 #ifdef SUPERSCALAR
 static uint8_t inst_index_in_fetch;
@@ -78,24 +81,21 @@ void branchprof_exit()
 	fprintf (pc_trace, "branch_count = %lu\njump_count = %lu\ncti_count = %lu\nbenchmark_instruction_count = %lu\nInstruction Count = %lu\nCorrect prediciton Count = %lu\nmispredction count = %lu\nbranch_mispredict_count=%lu\nmisscontrol_count=%lu\nmisprediction rate = %lf\nMPKI = %lf\n", branch_count, jump_count, cti_count, benchmark_instruction_count, instruction_count, correct_prediction_count, misprediction_count, branch_mispredict_count, misscontrol_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)benchmark_instruction_count *1000 );
   
 #ifdef EN_BB_BR_COUNT
-	fprintf(pc_trace, "bb_count = \n");
-  	for (int i = 0; i < 5; i++)
-  	{
-    	for (int j = 0; j < 10; j++)
-    	{
-      		fprintf(pc_trace, "%lu, ", bb_count[i*10 + j]);
-    	}
-    	fprintf(pc_trace, "\n");
+	fprintf(pc_trace, "bb_size = \n");
+  	for (int i = 0; i < MAX_BB_SIZE; i++)
+  	{    	
+    	fprintf(pc_trace, "%lu, ", bb_size[i]);
   	}
-  	fprintf(pc_trace, "br_count = \n");
-  	for (int i = 0; i < 25; i++)
-  	{
-    	for (int j = 0; j < 10; j++)
-    	{
-      		fprintf(pc_trace, "%lu, ", br_count[i*10 + j]);
-    	}
-    	fprintf(pc_trace, "\n");
+  	fprintf(pc_trace, "\n");
+  	//fprintf(pc_trace, "avg_bb_size = %u \n", avg_bb_size);
+  	
+  	fprintf(pc_trace, "fb_size = \n");
+  	for (int i = 0; i < MAX_FB_SIZE; i++)
+  	{    	
+    	fprintf(pc_trace, "%lu, ", fb_size[i]);
   	}
+  	fprintf(pc_trace, "\n");
+  	//fprintf(pc_trace, "avg_fb_size = %u \n", avg_fb_size);
 #endif // EN_BB_BR_COUNT
 
   	fclose(pc_trace);
@@ -134,10 +134,10 @@ static inline void update_counters_pc_minus_1_branch()
 
 static inline void read_ftq_update_predictor ()
 {
-	if ( (inst_index_in_fetch == FETCH_WIDTH) || misprediction )
+	if ( (inst_index_in_fetch == FETCH_WIDTH) || misprediction || resolveDir )
     {
 
-    	for (int i = 0; misprediction ? (i < inst_index_in_fetch) : (i < FETCH_WIDTH); i++)
+    	for (int i = 0; (misprediction || resolveDir) ? (i < inst_index_in_fetch) : (i < FETCH_WIDTH); i++)
     	{
     		if (!is_ftq_empty()) 
     		{
@@ -174,7 +174,7 @@ static inline void close_pc_minus_1_branch(uint64_t pc)
 		resolveDir = true;
 		taken_branch_count++;
 #ifdef EN_BB_BR_COUNT
-		br_over = 1;
+		fb_over = 1;
 #endif // EN_BB_BR_COUNT
 #ifdef PC_TRACE
 		fprintf(pc_trace, "%32s\n", "Taken Branch");
@@ -193,7 +193,7 @@ static inline void close_pc_jump(uint32_t insn_raw)
 	resolveDir = true;
       
 #ifdef EN_BB_BR_COUNT
-	bb_over = 1; br_over = 1;
+	bb_over = 1; fb_over = 1;
 #endif // EN_BB_BR_COUNT
 
 #ifdef PC_TRACE
@@ -253,24 +253,24 @@ static inline void update_bb_br()
 {
 	if (bb_over == 1)
 	{
-		bb_count[running_bb_count]++;
-		running_bb_count = 0;
+		bb_size[running_bb_size]++;
+		running_bb_size = 0;
 	}
 	else
 	{
-		running_bb_count++;
+		running_bb_size++;
 	}
-	if (br_over == 1)
+	if (fb_over == 1)
 	{
-		br_count[running_br_count]++;
+		fb_size[running_fb_size]++;
 		if (bb_over == 1)
-			running_br_count = 0;
+			running_fb_size = 0;
 		else
-			running_br_count = 1;
+			running_fb_size = 1;
 	}
 	else
 	{
-		running_br_count++;
+		running_fb_size++;
 	}
 }
 
@@ -297,20 +297,21 @@ For getting a prediction and updating predictor, like hardware, there will be a 
 */
 void handle_branch (uint64_t pc, uint32_t insn_raw) {
 
-#ifdef DELETE
+#ifdef DELETE1
 				if ( pc == 0x665512)
 	    		printf ("pc = %lx\n", pc);
-#endif // DELETE
+#endif // DELETE1
 
   	branchTarget = pc;
   	misprediction = false;
-  	bb_over = 0, br_over = 0;
+  	bb_over = 0, fb_over = 0;
 
   // for (int i = 0; i < m->ncpus; ++i)
   {
 	// If previous instruction was a branch. close that first
     if (branch_flag) {
 		close_pc_minus_1_branch(pc);
+		misprediction = false;
       	branch_flag = 0;
     }
     
@@ -390,9 +391,15 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     Also, update after FETCH_WIDTH instructions means update after 1 CC in Superscalar
     Check if this needs to be delayed + split, i.e. global history to be updated after a few CC, but actual predictor table to be 		updated after commit
     *******************************************************************/
-   // TODO - misprediction for previous branch may be overwritten by present instruction, this is wrong presently, rectify
+
     inst_index_in_fetch++;
-	read_ftq_update_predictor();
+    
+    // Do this only if present instruction is not a branch
+    if (insn != insn_t::branch)
+    {
+		read_ftq_update_predictor();
+	}
+	
     #endif // FTQ
     #else // SUPERSCALAR
     	bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
