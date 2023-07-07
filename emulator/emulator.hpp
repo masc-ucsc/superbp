@@ -12,7 +12,7 @@
 #endif // SUPERSCALAR
 
 // only enable when the counts are required.
-#define EN_BB_BR_COUNT
+#define EN_BB_FB_COUNT
 
 //#define PC_TRACE
 

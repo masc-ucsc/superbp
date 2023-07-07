@@ -1,3 +1,4 @@
+#include <iostream>
 #include "dromajo.h"
 #include "emulator.hpp"
 #include "predictor.hpp"
@@ -11,13 +12,13 @@ uint64_t branchTarget;
 
 FILE* pc_trace;
 
-#ifdef EN_BB_BR_COUNT
+#ifdef EN_BB_FB_COUNT
 #define MAX_BB_SIZE 50
 #define MAX_FB_SIZE 250
 uint64_t bb_size[MAX_BB_SIZE], fb_size[MAX_FB_SIZE];
 uint32_t sum_bb_size, sum_fb_size, bb_count, fb_count;
 uint8_t running_bb_size, running_fb_size;
-#endif // EN_BB_BR_COUNT
+#endif // EN_BB_FB_COUNT
 
 #ifdef SUPERSCALAR
 #ifdef FTQ
@@ -51,11 +52,11 @@ static uint32_t last_insn_raw;
 static insn_t last_insn, insn;
 static uint8_t branch_flag = 0;
 static bool misprediction;
-#ifdef EN_BB_BR_COUNT
+#ifdef EN_BB_FB_COUNT
 static uint8_t bb_over = 0, fb_over = 0;
-#endif // EN_BB_BR_COUNT
+#endif // EN_BB_FB_COUNT
 #ifdef SUPERSCALAR
-static uint8_t inst_index_in_fetch;
+static int16_t inst_index_in_fetch = 0;
 #endif
 
 void branchprof_init()
@@ -72,7 +73,9 @@ void branchprof_init()
     	fprintf(pc_trace, "%20s\t\t|%20s\t|%32s\n", "PC", "Instruction", "Instructiontype");
 #endif  // PC_TRACE
   }
-	
+#ifdef FTQ
+	std::cout << "NUM_FTQ_ENTRIES = " << NUM_FTQ_ENTRIES << "\n\n";
+#endif // FTQ
 	return;
 }
 
@@ -80,7 +83,7 @@ void branchprof_exit()
 {
 	fprintf (pc_trace, "branch_count = %lu\njump_count = %lu\ncti_count = %lu\nbenchmark_instruction_count = %lu\nInstruction Count = %lu\nCorrect prediciton Count = %lu\nmispredction count = %lu\nbranch_mispredict_count=%lu\nmisscontrol_count=%lu\nmisprediction rate = %lf\nMPKI = %lf\n", branch_count, jump_count, cti_count, benchmark_instruction_count, instruction_count, correct_prediction_count, misprediction_count, branch_mispredict_count, misscontrol_count, (double)misprediction_count/(double)(correct_prediction_count + misprediction_count) *100,  (double)misprediction_count/(double)benchmark_instruction_count *1000 );
   
-#ifdef EN_BB_BR_COUNT
+#ifdef EN_BB_FB_COUNT
 	fprintf(pc_trace, "bb_size = \n");
   	for (int i = 0; i < MAX_BB_SIZE; i++)
   	{    	
@@ -96,7 +99,7 @@ void branchprof_exit()
   	}
   	fprintf(pc_trace, "\n");
   	fprintf(pc_trace, "avg_fb_size = %lf \n", (double)sum_fb_size/fb_count);
-#endif // EN_BB_BR_COUNT
+#endif // EN_BB_FB_COUNT
 
   	fclose(pc_trace);
 	return;
@@ -119,7 +122,7 @@ static inline void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
 
 static inline void update_counters_pc_minus_1_branch()
 {
-		if (last_predDir == resolveDir) // branch is resolved in next CC, so check resokveDir against last_predDir
+		if (last_predDir == resolveDir) // branch is resolved in next CC, so match resolveDir with last_predDir
     	{
     		misprediction = false;
     		correct_prediction_count++;
@@ -132,6 +135,7 @@ static inline void update_counters_pc_minus_1_branch()
     	}
 }
 
+#ifdef FTQ
 static inline void read_ftq_update_predictor ()
 {
 	if ( (inst_index_in_fetch == FETCH_WIDTH) || misprediction || resolveDir )
@@ -156,14 +160,15 @@ static inline void read_ftq_update_predictor ()
     		}
     		else
     		{
-    	 		fprintf(stderr, "%s\n", "Pop on empty ftq");
+    	 		fprintf(stderr, "Pop on empty ftq, inst_index_in_fetch = %d, misprediction = %d, resolveDir = %d \n", inst_index_in_fetch, misprediction, resolveDir);
     		}
     	}
     	inst_index_in_fetch = 0;
     }
 }
+#endif // FTQ
 
-static inline void close_pc_minus_1_branch(uint64_t pc)
+static inline void close_pc_minus_1_branch (uint64_t pc)
 {
 	if (pc - last_pc == 4) {
 		resolveDir = false;
@@ -173,16 +178,18 @@ static inline void close_pc_minus_1_branch(uint64_t pc)
 	} else {
 		resolveDir = true;
 		taken_branch_count++;
-#ifdef EN_BB_BR_COUNT
+#ifdef EN_BB_FB_COUNT
 		fb_over = 1;
-#endif // EN_BB_BR_COUNT
+#endif // EN_BB_FB_COUNT
 #ifdef PC_TRACE
 		fprintf(pc_trace, "%32s\n", "Taken Branch");
 #endif
 	}
 	
     update_counters_pc_minus_1_branch();
+#ifdef FTQ
     read_ftq_update_predictor();
+#endif
 	return;
 }
 
@@ -192,9 +199,9 @@ static inline void close_pc_jump(uint32_t insn_raw)
 	cti_count++;
 	resolveDir = true;
       
-#ifdef EN_BB_BR_COUNT
+#ifdef EN_BB_FB_COUNT
 	bb_over = 1; fb_over = 1;
-#endif // EN_BB_BR_COUNT
+#endif // EN_BB_FB_COUNT
 
 #ifdef PC_TRACE
 	if ((((insn_raw & 0xffffff80) == 0x0))) // ECall
@@ -225,9 +232,9 @@ static inline void start_pc_branch()
 	branch_flag = 1;
 	branch_count++;
 	cti_count++;
-#ifdef EN_BB_BR_COUNT
+#ifdef EN_BB_FB_COUNT
 	bb_over = 1;
-#endif // EN_BB_BR_COUNT
+#endif // EN_BB_FB_COUNT
 }
 
 static inline void close_pc_non_cti()
@@ -349,9 +356,9 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     // At this point - if present instruction - insn is not a branch - resolveDir contains info about pc, else pc - 1 
 
 	// Update BB- BR Based on present instruction (exception - Branch)
-#ifdef EN_BB_BR_COUNT
+#ifdef EN_BB_FB_COUNT
 	update_bb_br();
-#endif // EN_BB_BR_COUNT
+#endif // EN_BB_FB_COUNT
 
 	// Get predDir for pc
 	// resolveDir contains - for branches - pc -1, others - pc
@@ -380,7 +387,7 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
 	if (is_ftq_full() == false)
     	allocate_ftq_entry(predDir, resolveDir, last_pc, branchTarget, bp);
     else
-    	fprintf(stderr, "%s\n", "FTQ full");
+    	{fprintf(stderr, "%s\n", "FTQ full"); }
     
     /******************************************************************
     As given, the simulator (dromajo) always fetches correctly, 

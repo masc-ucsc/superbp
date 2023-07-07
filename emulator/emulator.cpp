@@ -31,12 +31,18 @@ uint64_t instruction_count; // total # of instructions - including skipped nd be
 int iterate_core(RISCVMachine *m, int hartid) {
 
 	/* Succeed after N instructions without failure.*/
+#ifdef BRANCHPROF
   	if (instruction_count >= skip_insns)
   	{
   	//if (m->common.maxinsns-- <= 0)
     	if (maxinsns-- == 0)
     	return 0;
     }
+#else
+	if (m->common.maxinsns-- <= 0)
+		return 0;
+#endif
+
 
   RISCVCPUState *cpu = m->cpu_state[hartid];
 
