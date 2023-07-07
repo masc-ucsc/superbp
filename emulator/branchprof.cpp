@@ -50,7 +50,6 @@ uint64_t branch_count, branch_mispredict_count, jump_count, cti_count, misscontr
 static uint64_t last_pc;
 static uint32_t last_insn_raw;
 static insn_t last_insn, insn;
-static uint8_t branch_flag = 0;
 static bool misprediction;
 #ifdef EN_BB_FB_COUNT
 static uint8_t bb_over = 0, fb_over = 0;
@@ -229,7 +228,6 @@ static inline void close_pc_jump(uint32_t insn_raw)
 
 static inline void start_pc_branch()
 {
-	branch_flag = 1;
 	branch_count++;
 	cti_count++;
 #ifdef EN_BB_FB_COUNT
@@ -320,10 +318,9 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
   // for (int i = 0; i < m->ncpus; ++i)
   {
 	// If previous instruction was a branch. close that first
-    if (branch_flag) {
+    if (last_insn == insn_t::branch) {
 		close_pc_minus_1_branch(pc);
 		misprediction = false;
-      	branch_flag = 0;
     }
     
     // At this point resolveDir contains info about pc-1
