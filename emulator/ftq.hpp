@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <iostream>
 #include <vector>
 #include <inttypes.h>
 #include "utils.hpp"
@@ -13,7 +14,13 @@
 #include "../batage/batage.hpp"
 #endif
 
-#define NUM_FTQ_ENTRIES 32
+#define DEBUG_FTQ
+
+/*#ifdef DEBUG_FTQ
+FILE* fp = fopen ("ftq_log.txt", w+);
+#endif*/
+
+#define NUM_FTQ_ENTRIES (2*FETCH_WIDTH)
 
 class ftq_entry {
 

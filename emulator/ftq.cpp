@@ -13,9 +13,9 @@ ftq_entry_ptr ftq[NUM_FTQ_ENTRIES];
 ftq_entry ftq[NUM_FTQ_ENTRIES];
 #endif
 
-uint8_t next_allocate_index; // To be written/ allocated next
-uint8_t next_free_index; // To be read/ freed next
-uint8_t filled_ftq_entries;
+uint16_t next_allocate_index; // To be written/ allocated next
+uint16_t next_free_index; // To be read/ freed next
+int16_t filled_ftq_entries;
 
 bool is_ftq_full(void)
 {
@@ -66,8 +66,17 @@ void allocate_ftq_entry (void)
 	ftq[next_allocate_index] = std::move(f);
 #endif
 
+#ifdef DEBUG_FTQ
+#ifdef BATAGE
+	std::cout << "Entry # " << next_allocate_index << " allocated to PC = " << std::hex << pc << "\n";
+#endif // BATAGE
+#endif // DEBUG_FTQ
+
 	next_allocate_index = (next_allocate_index+1) % NUM_FTQ_ENTRIES;
 	filled_ftq_entries++;
+#ifdef DEBUG_FTQ	
+	std::cout << "After - filled_ftq_entries = " << filled_ftq_entries << ", next_allocate_index = " << next_allocate_index << "\n";
+#endif // DEBUG_FTQ	
 	return;
 }
 
@@ -107,8 +116,16 @@ void get_ftq_data()
 	*ftq_data_ptr = std::move(ftq[next_free_index]);
 #endif
 	
+#ifdef DEBUG_FTQ
+#ifdef BATAGE
+	std::cout << "Entry # " << next_free_index << " deallocated with PC = " << std::hex << ftq_data_ptr->pc << "\n";
+#endif // BATAGE
+#endif // DEBUG_FTQ
 	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
 	filled_ftq_entries--;
+#ifdef DEBUG_FTQ	
+	std::cout << "After - filled_ftq_entries = " << filled_ftq_entries << ", next_free_index = " << next_free_index << "\n";
+#endif // DEBUG_FTQ
 	return;
 } // get_ftq_data() over
 
