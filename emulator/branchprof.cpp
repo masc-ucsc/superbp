@@ -4,7 +4,7 @@
 #include "predictor.hpp"
 #include "branchprof.hpp"
 
-#define DELETE
+//#define DELETE
 
 PREDICTOR bp;
 bool predDir, last_predDir, resolveDir, last_resolveDir;
@@ -28,7 +28,7 @@ ftq_entry ftq_data; // Only 1 instance - assuming the updates for superscalar wi
 #endif // SUPERSCALAR
 
 uint64_t correct_prediction_count, misprediction_count;
-extern uint64_t instruction_count; // total # of instructions - including skipped nd benchmark instructions
+extern uint64_t instruction_count; // total # of instructions - including skipped and benchmark instructions
 uint64_t benchmark_instruction_count; // total # of benchmarked instructions only - excluding skip instructions
 
 /*
@@ -137,37 +137,49 @@ static inline void update_counters_pc_minus_1_branch()
 #ifdef FTQ
 static inline void read_ftq_update_predictor ()
 {
+	uint64_t update_pc, update_branchTarget;
+	bool update_predDir, update_resolveDir;
+	
 	if ( (inst_index_in_fetch == FETCH_WIDTH) || misprediction || resolveDir )
     {
-
-    	for (int i = 0; (misprediction || resolveDir) ? (i < inst_index_in_fetch) : (i < FETCH_WIDTH); i++)
+#ifdef DEBUG_FTQ
+    	std::cout << "Deallocating - inst_index_in_fetch = " << inst_index_in_fetch << " misprediction = " << misprediction << " resolveDir = " << resolveDir << "\n"; 
+#endif
+		// Check # of times
+		uint8_t partial_pop = (misprediction || resolveDir);
+    	for (int i = 0;  partial_pop ? (i < inst_index_in_fetch) : (i < FETCH_WIDTH); i++)
     	{
     		if (!is_ftq_empty()) 
     		{
     			get_ftq_data(&ftq_data);
     			
-    			last_pc = ftq_data.pc;
-    			resolveDir = ftq_data.resolveDir;
-    			predDir = ftq_data.predDir;
-    			branchTarget = ftq_data.branchTarget;
+    			// Check resolveDir, predDir, branchTarget
+    			update_pc = ftq_data.pc;
+    			update_resolveDir = ftq_data.resolveDir;
+    			update_predDir = ftq_data.predDir;
+    			update_branchTarget = ftq_data.branchTarget;
     			
     			// Store the read predictor fields into the predictor
+    			// Check if predictor contents need to be saved before doing this.
     			copy_ftq_data_to_predictor(&ftq_data);
 
-    			// Update - Check history update
-    			bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
+    			bp.UpdatePredictor(update_pc, update_resolveDir, update_predDir, update_branchTarget);
+    			inst_index_in_fetch--;
     		}
     		else
     		{
     	 		fprintf(stderr, "Pop on empty ftq, inst_index_in_fetch = %d, misprediction = %d, resolveDir = %d \n", inst_index_in_fetch, misprediction, resolveDir);
     		}
     	}
-    	inst_index_in_fetch = 0;
+#ifdef FTQ_DEBUG
+    	if (inst_index_in_fetch != 0)
+    	{std::cout << "inst_index_in_fetch expectedto be 0 but = " << inst_index_in_fetch << "\n";}
+#endif // FTQ_DEBUG
     }
 }
 #endif // FTQ
 
-static inline void close_pc_minus_1_branch (uint64_t pc)
+static inline void resolve_pc_minus_1_branch (uint64_t pc)
 {
 	if (pc - last_pc == 4) {
 		resolveDir = false;
@@ -186,6 +198,11 @@ static inline void close_pc_minus_1_branch (uint64_t pc)
 	}
 	
     update_counters_pc_minus_1_branch();
+	return;
+}
+
+static inline void close_pc_minus_1_branch (uint64_t pc)
+{
 #ifdef FTQ
     read_ftq_update_predictor();
 #endif
@@ -307,21 +324,38 @@ For getting a prediction and updating predictor, like hardware, there will be a 
 void handle_branch (uint64_t pc, uint32_t insn_raw) {
 
 #ifdef DELETE1
-				if ( pc == 0x665512)
+				//if ( pc == 0x665512)
 	    		printf ("pc = %lx\n", pc);
 #endif // DELETE1
 
   	branchTarget = pc;
-  	misprediction = false;
   	bb_over = 0, fb_over = 0;
 
   // for (int i = 0; i < m->ncpus; ++i)
   {
-	// If previous instruction was a branch. close that first
+	// If previous instruction was a branch. resolve that first
     if (last_insn == insn_t::branch) {
-		close_pc_minus_1_branch(pc);
-		misprediction = false;
+    	resolve_pc_minus_1_branch(pc);
     }
+    
+   	// Allocation - all info for last_insn
+	// For branches - resolveDir and branchTarget are not available for insn,  
+	// branchtarget is available only in next CC even for jumps, so unavail for insn 
+	// Best - allocate for last_insn, in the beginning just after resolving a branch
+#ifdef SUPERSCALAR
+#ifdef FTQ
+	if (is_ftq_full() == false)
+    {
+    		allocate_ftq_entry(predDir, resolveDir, last_pc, branchTarget, bp); 
+    		inst_index_in_fetch++;
+    }
+    else
+    	{fprintf(stderr, "%s\n", "FTQ full"); }
+    
+    // Check - Read FTQ + Update predictor based on all info about last_insn
+	read_ftq_update_predictor();
+#endif // FTQ
+#endif // SUPERSCALAR
     
     // At this point resolveDir contains info about pc-1
     // Now start handling insn at pc
@@ -352,7 +386,7 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     
     // At this point - if present instruction - insn is not a branch - resolveDir contains info about pc, else pc - 1 
 
-	// Update BB- BR Based on present instruction (exception - Branch)
+	// Update BB - BR Based on present instruction (exception - Branch)
 #ifdef EN_BB_FB_COUNT
 	update_bb_br();
 #endif // EN_BB_FB_COUNT
@@ -378,13 +412,6 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     	#endif // DELETE1
     
     benchmark_instruction_count++;
-
-    #ifdef SUPERSCALAR
-	#ifdef FTQ
-	if (is_ftq_full() == false)
-    	allocate_ftq_entry(predDir, resolveDir, last_pc, branchTarget, bp);
-    else
-    	{fprintf(stderr, "%s\n", "FTQ full"); }
     
     /******************************************************************
     As given, the simulator (dromajo) always fetches correctly, 
@@ -398,18 +425,9 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     
     Also, update after FETCH_WIDTH instructions means update after 1 CC in Superscalar
     Check if this needs to be delayed + split, i.e. global history to be updated after a few CC, but actual predictor table to be 		updated after commit
-    *******************************************************************/
-
-    inst_index_in_fetch++;
-    
-    // Do this only if present instruction is not a branch
-    if (insn != insn_t::branch)
-    {
-		read_ftq_update_predictor();
-	}
-	
-    #endif // FTQ
-    #else // SUPERSCALAR
+    *******************************************************************/	
+    #ifndef SUPERSCALAR
+    // Check last_pc, resolveDir, predDir, branchTarget
     	bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
     #endif // SUPERSCALAR
 
