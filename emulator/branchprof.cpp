@@ -142,12 +142,12 @@ static inline void read_ftq_update_predictor ()
 	
 	if ( (inst_index_in_fetch == FETCH_WIDTH) || misprediction || resolveDir )
     {
+		// Check # of times
+		uint8_t partial_pop = (misprediction || resolveDir);
 #ifdef DEBUG_FTQ
     	std::cout << "Deallocating - inst_index_in_fetch = " << inst_index_in_fetch << " misprediction = " << misprediction << " resolveDir = " << resolveDir << "\n"; 
 #endif
-		// Check # of times
-		uint8_t partial_pop = (misprediction || resolveDir);
-    	for (int i = 0;  partial_pop ? (i < inst_index_in_fetch) : (i < FETCH_WIDTH); i++)
+    	for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH); i++)
     	{
     		if (!is_ftq_empty()) 
     		{
@@ -171,10 +171,9 @@ static inline void read_ftq_update_predictor ()
     	 		fprintf(stderr, "Pop on empty ftq, inst_index_in_fetch = %d, misprediction = %d, resolveDir = %d \n", inst_index_in_fetch, misprediction, resolveDir);
     		}
     	}
-#ifdef FTQ_DEBUG
-    	if (inst_index_in_fetch != 0)
-    	{std::cout << "inst_index_in_fetch expectedto be 0 but = " << inst_index_in_fetch << "\n";}
-#endif // FTQ_DEBUG
+#ifdef DEBUG_FTQ
+    	{std::cout << "After deallocations over - inst_index_in_fetch = " << inst_index_in_fetch << "\n";}
+#endif // DEBUG_FTQ
     }
 }
 #endif // FTQ

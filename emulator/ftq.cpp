@@ -68,14 +68,14 @@ void allocate_ftq_entry (void)
 
 #ifdef DEBUG_FTQ
 #ifdef BATAGE
-	std::cout << "Entry # " << next_allocate_index << " allocated to PC = " << std::hex << pc << "\n";
+	std::cout << "Entry # " << next_allocate_index << " allocated to PC = " << std::hex << pc << std::dec << "\n";
 #endif // BATAGE
 #endif // DEBUG_FTQ
 
 	next_allocate_index = (next_allocate_index+1) % NUM_FTQ_ENTRIES;
 	filled_ftq_entries++;
 #ifdef DEBUG_FTQ	
-	std::cout << "After - filled_ftq_entries = " << filled_ftq_entries << ", next_allocate_index = " << next_allocate_index << "\n";
+	std::cout << "After allocation - filled_ftq_entries = " << filled_ftq_entries << ", next_allocate_index = " << next_allocate_index << "\n";
 #endif // DEBUG_FTQ	
 	return;
 }
@@ -118,13 +118,13 @@ void get_ftq_data()
 	
 #ifdef DEBUG_FTQ
 #ifdef BATAGE
-	std::cout << "Entry # " << next_free_index << " deallocated with PC = " << std::hex << ftq_data_ptr->pc << "\n";
+	std::cout << "Entry # " << next_free_index << " deallocated with PC = " << std::hex << ftq_data_ptr->pc << std::dec << "\n";
 #endif // BATAGE
 #endif // DEBUG_FTQ
 	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
 	filled_ftq_entries--;
 #ifdef DEBUG_FTQ	
-	std::cout << "After - filled_ftq_entries = " << filled_ftq_entries << ", next_free_index = " << next_free_index << "\n";
+	std::cout << "After deallocation - filled_ftq_entries = " << filled_ftq_entries << ", next_free_index = " << next_free_index << "\n";
 #endif // DEBUG_FTQ
 	return;
 } // get_ftq_data() over
