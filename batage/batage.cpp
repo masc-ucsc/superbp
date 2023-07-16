@@ -325,7 +325,7 @@ histories::gindex(uint32_t pc, int i)
 {
   ASSERT((i>=0) && (i<NUMG));
   uint32_t hash = pc ^ i ^ chg[i].fold ^ (chgg[i].fold << (chg[i].clength-chgg[i].clength));
-  return hash & ((1<<LOGG)-1);
+  return hash & ((1<<LOGGE)-1);
 }
 
 
@@ -403,16 +403,29 @@ tagged_entry::tagged_entry()
 
 batage::batage()
 {
-  g = new tagged_entry * [NUMG];
+  g = new tagged_entry** [NUMG];
   for (int i=0; i<NUMG; i++) {
-    g[i] = new tagged_entry [1<<LOGG];
+    g[i] = new tagged_entry* [1<<LOGGE];
+    for (int j = 0; j < (1<<LOGGE); j++)
+    {
+    	g[i][j] = new tagged_entry [INFO_PER_ENTRY];
+    }
   }
   gi = new int [NUMG];
-  for (int i=0; i<(1<<LOGB); i++) {
-    b[i] = 0; // not-taken prediction
+  
+  for (int i=0; i<(1<<LOGBE); i++) 
+  {
+  	for (int j = 0; j < INFO_PER_ENTRY; j++)
+  	{
+      	b[i][j] = 0; // not-taken prediction
+    }
   }
-  for (int i=0; i<(1<<LOGB2); i++) {
-    b2[i] = (1<<BHYSTBITS)-1; // weak state
+  for (int i=0; i<(1<<LOGB2E); i++) 
+  {
+  	for (int j = 0; j < INFO_PER_ENTRY; j++)
+  	{
+    	b2[i][j] = (1<<BHYSTBITS)-1; // weak state
+    }
   }
   cat = 0;
   meta = -1;
@@ -446,19 +459,31 @@ batage::check_bank_conflicts()
 }
 #endif 
 
-
+// i is the bank number - not the index within bank
 tagged_entry &
-batage::getg(int i)
+batage::getgb(int i)
 {
   ASSERT((i>=0) && (i<NUMG));
 #ifdef BANK_INTERLEAVING
   ASSERT((bank[i]>=0) && (bank[i]<NUMG));
-  return g[bank[i]][gi[i]];
+  return g[bank[i]][gi[i]][0];
 #else
-  return g[i][gi[i]];
+  return g[i][gi[i]][0];
 #endif
 }
 
+// i is the bank number - not the index within bank
+tagged_entry &
+batage::getgo(int i, uint32_t offset_within_entry)
+{
+  ASSERT((i>=0) && (i<NUMG));
+#ifdef BANK_INTERLEAVING
+  ASSERT((bank[i]>=0) && (bank[i]<NUMG));
+  return g[bank[i]][gi[i]][offset_within_entry];
+#else
+  return g[i][gi[i]][offset_within_entry];
+#endif
+}
 
 bool 
 batage::predict(uint32_t pc, histories & p)
@@ -467,6 +492,8 @@ batage::predict(uint32_t pc, histories & p)
   pc ^= pc >> PC_SHIFT;
 #endif
   
+  uint32_t offset_within_entry = pc % INFO_PER_ENTRY;
+  
   hit.clear();
   s.clear();
   for (int i=0; i<NUMG; i++) {
@@ -474,9 +501,9 @@ batage::predict(uint32_t pc, histories & p)
     bank[i] = p.phybank(i);
 #endif
     gi[i] = p.gindex(pc,i);
-    if (getg(i).tag == p.gtag(pc,i)) {
+    if (getgb(i).tag == p.gtag(pc,i)) {
       hit.push_back(i);
-      s.push_back(getg(i).dualc);
+      s.push_back(getgo(i, offset_within_entry).dualc);
     }
   }
   
@@ -486,10 +513,11 @@ batage::predict(uint32_t pc, histories & p)
 #endif
 #endif
 
-  bi = pc & ((1<<LOGB)-1);
-  bi2 = bi & ((1<<LOGB2)-1);
-  s.push_back(dualcounter(b[bi],b2[bi2]));
+  bi = pc & ((1<<LOGBE)-1);
+  bi2 = bi & ((1<<LOGB2E)-1);
+  s.push_back(dualcounter(b[bi][offset_within_entry],b2[bi2][offset_within_entry]));
 
+	// bp = index within s
   bp = 0;
   for (int i=1; i<(int)s.size(); i++) {
     if (s[i].conflevel(meta) < s[bp].conflevel(meta)) {
@@ -503,29 +531,29 @@ batage::predict(uint32_t pc, histories & p)
 
 
 void
-batage::update_bimodal(bool taken)
+batage::update_bimodal(bool taken, uint32_t offset_within_entry)
 {
   // see Loh et al., "Exploiting bias in the hysteresis bit of 2-bit saturating counters in branch predictors", Journal of ILP, 2003   
-  if (b[bi] == taken) {
-    if (b2[bi2]>0) b2[bi2]--;
+  if (b[bi][offset_within_entry] == taken) {
+    if (b2[bi2][offset_within_entry]>0) b2[bi2][offset_within_entry]--;
   } else {
-    if (b2[bi2] < ((1<<BHYSTBITS)-1)) {
-      b2[bi2]++;
+    if (b2[bi2][offset_within_entry] < ((1<<BHYSTBITS)-1)) {
+      b2[bi2][offset_within_entry]++;
     } else {
-      b[bi] = taken;
+      b[bi][offset_within_entry] = taken;
     }
   }  
 }
 
-
+// i - index within s
 void
-batage::update_entry(int i, bool taken)
+batage::update_entry(int i, uint32_t offset_within_entry, bool taken)
 {
   ASSERT(i<s.size());
   if (i<(int)hit.size()) {
-    getg(hit[i]).dualc.update(taken);
+    getgo(hit[i], offset_within_entry).dualc.update(taken);
   } else {
-    update_bimodal(taken);
+    update_bimodal(taken, offset_within_entry);
   }
 }
 
@@ -536,6 +564,8 @@ batage::update(uint32_t pc, bool taken, histories & p, bool noalloc = false)
 #ifdef PC_SHIFT
   pc ^= pc >> PC_SHIFT;
 #endif
+
+uint32_t offset_within_entry = pc % INFO_PER_ENTRY;
 
 #ifdef USE_META
   if ((s.size()>1) && (s[0].sum()==1) && s[1].highconf() && (s[0].pred() != s[1].pred())) {
@@ -550,24 +580,24 @@ batage::update(uint32_t pc, bool taken, histories & p, bool noalloc = false)
   // update from 0 to bp-1
   for (int i=0; i<bp; i++) {
     if ((meta>=0) || s[i].lowconf() || (s[i].pred() != s[bp].pred()) || ((rando() % 8)==0)) {
-      getg(hit[i]).dualc.update(taken);
+      getgo(hit[i], offset_within_entry).dualc.update(taken);
     }
   }
   // update at bp
   if ((bp<(int)hit.size()) && s[bp].highconf() && s[bp+1].highconf() && (s[bp+1].pred()==taken) && ((s[bp].pred()==taken) || (cat>=(CATMAX/2)))) {
     if (! s[bp].saturated() || ((meta<0) && ((rando() % 8)==0))) { 
-      getg(hit[bp]).dualc.decay();
+      getgo(hit[bp], offset_within_entry).dualc.decay();
     }
   } else {
-    update_entry(bp,taken);
+    update_entry(bp, offset_within_entry, taken);
   }
   // update at bp+1
   if (! s[bp].highconf() && (bp<(int)hit.size())) {
-    update_entry(bp+1,taken);
+    update_entry(bp+1, offset_within_entry, taken);
   }
  
   // ALLOCATE
-
+	// TODO Check what to do for these getg (for allocation)
   bool allocate = ! noalloc && (s[bp].pred() != taken);
 
   if (allocate && ((int)(rando() % MINAP) >= ((cat * MINAP) / (CATMAX+1)))) {
@@ -575,17 +605,24 @@ batage::update(uint32_t pc, bool taken, histories & p, bool noalloc = false)
     i -= rando() % (1+s[0].diff()*SKIPMAX/dualcounter::nmax);
     int mhc = 0;
     while (--i >= 0) {
-      if (getg(i).dualc.highconf()) {
+      if (getgo(i, offset_within_entry).dualc.highconf()) {
 #ifdef USE_CD
-        if ((int)(rando() % MINDP) >= ((cd*MINDP)/(CDMAX+1))) getg(i).dualc.decay();
+        if ((int)(rando() % MINDP) >= ((cd*MINDP)/(CDMAX+1))) getgo(i, offset_within_entry).dualc.decay();
 #else
-        if ((rando() % 4)==0) getg(i).dualc.decay();
+        if ((rando() % 4)==0) getgo(i, offset_within_entry).dualc.decay();
 #endif
-        if (! getg(i).dualc.veryhighconf()) mhc++;
+        if (! getgo(i, offset_within_entry).dualc.veryhighconf()) mhc++;
       } else { 
-        getg(i).tag = p.gtag(pc,i);
-        getg(i).dualc.reset();
-        getg(i).dualc.update(taken);
+      // TODO Check what to do for these three
+        getgb(i).tag = p.gtag(pc,i);
+        for (uint32_t offset = 0; offset < INFO_PER_ENTRY; offset++)
+        {
+        	getgo(i, offset).dualc.reset();
+        	if (offset == offset_within_entry)
+        	{
+        		getgo(i, offset).dualc.update(taken);
+        	}
+        }
         cat += CATR_NUM - mhc * CATR_DEN;
         cat = min(CATMAX,max(0,cat));
 #ifdef USE_CD

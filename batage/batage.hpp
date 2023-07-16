@@ -32,6 +32,15 @@
 #define TAGBITS 12
 #define BHYSTBITS 2
 
+// Check - change it to use FETCH_WIDTH
+#define FETCHWIDTH 16
+#define NUM_TAKEN_BRANCHES 1
+#define INFO_PER_ENTRY (FETCHWIDTH * NUM_TAKEN_BRANCHES)
+#define LOGE 4  //log2(INFO_PER_ENTRY)
+#define LOGBE (LOGB - LOGE)
+#define LOGB2E (LOGB2 - LOGE)
+#define LOGGE (LOGG - LOGE)
+
 // SKIPMAX: maximum number of banks skipped on allocation
 // if you change NUMG, you must re-tune SKIPMAX
 #define SKIPMAX 5
@@ -160,15 +169,15 @@ class tagged_entry {
 
 class batage {
  public:
-  int b [1<<LOGB];   // bimodal predictions
-  int b2 [1<<LOGB2]; // bimodal hystereses
-  tagged_entry ** g; // tagged entries
+  int b [1<<LOGBE][INFO_PER_ENTRY];   // bimodal predictions
+  int b2 [1<<LOGB2E][INFO_PER_ENTRY]; // bimodal hystereses
+  tagged_entry *** g; // tagged entries
   int bi; // hash for the bimodal prediction
   int bi2; // hash for the bimodal hysteresis
   int * gi; // hashes for the tagged banks
   vector<int> hit; // tell which banks have a hit
   vector<dualcounter> s; // dual-counters for the hitting banks
-  int bp; // dual-counter providing the final BATAGE prediction
+  int bp; // dual-counter providing the final BATAGE prediction - index within s
   int cat; // CAT counter
   int meta; // for a small accuracy boost
 #ifdef USE_CD
@@ -179,10 +188,11 @@ class batage {
   bool * check;
 #endif
   batage();
-  tagged_entry & getg(int i);
+  tagged_entry & getgb(int i);
+  tagged_entry & getgo(int i, uint32_t offset_within_entry);
   bool predict(uint32_t pc, histories & p);
-  void update_bimodal(bool taken);
-  void update_entry(int i, bool taken);
+  void update_bimodal(bool taken, uint32_t offset_within_entry);
+  void update_entry(int i, uint32_t offset_within_entry, bool taken);
   void update(uint32_t pc, bool taken, histories & p, bool noalloc);
   int size();
 #ifdef BANK_INTERLEAVING 
