@@ -58,8 +58,8 @@ public :
 	int bi2;
 	//int b[1<<LOGB];
 	//int b2[1<<LOGB2];
-	std::vector<int> b;
-	std::vector<int> b2;
+	int b_bi;
+	int b2_bi2;
 	std::vector<int> gi;
 	
 	//histories * hist_ptr;
@@ -71,7 +71,7 @@ public :
 	// Constructor - to allocate entry
 	ftq_entry (const bool& predDir1, const bool& resolveDir1, const uint64_t& pc1, const uint64_t& branchTarget1, const PREDICTOR& predictor)
 	/*: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta {predictor.pred.meta}, bp {predictor.pred.bp}, cat {predictor.pred.cat},  bi {predictor.pred.bi}, bi2 {predictor.pred.bi2}, b {std::vector<int>(std::begin(predictor.pred.b), std::end(predictor.pred.b))}, b2 {std::vector<int>(std::begin(predictor.pred.b2), std::end(predictor.pred.b2))}*/
-	: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta {predictor.pred.meta}, bp {predictor.pred.bp},  bi {predictor.pred.bi}, bi2 {predictor.pred.bi2}, b {array2vec(predictor.pred.b)}, b2 {array2vec(predictor.pred.b2)}, gi {ptr2vec(predictor.pred.gi, NUMG)}
+	: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta {predictor.pred.meta}, bp {predictor.pred.bp},  bi {predictor.pred.bi}, bi2 {predictor.pred.bi2}, b_bi {predictor.pred.b_bi}, b2_bi2 {predictor.pred.b2_bi2}, gi {ptr2vec(predictor.pred.gi, NUMG)}
 	{	
 	}
 	
@@ -88,8 +88,8 @@ public :
 		meta = std::move(src.meta);
 		bp = std::move(src.bp);
 		
-		b = std::move(src.b);
-		b2 = std::move(src.b2);
+		b_bi = std::move(src.b_bi);
+		b2_bi2 = std::move(src.b2_bi2);
 		bi = std::move(src.bi);
 		bi2 = std::move(src.bi2);
 		

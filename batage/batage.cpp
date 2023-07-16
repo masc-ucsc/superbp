@@ -515,7 +515,9 @@ batage::predict(uint32_t pc, histories & p)
 
   bi = pc & ((1<<LOGBE)-1);
   bi2 = bi & ((1<<LOGB2E)-1);
-  s.push_back(dualcounter(b[bi][offset_within_entry],b2[bi2][offset_within_entry]));
+    b_bi = b[bi][offset_within_entry];
+	b2_bi2 = b2[bi2][offset_within_entry];
+  s.push_back(dualcounter(b_bi,b2_bi2));
 
 	// bp = index within s
   bp = 0;
@@ -566,6 +568,8 @@ batage::update(uint32_t pc, bool taken, histories & p, bool noalloc = false)
 #endif
 
 uint32_t offset_within_entry = pc % INFO_PER_ENTRY;
+b[bi][offset_within_entry] = b_bi;
+b2[bi2][offset_within_entry] = b2_bi2;
 
 #ifdef USE_META
   if ((s.size()>1) && (s[0].sum()==1) && s[1].highconf() && (s[0].pred() != s[1].pred())) {

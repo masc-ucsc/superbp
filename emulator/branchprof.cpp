@@ -113,8 +113,8 @@ static inline void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
     bp.pred.bp 			= ftq_data_ptr->bp;
     bp.pred.bi 			= ftq_data_ptr->bi;
     bp.pred.bi2 		= ftq_data_ptr->bi2;
-	memcpy(bp.pred.b, &((ftq_data_ptr->b)[0]), sizeof(int) * (ftq_data_ptr->b).size());
-	memcpy(bp.pred.b2, &((ftq_data_ptr->b2)[0]), sizeof(int) * (ftq_data_ptr->b2).size());
+	bp.pred.b_bi		= ftq_data_ptr->b_bi;
+	bp.pred.b2_bi2		= ftq_data_ptr->b2_bi2;
 	memcpy(bp.pred.gi, &((ftq_data_ptr->gi)[0]), sizeof(int) * NUMG);
 }
 #endif // FTQ

@@ -174,6 +174,8 @@ class batage {
   tagged_entry *** g; // tagged entries
   int bi; // hash for the bimodal prediction
   int bi2; // hash for the bimodal hysteresis
+  int b_bi;
+  int b2_bi2;
   int * gi; // hashes for the tagged banks
   vector<int> hit; // tell which banks have a hit
   vector<dualcounter> s; // dual-counters for the hitting banks
