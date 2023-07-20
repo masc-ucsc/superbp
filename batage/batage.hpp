@@ -33,7 +33,7 @@
 #define BHYSTBITS 2
 
 // Check - change it to use FETCH_WIDTH
-#define FETCHWIDTH 16
+#define FETCHWIDTH 1
 #define NUM_TAKEN_BRANCHES 1
 #define INFO_PER_ENTRY (FETCHWIDTH * NUM_TAKEN_BRANCHES)
 #define LOGE 4  //log2(INFO_PER_ENTRY)

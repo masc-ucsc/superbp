@@ -14,7 +14,8 @@
 #include "../batage/batage.hpp"
 #endif
 
-#define DEBUG_FTQ
+//#define DEBUG_FTQ
+#define DEBUG_ALLOC
 
 /*#ifdef DEBUG_FTQ
 FILE* fp = fopen ("ftq_log.txt", w+);

@@ -5,10 +5,12 @@
 // Change this to change predictor - may later want to make this a command line parameter - argument to main
 #define BATAGE
 
-#define SUPERSCALAR
+//#define SUPERSCALAR
 #ifdef SUPERSCALAR
-#define FETCH_WIDTH 16
+#define FETCH_WIDTH 1
 #define FTQ
+#else // SUPERSCALAR
+#define FETCH_WIDTH 1
 #endif // SUPERSCALAR
 
 // only enable when the counts are required.

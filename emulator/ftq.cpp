@@ -74,7 +74,7 @@ void allocate_ftq_entry (void)
 
 	next_allocate_index = (next_allocate_index+1) % NUM_FTQ_ENTRIES;
 	filled_ftq_entries++;
-#ifdef DEBUG_FTQ	
+#ifdef DEBUG_ALLOC	
 	std::cout << "After allocation - filled_ftq_entries = " << filled_ftq_entries << ", next_allocate_index = " << next_allocate_index << "\n";
 #endif // DEBUG_FTQ	
 	return;
@@ -123,7 +123,7 @@ void get_ftq_data()
 #endif // DEBUG_FTQ
 	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
 	filled_ftq_entries--;
-#ifdef DEBUG_FTQ	
+#ifdef DEBUG_ALLOC	
 	std::cout << "After deallocation - filled_ftq_entries = " << filled_ftq_entries << ", next_free_index = " << next_free_index << "\n";
 #endif // DEBUG_FTQ
 	return;

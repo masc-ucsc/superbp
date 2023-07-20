@@ -50,7 +50,7 @@ uint64_t branch_count, branch_mispredict_count, jump_count, cti_count, misscontr
 static uint64_t last_pc;
 static uint32_t last_insn_raw;
 static insn_t last_insn, insn;
-static bool misprediction;
+static bool last_misprediction, misprediction;
 #ifdef EN_BB_FB_COUNT
 static uint8_t bb_over = 0, fb_over = 0;
 #endif // EN_BB_FB_COUNT
@@ -121,14 +121,14 @@ static inline void copy_ftq_data_to_predictor(ftq_entry* ftq_data_ptr)
 
 static inline void update_counters_pc_minus_1_branch()
 {
-		if (last_predDir == resolveDir) // branch is resolved in next CC, so match resolveDir with last_predDir
+		if (last_predDir == last_resolveDir) // branch is resolved in next CC, so match last_resolveDir with last_predDir
     	{
-    		misprediction = false;
+    		last_misprediction = false;
     		correct_prediction_count++;
     	}
     else 
     	{
-    		misprediction = true;
+    		last_misprediction = true;
     		misprediction_count++;		// Both mispredicted T and NT
     		branch_mispredict_count++; 	// Both mispredicted T and NT
     	}
@@ -140,27 +140,30 @@ static inline void read_ftq_update_predictor ()
 	uint64_t update_pc, update_branchTarget;
 	bool update_predDir, update_resolveDir;
 	
-	if ( (inst_index_in_fetch == FETCH_WIDTH) || misprediction || resolveDir )
+	// TODO Check misprediction and resolveDir use correct value
+	uint8_t partial_pop = (last_misprediction || last_resolveDir);
+	
+	if ( (inst_index_in_fetch == FETCH_WIDTH) || partial_pop )
     {
-		// Check # of times
-		uint8_t partial_pop = (misprediction || resolveDir);
+		
 #ifdef DEBUG_FTQ
-    	std::cout << "Deallocating - inst_index_in_fetch = " << inst_index_in_fetch << " misprediction = " << misprediction << " resolveDir = " << resolveDir << "\n"; 
+    	std::cout << "Deallocating - inst_index_in_fetch = " << inst_index_in_fetch << " last_misprediction = " << last_misprediction << " last_resolveDir = " << last_resolveDir << "\n"; 
 #endif
+
     	for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH); i++)
     	{
     		if (!is_ftq_empty()) 
     		{
     			get_ftq_data(&ftq_data);
     			
-    			// Check resolveDir, predDir, branchTarget
+    			// TODO Check resolveDir, predDir, branchTarget
     			update_pc = ftq_data.pc;
     			update_resolveDir = ftq_data.resolveDir;
     			update_predDir = ftq_data.predDir;
     			update_branchTarget = ftq_data.branchTarget;
     			
     			// Store the read predictor fields into the predictor
-    			// Check if predictor contents need to be saved before doing this.
+    			// TODO Check if predictor contents need to be saved before doing this.
     			copy_ftq_data_to_predictor(&ftq_data);
 
     			bp.UpdatePredictor(update_pc, update_resolveDir, update_predDir, update_branchTarget);
@@ -171,6 +174,10 @@ static inline void read_ftq_update_predictor ()
     	 		fprintf(stderr, "Pop on empty ftq, inst_index_in_fetch = %d, misprediction = %d, resolveDir = %d \n", inst_index_in_fetch, misprediction, resolveDir);
     		}
     	}
+    	last_pc = update_pc;
+    	last_resolveDir = update_resolveDir;
+    	last_predDir = update_predDir;
+    	//branchTarget = update_branchTarget;
 #ifdef DEBUG_FTQ
     	{std::cout << "After deallocations over - inst_index_in_fetch = " << inst_index_in_fetch << "\n";}
 #endif // DEBUG_FTQ
@@ -181,12 +188,12 @@ static inline void read_ftq_update_predictor ()
 static inline void resolve_pc_minus_1_branch (uint64_t pc)
 {
 	if (pc - last_pc == 4) {
-		resolveDir = false;
+		last_resolveDir = false;
 #ifdef PC_TRACE
 		fprintf(pc_trace, "%32s\n", "Not Taken Branch");
 #endif
 	} else {
-		resolveDir = true;
+		last_resolveDir = true;
 		taken_branch_count++;
 #ifdef EN_BB_FB_COUNT
 		fb_over = 1;
@@ -200,6 +207,7 @@ static inline void resolve_pc_minus_1_branch (uint64_t pc)
 	return;
 }
 
+// Not being used
 static inline void close_pc_minus_1_branch (uint64_t pc)
 {
 #ifdef FTQ
@@ -313,7 +321,7 @@ static inline void handle_nb()
     	}
     if ( (insn == insn_t::non_cti) && (predDir == true) )
     	{
-    		misscontrol_count++; // Both mispredicted T and NT
+    		misscontrol_count++; 
     	}
 }
 
@@ -329,6 +337,7 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
 
   	branchTarget = pc;
   	bb_over = 0, fb_over = 0;
+  	misprediction = false;
 
   // for (int i = 0; i < m->ncpus; ++i)
   {
@@ -345,18 +354,19 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
 #ifdef FTQ
 	if (is_ftq_full() == false)
     {
-    		allocate_ftq_entry(predDir, resolveDir, last_pc, branchTarget, bp); 
+    		allocate_ftq_entry(last_predDir, last_resolveDir, last_pc, branchTarget, bp); 
     		inst_index_in_fetch++;
     }
     else
     	{fprintf(stderr, "%s\n", "FTQ full"); }
     
-    // Check - Read FTQ + Update predictor based on all info about last_insn
+    // TODO Check - Read FTQ + Update predictor based on all info about last_insn
 	read_ftq_update_predictor();
 #endif // FTQ
 #endif // SUPERSCALAR
     
-    // At this point resolveDir contains info about pc-1
+    // At this point pc-1 handling is complete
+    
     // Now start handling insn at pc
     
 #ifdef PC_TRACE
@@ -391,7 +401,6 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
 #endif // EN_BB_FB_COUNT
 
 	// Get predDir for pc
-	// resolveDir contains - for branches - pc -1, others - pc
     predDir = bp.GetPrediction(pc);
     
     // Update counters - 
@@ -426,8 +435,8 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     Check if this needs to be delayed + split, i.e. global history to be updated after a few CC, but actual predictor table to be 		updated after commit
     *******************************************************************/	
     #ifndef SUPERSCALAR
-    // Check last_pc, resolveDir, predDir, branchTarget
-    	bp.UpdatePredictor(last_pc, resolveDir, predDir, branchTarget);
+    // TODO Check last_pc, resolveDir, predDir, branchTarget
+    	bp.UpdatePredictor(last_pc, last_resolveDir, last_predDir, branchTarget);
     #endif // SUPERSCALAR
 
     last_pc = pc;
@@ -435,5 +444,6 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     last_insn = insn;
     last_predDir = predDir;
     last_resolveDir = resolveDir;
+    last_misprediction = misprediction;
   }
 }
