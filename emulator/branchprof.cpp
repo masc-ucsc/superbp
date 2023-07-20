@@ -51,6 +51,7 @@ static uint64_t last_pc;
 static uint32_t last_insn_raw;
 static insn_t last_insn, insn;
 static bool last_misprediction, misprediction;
+bool i0_done = false;
 #ifdef EN_BB_FB_COUNT
 static uint8_t bb_over = 0, fb_over = 0;
 #endif // EN_BB_FB_COUNT
@@ -340,6 +341,7 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
   	misprediction = false;
 
   // for (int i = 0; i < m->ncpus; ++i)
+  if (i0_done == true)
   {
 	// If previous instruction was a branch. resolve that first
     if (last_insn == insn_t::branch) {
@@ -351,7 +353,7 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
 	// branchtarget is available only in next CC even for jumps, so unavail for insn 
 	// Best - allocate for last_insn, in the beginning just after resolving a branch
 #ifdef SUPERSCALAR
-#ifdef FTQ
+#ifdef FTQ    
 	if (is_ftq_full() == false)
     {
     		allocate_ftq_entry(last_predDir, last_resolveDir, last_pc, branchTarget, bp); 
@@ -359,11 +361,15 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     }
     else
     	{fprintf(stderr, "%s\n", "FTQ full"); }
-    
+    	
     // TODO Check - Read FTQ + Update predictor based on all info about last_insn
 	read_ftq_update_predictor();
+#else   // #ifndef SUPERSCALAR
+    // TODO Check last_pc, resolveDir, predDir, branchTarget
+    	bp.UpdatePredictor(last_pc, last_resolveDir, last_predDir, branchTarget);
 #endif // FTQ
 #endif // SUPERSCALAR
+	}
     
     // At this point pc-1 handling is complete
     
@@ -434,10 +440,6 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     Also, update after FETCH_WIDTH instructions means update after 1 CC in Superscalar
     Check if this needs to be delayed + split, i.e. global history to be updated after a few CC, but actual predictor table to be 		updated after commit
     *******************************************************************/	
-    #ifndef SUPERSCALAR
-    // TODO Check last_pc, resolveDir, predDir, branchTarget
-    	bp.UpdatePredictor(last_pc, last_resolveDir, last_predDir, branchTarget);
-    #endif // SUPERSCALAR
 
     last_pc = pc;
     last_insn_raw = insn_raw;
@@ -445,5 +447,8 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     last_predDir = predDir;
     last_resolveDir = resolveDir;
     last_misprediction = misprediction;
-  }
+    if (i0_done == false)
+    {
+    	i0_done = true;
+    }
 }
