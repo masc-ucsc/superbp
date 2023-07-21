@@ -364,10 +364,10 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     	
     // TODO Check - Read FTQ + Update predictor based on all info about last_insn
 	read_ftq_update_predictor();
+#endif // FTQ
 #else   // #ifndef SUPERSCALAR
     // TODO Check last_pc, resolveDir, predDir, branchTarget
     	bp.UpdatePredictor(last_pc, last_resolveDir, last_predDir, branchTarget);
-#endif // FTQ
 #endif // SUPERSCALAR
 	}
     
