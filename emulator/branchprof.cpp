@@ -16,7 +16,8 @@ FILE* pc_trace;
 #define MAX_BB_SIZE 50
 #define MAX_FB_SIZE 250
 uint64_t bb_size[MAX_BB_SIZE], fb_size[MAX_FB_SIZE];
-uint32_t sum_bb_size, sum_fb_size, bb_count, fb_count;
+uint64_t sum_bb_size, sum_fb_size;
+uint32_t bb_count, fb_count;
 uint8_t running_bb_size, running_fb_size;
 #endif // EN_BB_FB_COUNT
 
@@ -279,11 +280,18 @@ void print_pc_insn (uint64_t pc, uint32_t insn_raw)
 	return;
 }
 
-static inline void update_bb_br()
+static inline void update_bb_fb()
 {
 	if (bb_over == 1)
 	{
-		bb_size[running_bb_size]++;
+		if (running_bb_size >= MAX_BB_SIZE)
+		{
+			bb_size[MAX_BB_SIZE-1]++;
+		}
+		else
+		{
+			bb_size[running_bb_size]++;
+		}
 		sum_bb_size+=running_bb_size;
 		bb_count++;
 		running_bb_size = 0;
@@ -294,7 +302,14 @@ static inline void update_bb_br()
 	}
 	if (fb_over == 1)
 	{
-		fb_size[running_fb_size]++;
+		if (running_fb_size >= MAX_FB_SIZE)
+		{
+			fb_size[MAX_FB_SIZE-1]++;
+		}
+		else
+		{
+			fb_size[running_fb_size]++;
+		}
 		sum_fb_size+=running_fb_size;
 		fb_count++;
 		if (bb_over == 1)
@@ -403,7 +418,7 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
 
 	// Update BB - BR Based on present instruction (exception - Branch)
 #ifdef EN_BB_FB_COUNT
-	update_bb_br();
+	update_bb_fb();
 #endif // EN_BB_FB_COUNT
 
 	// Get predDir for pc
