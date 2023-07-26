@@ -301,6 +301,7 @@ void
 histories::update(uint32_t targetpc, bool taken)
 {
 #ifdef PC_SHIFT
+  //targetpc ^= targetpc << 5;
   targetpc ^= targetpc >> PC_SHIFT;
 #endif
   bh.insert(taken);
@@ -489,6 +490,7 @@ bool
 batage::predict(uint32_t pc, histories & p)
 {
 #ifdef PC_SHIFT
+  //pc ^= pc << 5;
   pc ^= pc >> PC_SHIFT;
 #endif
   
@@ -564,6 +566,7 @@ void
 batage::update(uint32_t pc, bool taken, histories & p, bool noalloc = false)
 {
 #ifdef PC_SHIFT
+  //pc ^= pc << 5;
   pc ^= pc >> PC_SHIFT;
 #endif
 

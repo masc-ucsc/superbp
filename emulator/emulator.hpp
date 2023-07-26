@@ -5,9 +5,9 @@
 // Change this to change predictor - may later want to make this a command line parameter - argument to main
 #define BATAGE
 
-//#define SUPERSCALAR
+#define SUPERSCALAR
 #ifdef SUPERSCALAR
-#define FETCH_WIDTH 1
+#define FETCH_WIDTH 8
 #define FTQ
 #else // SUPERSCALAR
 #define FETCH_WIDTH 1

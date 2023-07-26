@@ -60,6 +60,8 @@ static uint8_t bb_over = 0, fb_over = 0;
 static int16_t inst_index_in_fetch = 0;
 #endif
 
+extern uint64_t maxinsns, skip_insns;
+
 void branchprof_init()
 {
 	// PREDICTOR bp;
@@ -70,6 +72,7 @@ void branchprof_init()
     	exit(-3);
   	} else {
     	fprintf(dromajo_stderr, "\nOpened dromajo_simpoint.bb for dumping trace\n");
+    	fprintf(pc_trace, "FETCH_WIDTH = %u, SKIP_COUNT = %lu, benchmark_count = %lu \n", FETCH_WIDTH, skip_insns, maxinsns);
 #ifdef PC_TRACE
     	fprintf(pc_trace, "%20s\t\t|%20s\t|%32s\n", "PC", "Instruction", "Instructiontype");
 #endif  // PC_TRACE

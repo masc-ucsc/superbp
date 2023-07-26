@@ -9,7 +9,7 @@
 
 
 // ARM instructions are 4-byte aligned ==> shift PC by 2 bits
-#define PC_SHIFT 2
+#define PC_SHIFT 1 // 1 for RISCV 
 
 // NUMG: number of tagged banks (also, number of non-null global history lengths)
 // MAXHIST: greatest global history length
