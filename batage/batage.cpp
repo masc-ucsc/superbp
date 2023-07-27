@@ -193,6 +193,7 @@ dualcounter::size()
 void
 path_history::init(int hlen)
 {
+// Just allocates a history vector, initializes to 0 and sets ptr = 0
   hlength = hlen;
   h = new unsigned [hlen];
   for (int i=0; i<hlength; i++) {
@@ -205,6 +206,7 @@ path_history::init(int hlen)
 void 
 path_history::insert(unsigned val)
 {
+// Path history update
   ptr--;
   if (ptr == (-1)) {
     ptr = hlength-1;
@@ -216,6 +218,7 @@ path_history::insert(unsigned val)
 unsigned & 
 path_history::operator [] (int n)
 {
+// Reads history h[(ptr+n)%hlength]
   ASSERT((n>=0) && (n<hlength));
   int k = ptr + n;
   if (k >= hlength) {
@@ -280,17 +283,17 @@ histories::histories()
   cht = new folded_history [NUMG];
   chtt = new folded_history [NUMG];
   for (int i=0; i<NUMG; i++) {
-    chg[i].init(hist[i],LOGG,1);
+    chg[i].init(hist[i],LOGGE,1);
     cht[i].init(hist[i],TAGBITS,1);
     int hashparam = 1;
-    if (LOGG == TAGBITS) {
-      hashparam = (lcm(LOGG,LOGG-3) > lcm(LOGG,LOGG-2))? 3 : 2;
+    if (LOGGE == TAGBITS) {
+      hashparam = (lcm(LOGGE,LOGGE-3) > lcm(LOGGE,LOGGE-2))? 3 : 2;
     }
     if (hist[i] <= MAXPATH) {
-      chgg[i].init(hist[i],LOGG-hashparam,PATHBITS);
+      chgg[i].init(hist[i],LOGGE-hashparam,PATHBITS);
       chtt[i].init(hist[i],TAGBITS-1,PATHBITS);
     } else {
-      chgg[i].init(hist[i],LOGG-hashparam,1);
+      chgg[i].init(hist[i],LOGGE-hashparam,1);
       chtt[i].init(hist[i],TAGBITS-1,1);
     }
   }

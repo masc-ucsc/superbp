@@ -63,6 +63,8 @@ public :
 	int b2_bi2;
 	std::vector<int> gi;
 	
+	//ptr, fold
+	
 	//histories * hist_ptr;
 
 public :

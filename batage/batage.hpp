@@ -109,9 +109,9 @@ class dualcounter {
 
 class path_history {
 public:
-  int ptr; 
-  int hlength;
-  unsigned * h;
+  int ptr; 							// pointer into the path history
+  int hlength;						// history length
+  unsigned * h;						// history data - array of unsigned ints
   void init(int hlen);
   void insert(unsigned val);
   unsigned & operator [] (int n);
@@ -125,12 +125,12 @@ public:
 
 class folded_history {
 public:
-  uint32_t fold;
-  int clength;
-  int olength;
-  int outpoint;
-  uint32_t mask1;
-  uint32_t mask2;
+  uint32_t fold;			// updated in update
+  int clength;				// constant after init
+  int olength;				// constant after init
+  int outpoint;				// constant after init
+  uint32_t mask1;			// constant after init
+  uint32_t mask2;			// constant after init
   void init(int original_length, int compressed_length, int injected_bits);
   uint32_t rotateleft(uint32_t x, int m);
   void update(path_history & ph);
@@ -141,10 +141,10 @@ class histories {
  public:
   path_history bh; // global history of branch directions
   path_history ph; // path history (target address bits)
-  folded_history * chg;
-  folded_history * chgg;
-  folded_history * cht;
-  folded_history * chtt;
+  folded_history * chg;		// compressed length = LOGGE
+  folded_history * chgg;	// compressed length = LOGGE-hashparam
+  folded_history * cht;		// compressed length = TAGBITS
+  folded_history * chtt;	// compressed length = TAGBITS-1
   histories();
   void update(uint32_t targetpc, bool taken);
   int gindex(uint32_t pc, int i);
