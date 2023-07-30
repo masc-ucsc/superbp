@@ -179,9 +179,9 @@ static inline void read_ftq_update_predictor ()
     	 		fprintf(stderr, "Pop on empty ftq, inst_index_in_fetch = %d, misprediction = %d, resolveDir = %d \n", inst_index_in_fetch, misprediction, resolveDir);
     		}
     	}
-    	last_pc = update_pc;
+    	/*last_pc = update_pc;
     	last_resolveDir = update_resolveDir;
-    	last_predDir = update_predDir;
+    	last_predDir = update_predDir;*/
     	//branchTarget = update_branchTarget;
 #ifdef DEBUG_FTQ
     	{std::cout << "After deallocations over - inst_index_in_fetch = " << inst_index_in_fetch << "\n";}
@@ -462,9 +462,12 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
     last_pc = pc;
     last_insn_raw = insn_raw;
     last_insn = insn;
-    last_predDir = predDir;
-    last_resolveDir = resolveDir;
-    last_misprediction = misprediction;
+    last_predDir = predDir;    
+    if ( insn != insn_t::branch )
+    {
+    	last_resolveDir = resolveDir;
+    	last_misprediction = misprediction;
+    }
     if (i0_done == false)
     {
     	i0_done = true;
