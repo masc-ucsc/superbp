@@ -28,7 +28,8 @@ class PREDICTOR {
 
   PREDICTOR(void);
   bool GetPrediction(uint64_t PC);  
-  void UpdatePredictor(uint64_t PC, bool resolveDir, bool predDir, uint64_t branchTarget);
+  void Updatetables(uint64_t PC, bool resolveDir);
+  void Updatehistory(bool resolveDir, uint64_t branchTarget);
   void TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget);
 
 };

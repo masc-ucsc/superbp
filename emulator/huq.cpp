@@ -3,42 +3,42 @@
 #include <vector>
 #include <inttypes.h>
 
-#include "ftq.hpp"
+#include "huq.hpp"
 #include "../batage/predictor.hpp"
 #include "emulator.hpp"
 
 #ifdef SUPERBP
-ftq_entry_ptr ftq[NUM_FTQ_ENTRIES];
+huq_entry_ptr huq[NUM_HUQ_ENTRIES];
 #elif defined BATAGE
-ftq_entry ftq[NUM_FTQ_ENTRIES];
+huq_entry huq[NUM_HUQ_ENTRIES];
 #endif
 
 static uint16_t next_allocate_index; // To be written/ allocated next
 static uint16_t next_free_index; // To be read/ freed next
-static int16_t filled_ftq_entries;
+static int16_t filled_huq_entries;
 
-bool is_ftq_full(void)
+bool is_huq_full(void)
 {
-	return (filled_ftq_entries == NUM_FTQ_ENTRIES);
+	return (filled_huq_entries == NUM_HUQ_ENTRIES);
 }
 
-bool is_ftq_empty(void)
+bool is_huq_empty(void)
 {
-	return (filled_ftq_entries == 0);
+	return (filled_huq_entries == 0);
 }
 
 #ifdef SUPERBP
-void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_inst)
+void allocate_huq_entry(AddrType branch_PC, AddrType branch_target, IMLI& IMLI_inst)
 #elif defined BATAGE
-void allocate_ftq_entry (const bool& predDir, const bool& resolveDir, const uint64_t& pc, const insn_t& insn, const uint64_t& branchTarget, const PREDICTOR& predictor) // , histories* hist_ptr)
+void allocate_huq_entry (/*const uint64_t& pc,*/ const uint64_t& branchTarget, const bool& resolveDir)
 #else
-void allocate_ftq_entry (void)
+void allocate_huq_entry (void)
 #endif
 {
 	// next_entry_index is updated in the end of the function, so still called "next" when it is already being updated in this function 
 	
 #ifdef SUPERBP	
-	ftq_entry_ptr ptr 		= (ftq_entry_ptr) malloc (sizeof(ftq_entry) );
+	huq_entry_ptr ptr 		= (huq_entry_ptr) malloc (sizeof(huq_entry) );
 	ptr->branch_PC 			= branch_PC;
 	ptr->branch_target 		= branch_target; // Actually, after Execute
 	
@@ -60,37 +60,37 @@ void allocate_ftq_entry (void)
     memcpy(ptr->ch_t_1, IMLI_inst.ch_t[1], ((nhist + 1)*sizeof(Folded_history)));
     
 #elif defined BATAGE
-	//ftq_entry f {predDir, resolveDir, pc, branchTarget, predictor.pred.hit, predictor.pred.s, predictor.pred.meta};
-	ftq_entry f {predDir, resolveDir, pc, insn, branchTarget, predictor};
+	//huq_entry f {predDir, resolveDir, pc, branchTarget, predictor.pred.hit, predictor.pred.s, predictor.pred.meta};
+	huq_entry h {/*pc,*/branchTarget, resolveDir};
 	// Move assignment
-	ftq[next_allocate_index] = std::move(f);
+	huq[next_allocate_index] = std::move(h);
 #endif
 
-#ifdef DEBUG_FTQ
+#ifdef DEBUG_HUQ
 #ifdef BATAGE
 	std::cout << "Entry # " << next_allocate_index << " allocated to PC = " << std::hex << pc << std::dec << "\n";
 #endif // BATAGE
-#endif // DEBUG_FTQ
+#endif // DEBUG_HUQ
 
-	next_allocate_index = (next_allocate_index+1) % NUM_FTQ_ENTRIES;
-	filled_ftq_entries++;
+	next_allocate_index = (next_allocate_index+1) % NUM_HUQ_ENTRIES;
+	filled_huq_entries++;
 #ifdef DEBUG_ALLOC	
-	std::cout << "After allocation - filled_ftq_entries = " << filled_ftq_entries << ", next_allocate_index = " << next_allocate_index << "\n";
-#endif // DEBUG_FTQ	
+	std::cout << "After allocation - filled_huq_entries = " << filled_huq_entries << ", next_allocate_index = " << next_allocate_index << "\n";
+#endif // DEBUG_HUQ	
 	return;
 }
 
 #ifdef SUPERBP
-void get_ftq_data(IMLI& IMLI_inst)
+void get_huq_data(IMLI& IMLI_inst)
 #elif defined BATAGE
-void get_ftq_data (ftq_entry* ftq_data_ptr)
+void get_huq_data (huq_entry* huq_data_ptr)
 #else 
-void get_ftq_data()
+void get_huq_data()
 #endif
 {
 		
 #ifdef SUPERBP
-	ftq_entry_ptr ptr = ftq[next_free_index];
+	huq_entry_ptr ptr = huq[next_free_index];
 //	PC							= ptr->branch_PC;
 //	branchTarget    			= ptr->branch_target; // Actually, after Execute
 	IMLI_inst.pred_taken 		= ptr->pred_taken;
@@ -110,66 +110,66 @@ void get_ftq_data()
 	memcpy(IMLI_inst.ch_t[1], ptr->ch_t_1, ((nhist + 1)*sizeof(Folded_history)));
 	delete(ptr->ch_t_1);
 	free(ptr);
-	ftq[next_free_index] = NULL;
+	huq[next_free_index] = NULL;
 #elif defined BATAGE
 
-	*ftq_data_ptr = std::move(ftq[next_free_index]);
+	*huq_data_ptr = std::move(huq[next_free_index]);
 #endif
 	
-#ifdef DEBUG_FTQ
+#ifdef DEBUG_HUQ
 #ifdef BATAGE
-	std::cout << "Entry # " << next_free_index << " deallocated with PC = " << std::hex << ftq_data_ptr->pc << std::dec << "\n";
+	std::cout << "Entry # " << next_free_index << " deallocated with PC = " << std::hex << huq_data_ptr->pc << std::dec << "\n";
 #endif // BATAGE
-#endif // DEBUG_FTQ
-	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
-	filled_ftq_entries--;
+#endif // DEBUG_HUQ
+	next_free_index = (next_free_index+1) % NUM_HUQ_ENTRIES;
+	filled_huq_entries--;
 #ifdef DEBUG_ALLOC	
-	std::cout << "After deallocation - filled_ftq_entries = " << filled_ftq_entries << ", next_free_index = " << next_free_index << "\n";
-#endif // DEBUG_FTQ
+	std::cout << "After deallocation - filled_huq_entries = " << filled_huq_entries << ", next_free_index = " << next_free_index << "\n";
+#endif // DEBUG_HUQ
 	return;
-} // get_ftq_data() over
+} // get_huq_data() over
 
-void deallocate_ftq_entry(void)
+void deallocate_huq_entry(void)
 {
 #ifdef SUPERBP
-	ftq_entry_ptr ptr = ftq[next_free_index];
+	huq_entry_ptr ptr = huq[next_free_index];
 
 	free(ptr);
-	ftq[next_free_index] = NULL;
+	huq[next_free_index] = NULL;
 #elif defined BATAGE
-	ftq[next_free_index].~ftq_entry();
+	huq[next_free_index].~huq_entry();
 #endif // BATAGE
-	next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
+	next_free_index = (next_free_index+1) % NUM_HUQ_ENTRIES;
 	
-	filled_ftq_entries--;
+	filled_huq_entries--;
 	return;
-} // deallocate_ftq_entry() over
+} // deallocate_huq_entry() over
 
-void nuke_ftq()
+void nuke_huq()
 {
 #ifdef SUPERBP	
-	ftq_entry_ptr ptr;
+	huq_entry_ptr ptr;
 	
-	while ( filled_ftq_entries != 0 )
+	while ( filled_huq_entries != 0 )
 	{
-		ptr = ftq[next_free_index];
+		ptr = huq[next_free_index];
 
 		delete(ptr->ch_i);
 		delete(ptr->ch_t_0);
 		delete(ptr->ch_t_1);
 
 		free(ptr);
-		ftq[next_free_index] = NULL;
+		huq[next_free_index] = NULL;
 
-		next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
-		filled_ftq_entries--;
+		next_free_index = (next_free_index+1) % NUM_HUQ_ENTRIES;
+		filled_huq_entries--;
 	}
 #elif defined BATAGE
-	while ( filled_ftq_entries != 0 )
+	while ( filled_huq_entries != 0 )
 	{
-		ftq[next_free_index].~ftq_entry();
-		next_free_index = (next_free_index+1) % NUM_FTQ_ENTRIES;
-		filled_ftq_entries--;
+		huq[next_free_index].~huq_entry();
+		next_free_index = (next_free_index+1) % NUM_HUQ_ENTRIES;
+		filled_huq_entries--;
 	}
 #endif
 

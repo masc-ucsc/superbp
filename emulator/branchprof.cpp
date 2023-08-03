@@ -24,7 +24,9 @@ uint8_t running_bb_size, running_fb_size;
 #ifdef SUPERSCALAR
 #ifdef FTQ
 #include "ftq.hpp"
+#include "huq.hpp"
 ftq_entry ftq_data; // Only 1 instance - assuming the updates for superscalar will be done 1 by 1, so they may reuse the same instance
+huq_entry huq_data;
 #endif // FTQ
 #endif // SUPERSCALAR
 
@@ -143,6 +145,7 @@ static inline void update_counters_pc_minus_1_branch()
 static inline void read_ftq_update_predictor ()
 {
 	uint64_t update_pc, update_branchTarget;
+	insn_t update_insn;
 	bool update_predDir, update_resolveDir;
 	
 	// TODO Check misprediction and resolveDir use correct value
@@ -163,6 +166,7 @@ static inline void read_ftq_update_predictor ()
     			
     			// TODO Check resolveDir, predDir, branchTarget
     			update_pc = ftq_data.pc;
+    			update_insn = ftq_data.insn;
     			update_resolveDir = ftq_data.resolveDir;
     			update_predDir = ftq_data.predDir;
     			update_branchTarget = ftq_data.branchTarget;
@@ -171,13 +175,28 @@ static inline void read_ftq_update_predictor ()
     			// TODO Check if predictor contents need to be saved before doing this.
     			copy_ftq_data_to_predictor(&ftq_data);
 
-    			bp.UpdatePredictor(update_pc, update_resolveDir, update_predDir, update_branchTarget);
+    			if (update_insn == insn_t::branch)
+    			{
+    				bp.Updatetables(update_pc, update_resolveDir);
+    				allocate_huq_entry(/*update_pc,*/update_branchTarget, update_resolveDir);
+    			}
+    			else if(update_insn == insn_t::jump)
+    			{
+    				allocate_huq_entry(/*update_pc,*/update_branchTarget, true);
+    				//bp.TrackOtherInst(update_pc, bool branchDir, update_branchTarget);
+    			}
+    			
     			inst_index_in_fetch--;
     		}
     		else
     		{
     	 		fprintf(stderr, "Pop on empty ftq, inst_index_in_fetch = %d, misprediction = %d, resolveDir = %d \n", inst_index_in_fetch, misprediction, resolveDir);
     		}
+    	}
+    	while (!is_huq_empty()) 
+    	{
+    		get_huq_data(&huq_data);
+    		bp.Updatehistory(huq_data.resolveDir, huq_data.branchTarget);
     	}
     	/*last_pc = update_pc;
     	last_resolveDir = update_resolveDir;
@@ -374,7 +393,7 @@ void handle_branch (uint64_t pc, uint32_t insn_raw) {
 #ifdef FTQ    
 	if (is_ftq_full() == false)
     {
-    		allocate_ftq_entry(last_predDir, last_resolveDir, last_pc, branchTarget, bp); 
+    		allocate_ftq_entry(last_predDir, last_resolveDir, last_pc, last_insn, branchTarget, bp); 
     		inst_index_in_fetch++;
     }
     else

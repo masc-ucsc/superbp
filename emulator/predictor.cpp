@@ -22,15 +22,20 @@ PREDICTOR::GetPrediction(uint64_t PC)
   return pred.predict(PC,hist);
 }
 
-
+// Update only for branches
 void
-PREDICTOR::UpdatePredictor(uint64_t PC, bool resolveDir, bool predDir, uint64_t branchTarget)
+PREDICTOR::Updatetables(uint64_t PC, bool resolveDir)
 {
   pred.update(static_cast<uint32_t>(PC),resolveDir,hist, false);
+}
+
+void
+PREDICTOR::Updatehistory(bool resolveDir, uint64_t branchTarget)
+{
   hist.update(static_cast<uint32_t>(branchTarget),resolveDir);
 }
 
-
+// Update for unconditional cti-s
 void
 PREDICTOR::TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget)
 {

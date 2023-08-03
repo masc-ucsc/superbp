@@ -47,6 +47,7 @@ public :
 	bool predDir;
 	bool resolveDir;	
 	uint64_t pc;
+	insn_t insn;
 	uint64_t branchTarget;
 	
 	vector<int32_t> hit; // size = NUMG
@@ -72,9 +73,9 @@ public :
 	ftq_entry () = default;
 	
 	// Constructor - to allocate entry
-	ftq_entry (const bool& predDir1, const bool& resolveDir1, const uint64_t& pc1, const uint64_t& branchTarget1, const PREDICTOR& predictor)
+	ftq_entry (const bool& predDir1, const bool& resolveDir1, const uint64_t& pc1, const insn_t& insn1, const uint64_t& branchTarget1, const PREDICTOR& predictor)
 	/*: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta {predictor.pred.meta}, bp {predictor.pred.bp}, cat {predictor.pred.cat},  bi {predictor.pred.bi}, bi2 {predictor.pred.bi2}, b {std::vector<int>(std::begin(predictor.pred.b), std::end(predictor.pred.b))}, b2 {std::vector<int>(std::begin(predictor.pred.b2), std::end(predictor.pred.b2))}*/
-	: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta {predictor.pred.meta}, bp {predictor.pred.bp},  bi {predictor.pred.bi}, bi2 {predictor.pred.bi2}, b_bi {predictor.pred.b_bi}, b2_bi2 {predictor.pred.b2_bi2}, gi {ptr2vec(predictor.pred.gi, NUMG)}
+	: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, insn{insn1}, branchTarget {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta {predictor.pred.meta}, bp {predictor.pred.bp},  bi {predictor.pred.bi}, bi2 {predictor.pred.bi2}, b_bi {predictor.pred.b_bi}, b2_bi2 {predictor.pred.b2_bi2}, gi {ptr2vec(predictor.pred.gi, NUMG)}
 	{	
 	}
 	
@@ -84,6 +85,7 @@ public :
 		predDir = std::move(src.predDir);
 		resolveDir = std::move(src.resolveDir);
 		pc = std::move(src.pc);
+		insn = std::move(src.insn);
 		branchTarget = std::move(src.branchTarget);
 		
 		hit = std::move(src.hit);
@@ -120,8 +122,8 @@ bool is_ftq_empty (void);
 void allocate_ftq_entry (AddrType branch_PC, AddrType branch_target, IMLI& IMLI_inst);
 void get_ftq_data (IMLI& IMLI_inst);
 #elif defined BATAGE
-void allocate_ftq_entry (const bool& predDir, const bool& resolveDir, const uint64_t& pc, const uint64_t& branchTarget, const PREDICTOR& predictor); // , histories* hist_ptr);
+void allocate_ftq_entry (const bool& predDir, const bool& resolveDir, const uint64_t& pc, const insn_t& insn, const uint64_t& branchTarget, const PREDICTOR& predictor); // , histories* hist_ptr);
 void get_ftq_data (ftq_entry* ftq_data_ptr);
 #endif
-void nuke();
+void nuke_ftq();
 
