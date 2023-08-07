@@ -443,6 +443,12 @@ batage::batage()
   bank = new int [NUMG];
   check = new bool [NUMG]; 
 #endif   
+
+#ifdef DEBUG
+	predict_pcs = fopen("predict_pcs.txt", "w+");
+	update_pcs = fopen("update_pcs.txt", "w+");
+#endif // DEBUG
+
 }
 
 
@@ -492,6 +498,11 @@ batage::getgo(int i, uint32_t offset_within_entry)
 bool 
 batage::predict(uint32_t pc, const histories & p)
 {
+
+#ifdef DEBUG
+	fprintf(predict_pcs, "%lu \n", pc);
+#endif // DEBUG
+
 #ifdef PC_SHIFT
   //pc ^= pc << 5;
   pc ^= pc >> PC_SHIFT;
@@ -568,6 +579,11 @@ batage::update_entry(int i, uint32_t offset_within_entry, bool taken)
 void
 batage::update(uint32_t pc, bool taken, const histories & p, bool noalloc = false)
 {
+
+#ifdef DEBUG
+	fprintf(update_pcs, "%lu \n", pc);
+#endif // DEBUG
+
 #ifdef PC_SHIFT
   //pc ^= pc << 5;
   pc ^= pc >> PC_SHIFT;

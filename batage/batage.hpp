@@ -81,6 +81,8 @@
 #define GHGBITS 2
 #endif
 
+#define DEBUG
+
 
 using namespace std;
 
@@ -200,6 +202,10 @@ class batage {
 #ifdef BANK_INTERLEAVING 
   void check_bank_conflicts();
 #endif  
+
+#ifdef DEBUG
+FILE *predict_pcs, *update_pcs;
+#endif // DEBUG
 };
 
 #endif
