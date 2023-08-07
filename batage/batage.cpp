@@ -325,7 +325,7 @@ histories::update(uint32_t targetpc, bool taken)
 // the hash functions below are somewhat more complex than what would be implemented in real processors
 
 int
-histories::gindex(uint32_t pc, int i)
+histories::gindex(uint32_t pc, int i) const
 {
   ASSERT((i>=0) && (i<NUMG));
   uint32_t hash = pc ^ i ^ chg[i].fold ^ (chgg[i].fold << (chg[i].clength-chgg[i].clength));
@@ -334,7 +334,7 @@ histories::gindex(uint32_t pc, int i)
 
 
 int
-histories::gtag(uint32_t pc, int i)
+histories::gtag(uint32_t pc, int i) const
 {
   ASSERT((i>=0) && (i<NUMG));
   uint32_t hash = (pc+i) ^ reverse(cht[i].fold,cht[i].clength) ^ (chtt[i].fold << (cht[i].clength-chtt[i].clength));
@@ -351,7 +351,7 @@ histories::gtag(uint32_t pc, int i)
 // inspired from Seznec's TAGE-SC-L (CBP 2016), but different:
 // interleaving is global, unlike in TAGE-SC-L ==> unique tag size
 int
-histories::phybank(int i)
+histories::phybank(int i) const
 {
   ASSERT((i>=0) && (i<NUMG));
   unsigned pos;
@@ -368,7 +368,7 @@ histories::phybank(int i)
 
 #ifdef GHGBITS
 int
-histories::ghg(int i)
+histories::ghg(int i) const
 {
   return ((NUMG-1-i) << GHGBITS) / NUMG;
 }
@@ -490,7 +490,7 @@ batage::getgo(int i, uint32_t offset_within_entry)
 }
 
 bool 
-batage::predict(uint32_t pc, histories & p)
+batage::predict(uint32_t pc, const histories & p)
 {
 #ifdef PC_SHIFT
   //pc ^= pc << 5;
@@ -566,7 +566,7 @@ batage::update_entry(int i, uint32_t offset_within_entry, bool taken)
 
 /*For superscalar - anything that is non constant & is used before/ without assigning a value must be saved in ftq*/
 void
-batage::update(uint32_t pc, bool taken, histories & p, bool noalloc = false)
+batage::update(uint32_t pc, bool taken, const histories & p, bool noalloc = false)
 {
 #ifdef PC_SHIFT
   //pc ^= pc << 5;

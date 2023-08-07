@@ -147,11 +147,11 @@ class histories {
   folded_history * chtt;	// compressed length = TAGBITS-1
   histories();
   void update(uint32_t targetpc, bool taken);
-  int gindex(uint32_t pc, int i);
-  int gtag(uint32_t pc, int i);
+  int gindex(uint32_t pc, int i) const;
+  int gtag(uint32_t pc, int i) const;
 #ifdef BANK_INTERLEAVING
-  int phybank(int i);
-  int ghg(int i);
+  int phybank(int i) const;
+  int ghg(int i) const;
 #endif
   void printconfig();
   int size();
@@ -192,10 +192,10 @@ class batage {
   batage();
   tagged_entry & getgb(int i);
   tagged_entry & getgo(int i, uint32_t offset_within_entry);
-  bool predict(uint32_t pc, histories & p);
+  bool predict(uint32_t pc, const histories & p);
   void update_bimodal(bool taken, uint32_t offset_within_entry);
   void update_entry(int i, uint32_t offset_within_entry, bool taken);
-  void update(uint32_t pc, bool taken, histories & p, bool noalloc);
+  void update(uint32_t pc, bool taken, const histories & p, bool noalloc);
   int size();
 #ifdef BANK_INTERLEAVING 
   void check_bank_conflicts();
