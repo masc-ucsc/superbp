@@ -175,16 +175,17 @@ static inline void read_ftq_update_predictor ()
     			// TODO Check if predictor contents need to be saved before doing this.
     			copy_ftq_data_to_predictor(&ftq_data);
 
-    			if (update_insn == insn_t::branch)
+			bp.Updatetables(update_pc, update_resolveDir);
+    			if (update_insn != insn_t::non_cti)
     			{
-    				bp.Updatetables(update_pc, update_resolveDir);
+    				
     				allocate_huq_entry(/*update_pc,*/update_branchTarget, update_resolveDir);
     			}
-    			else if(update_insn == insn_t::jump)
+    			/*else if(update_insn == insn_t::jump)
     			{
-    				allocate_huq_entry(/*update_pc,*/update_branchTarget, true);
+    				allocate_huq_entry(update_branchTarget, true);
     				//bp.TrackOtherInst(update_pc, bool branchDir, update_branchTarget);
-    			}
+    			}*/
     			
     			inst_index_in_fetch--;
     		}
