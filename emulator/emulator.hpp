@@ -2,7 +2,8 @@
 
 #define BRANCHPROF
 
-// Change this to change predictor - may later want to make this a command line parameter - argument to main
+// Change this to change predictor - may later want to make this a command line
+// parameter - argument to main
 #define BATAGE
 
 #define SUPERSCALAR
@@ -18,10 +19,4 @@
 
 //#define PC_TRACE
 
-enum class insn_t
-{
-	non_cti,
-	jump,
-	branch
-};
-
+enum class insn_t { non_cti, jump, branch };

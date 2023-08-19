@@ -1,7 +1,7 @@
 
 // FIXME: Bootstrap dromajo with superbp:gold and batage
-#include "dromajo.h"
 #include "emulator.hpp"
+#include "dromajo.h"
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -10,6 +10,7 @@
 #include <net/if.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -17,50 +18,47 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 #ifdef BRANCHPROF
-#include "predictor.hpp"
 #include "branchprof.hpp"
+#include "predictor.hpp"
 uint64_t maxinsns;
 uint64_t skip_insns;
 #endif
 
-uint64_t instruction_count; // total # of instructions - including skipped nd benchmark instructions
+uint64_t instruction_count; // total # of instructions - including skipped nd
+                            // benchmark instructions
 
 int iterate_core(RISCVMachine *m, int hartid) {
 
-	/* Succeed after N instructions without failure.*/
+  /* Succeed after N instructions without failure.*/
 #ifdef BRANCHPROF
-  	if (instruction_count >= skip_insns)
-  	{
-  	//if (m->common.maxinsns-- <= 0)
-    	if (maxinsns-- == 0)
-    	return 0;
-    }
+  if (instruction_count >= skip_insns) {
+    // if (m->common.maxinsns-- <= 0)
+    if (maxinsns-- == 0)
+      return 0;
+  }
 #else
-	if (m->common.maxinsns-- <= 0)
-		return 0;
+  if (m->common.maxinsns-- <= 0)
+    return 0;
 #endif
-
 
   RISCVCPUState *cpu = m->cpu_state[hartid];
 
-  	/* Instruction that raises exceptions should be marked as such in
-   	* the trace of retired instructions.
-   	*/
-  	uint64_t pc = virt_machine_get_pc(m, hartid);
-  	int priv = riscv_get_priv_level(cpu);
-  	uint32_t insn_raw = -1;
-  	(void)riscv_read_insn(cpu, &insn_raw, pc);
-  	instruction_count++;
+  /* Instruction that raises exceptions should be marked as such in
+   * the trace of retired instructions.
+   */
+  uint64_t pc = virt_machine_get_pc(m, hartid);
+  int priv = riscv_get_priv_level(cpu);
+  uint32_t insn_raw = -1;
+  (void)riscv_read_insn(cpu, &insn_raw, pc);
+  instruction_count++;
 #ifdef BRANCHPROF
-  	if (instruction_count >= skip_insns)
-	{
-  		for (int i = 0; i < m->ncpus; ++i) {
-    	handle_branch(pc, insn_raw);
-  		}
-	}
+  if (instruction_count >= skip_insns) {
+    for (int i = 0; i < m->ncpus; ++i) {
+      handle_branch(pc, insn_raw);
+    }
+  }
 #endif // BRANCHPROF
 
   int n_cycles = 1; // Check - this should be taken from dromajo
@@ -73,8 +71,8 @@ int iterate_core(RISCVMachine *m, int hartid) {
     return keep_going;
   }
 
-  fprintf(dromajo_stderr, "%d %d 0x%016" PRIx64 " (0x%08x)", hartid, priv,
-          pc, (insn_raw & 3) == 3 ? insn_raw : (uint16_t)insn_raw);
+  fprintf(dromajo_stderr, "%d %d 0x%016" PRIx64 " (0x%08x)", hartid, priv, pc,
+          (insn_raw & 3) == 3 ? insn_raw : (uint16_t)insn_raw);
 
   int iregno = riscv_get_most_recently_written_reg(cpu);
   int fregno = riscv_get_most_recently_written_fp_reg(cpu);
@@ -115,15 +113,14 @@ static void sigintr_handler(int dummy) {
 
 int main(int argc, char **argv) {
 
-  
   RISCVMachine *m = virt_machine_main(argc, argv);
   if (!m)
     return 1;
 
 #ifdef BRANCHPROF
-	branchprof_init();
-	maxinsns = m->common.maxinsns;
-	skip_insns = m->common.skip_insns;	
+  branchprof_init();
+  maxinsns = m->common.maxinsns;
+  skip_insns = m->common.skip_insns;
 #endif // BRANCHPROF
 
   execution_start_ts = get_current_time_in_seconds();
@@ -154,9 +151,9 @@ int main(int argc, char **argv) {
   fprintf(dromajo_stderr, "\nPower off.\n");
 
   virt_machine_end(m);
-  
+
 #ifdef BRANCHPROF
-	branchprof_exit();
+  branchprof_exit();
 #endif // BRANCHPROF
 
   return 0;
