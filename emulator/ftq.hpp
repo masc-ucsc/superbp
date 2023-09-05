@@ -132,6 +132,7 @@ using ftq_entry_ptr = ftq_entry *;
 
 bool is_ftq_full(void);
 bool is_ftq_empty(void);
+uint16_t get_num_free_ftq_entries (void);
 
 #ifdef SUPERBP
 void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target,

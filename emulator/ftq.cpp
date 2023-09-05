@@ -21,6 +21,8 @@ bool is_ftq_full(void) { return (filled_ftq_entries == NUM_FTQ_ENTRIES); }
 
 bool is_ftq_empty(void) { return (filled_ftq_entries == 0); }
 
+uint16_t get_num_free_ftq_entries (void) {return ( NUM_FTQ_ENTRIES - filled_ftq_entries); }
+
 #ifdef SUPERBP
 void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target,
                         IMLI &IMLI_inst)
