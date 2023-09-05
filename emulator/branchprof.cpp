@@ -4,8 +4,6 @@
 #include "predictor.hpp"
 #include <iostream>
 
-//#define DELETE
-
 PREDICTOR bp;
 bool predDir, last_predDir, resolveDir, last_resolveDir;
 uint64_t branchTarget;
@@ -28,6 +26,7 @@ uint8_t running_bb_size, running_fb_size;
 ftq_entry ftq_data; // Only 1 instance - assuming the updates for superscalar
                     // will be done 1 by 1, so they may reuse the same instance
 huq_entry huq_data;
+
 #endif // FTQ
 #endif // SUPERSCALAR
 
@@ -54,6 +53,13 @@ number of taken control flow instructions
 uint64_t branch_count, branch_mispredict_count, jump_count, cti_count,
     misscontrol_count, taken_branch_count;
 
+/* 
+index_from_aligned_fetch_pc is based on the aligned PC, and not on whether the pc is the target of a branch
+so for a branch into a packet to index != 0, index_into_packet is != 0
+*/
+static uint64_t aligned_fetch_pc, last_aligned_fetch_pc;
+static uint16_t index_from_aligned_fetch_pc, last_index_from_aligned_fetch_pc; // starts from pc - (alignedPC) after every redirect
+
 static uint64_t last_pc;
 static uint32_t last_insn_raw;
 static insn_t last_insn, insn;
@@ -63,14 +69,14 @@ bool i0_done = false;
 static uint8_t bb_over = 0, fb_over = 0;
 #endif // EN_BB_FB_COUNT
 #ifdef SUPERSCALAR
-static int16_t inst_index_in_fetch = 0;
+static int16_t inst_index_in_fetch = 0, last_inst_index_in_fetch; // starts from 0 after every redirect
 #endif
 
 extern uint64_t maxinsns, skip_insns;
 
 void branchprof_init() {
   // PREDICTOR bp;
-  pc_trace = fopen("pc_trace.txt", "a");
+  pc_trace = fopen("pc_trace.txt", "w");
   if (pc_trace == nullptr) {
     fprintf(dromajo_stderr,
             "\nerror: could not open pc_trace.txt for dumping trace\n");
@@ -158,15 +164,18 @@ static inline void read_ftq_update_predictor() {
   insn_t update_insn;
   bool update_predDir, update_resolveDir;
 
-  // TODO Check misprediction and resolveDir use correct value
   uint8_t partial_pop = (last_misprediction || last_resolveDir);
 
   if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) {
+  
+  #ifdef DEBUG_FTQ
+  fprintf (stderr, "\nread_ftq_update_predictor : inst_index_in_fetch = %u, partial_pop = %d\n", inst_index_in_fetch, partial_pop);
+  #endif
 
 #ifdef DEBUG_FTQ
-    std::cout << "Deallocating - inst_index_in_fetch = " << inst_index_in_fetch
+    /*std::cout << "Deallocating - inst_index_in_fetch = " << inst_index_in_fetch
               << " last_misprediction = " << last_misprediction
-              << " last_resolveDir = " << last_resolveDir << "\n";
+              << " last_resolveDir = " << last_resolveDir << "\n";*/
 #endif
 
     for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH);
@@ -174,7 +183,6 @@ static inline void read_ftq_update_predictor() {
       if (!is_ftq_empty()) {
         get_ftq_data(&ftq_data);
 
-        // TODO Check resolveDir, predDir, branchTarget
         update_pc = ftq_data.pc;
         update_insn = ftq_data.insn;
         update_resolveDir = ftq_data.resolveDir;
@@ -182,12 +190,18 @@ static inline void read_ftq_update_predictor() {
         update_branchTarget = ftq_data.branchTarget;
 
         // Store the read predictor fields into the predictor
-        // TODO Check if predictor contents need to be saved before doing this.
         copy_ftq_data_to_predictor(&ftq_data);
-
+		  #ifdef DEBUG
+  fprintf (stderr, "Updating predictor tables for pc = %llx with resolvdir = %d, i = %d \n", update_pc, update_resolveDir, i);
+  #endif
         bp.Updatetables(update_pc, update_resolveDir);
+  #ifdef DEBUG
+  fprintf (stderr, "Update predictor tables done for pc = %llx \n", update_pc);
+  #endif
         if (update_insn != insn_t::non_cti) {
-
+			  #ifdef DEBUG
+  			fprintf (stderr, "Allocate huq entry for pc = %llx, target = %llx, resolvedir = %d \n", update_pc, update_branchTarget, update_resolveDir);
+  			#endif
           allocate_huq_entry(/*update_pc,*/ update_branchTarget,
                              update_resolveDir);
         }
@@ -198,7 +212,7 @@ static inline void read_ftq_update_predictor() {
         update_branchTarget);
         }*/
 
-        inst_index_in_fetch--;
+        //inst_index_in_fetch--; // i is being incremented, DO NOT decrement this
       } else {
         fprintf(stderr,
                 "Pop on empty ftq, inst_index_in_fetch = %d, misprediction = "
@@ -206,10 +220,25 @@ static inline void read_ftq_update_predictor() {
                 inst_index_in_fetch, misprediction, resolveDir);
       }
     }
+    inst_index_in_fetch = 0;
+    #ifdef DEBUG
+  	//fprintf (stderr, "||||||||||||||||||||||||||| NUKING FTQ |||||||||||||||||||||||||| \n");
+  	#endif
+  	// TODO - Check if nuke necessary/ correct
+    nuke_ftq();
+    #ifdef DEBUG
+  	fprintf (stderr, "Popping huq, Updating histories \n");
+  	#endif
     while (!is_huq_empty()) {
       get_huq_data(&huq_data);
+      	#ifdef DEBUG
+  			fprintf (stderr, "Updating history for target = %llx, resolvedir = %d \n", huq_data.branchTarget, huq_data.resolveDir);
+  			#endif
       bp.Updatehistory(huq_data.resolveDir, huq_data.branchTarget);
     }
+    #ifdef DEBUG
+  	fprintf (stderr, "Update histories done \n");
+  	#endif
     /*last_pc = update_pc;
     last_resolveDir = update_resolveDir;
     last_predDir = update_predDir;*/
@@ -225,13 +254,12 @@ static inline void read_ftq_update_predictor() {
 #endif // FTQ
 
 static inline void resolve_pc_minus_1_branch(uint64_t pc) {
-  fprintf(stderr, "pc=%lld last_pc=%lld diff=%d pred:%d resolv:%d\n", pc,
-          last_pc, pc - last_pc, last_predDir, last_resolveDir);
 
   if (pc - last_pc == 4) {
     last_resolveDir = false;
 #ifdef PC_TRACE
     fprintf(pc_trace, "%32s\n", "Not Taken Branch");
+    fprintf(stderr, "%32s\n", "Not Taken Branch");
 #endif
   } else {
     last_resolveDir = true;
@@ -241,9 +269,13 @@ static inline void resolve_pc_minus_1_branch(uint64_t pc) {
 #endif // EN_BB_FB_COUNT
 #ifdef PC_TRACE
     fprintf(pc_trace, "%32s\n", "Taken Branch");
+    fprintf(stderr, "%32s\n", "Taken Branch");
 #endif
   }
 
+	// TODO - Temporarily disabled print
+  //fprintf(stderr, "target pc=%llx last_pc (branch pc) =%llx diff=%d pred:%d resolv:%d\n", pc, last_pc, pc - last_pc, last_predDir, last_resolveDir);
+          
   update_counters_pc_minus_1_branch();
   return;
 }
@@ -270,21 +302,26 @@ static inline void close_pc_jump(uint32_t insn_raw) {
   if ((((insn_raw & 0xffffff80) == 0x0))) // ECall
   {
     fprintf(pc_trace, "%32s\n", "ECALL type");
+    fprintf(stderr, "%32s\n", "ECALL type");
   } else if ((insn_raw == 0x100073) || (insn_raw == 0x200073) ||
              (insn_raw == 0x30200073) || (insn_raw == 0x7b200073)) // EReturn
   {
     fprintf(pc_trace, "%32s\n", "ERET type");
+    fprintf(stderr, "%32s\n", "ERET type");
   }
 
   // Jump
   else if ((insn_raw & 0xf) == 0x7) {
     if (((insn_raw & 0xf80) >> 7) == 0x0) {
       fprintf(pc_trace, "%32s\n", "Return");
+      fprintf(stderr, "%32s\n", "Return");
     } else {
       fprintf(pc_trace, "%32s\n", "Reg based Fxn Call");
+      fprintf(stderr, "%32s\n", "Reg based Fxn Call");
     }
   } else {
     fprintf(pc_trace, "%32s\n", "PC relative Fxn Call");
+    fprintf(stderr, "%32s\n", "PC relative Fxn Call");
   }
 #endif
 }
@@ -301,11 +338,13 @@ static inline void close_pc_non_cti() {
   resolveDir = false;
 #ifdef PC_TRACE
   fprintf(pc_trace, "%32s\n", "Non - CTI");
+  fprintf(stderr, "%32s\n", "Non - CTI");
 #endif
 }
 
 void print_pc_insn(uint64_t pc, uint32_t insn_raw) {
   fprintf(pc_trace, "%20lx\t|%20x\t", pc, insn_raw);
+  fprintf(stderr, "Fetched %d|\t%20lx\t|%20x\t", inst_index_in_fetch, pc, insn_raw);
   if (insn_raw < 0x100) {
     fprintf(pc_trace, "\t|");
   } else {
@@ -357,22 +396,65 @@ static inline void handle_nb() {
   }
 }
 
+  /******************************************************************
+  As given, the simulator (dromajo) always fetches correctly,
+  i.e. the FETCH_WIDTH instructions being received by the CPU are the actual
+  dynamic code execution stream, there is no wrong fetch, only wrong prediction
+  hence, all entries in FTQ are for correct instructions
+  hence -> ??? NO NEED TO NUKE UNLESS ITS REAL SUPERSCALAR RETURNING SEQUENTIAL
+  INSTRUCTIONS FROM STATIC BINARY ??? Hence, for now -> If branch is correctly
+  predicted -> update MPKI + update predictor - but pr, pr, up, up If branch is
+  mispredicted -> update MPKI + update predictor - pr, up, pr, up i.e. if
+  misprediction, immediately update rather than after FETCH_WIDTH instructions
+  and restart counter to collect FETCH_WIDTH instructions for next update
+
+  Also, update after FETCH_WIDTH instructions means update after 1 CC in
+  Superscalar Check if this needs to be delayed + split, i.e. global history to
+  be updated after a few CC, but actual predictor table to be
+  updated after commit
+  *******************************************************************/
+  
 /*
 For getting a prediction and updating predictor, like hardware, there will be a
 race in software also, I think in any CC, I should read the predictor first with
 whatever history is there and update it after the read. That is what will happen
 in hardware.
 */
+
+/*
+TODO
+Changes to return multiple predictions per FetchPC
+1. Dromajo will still send actual instruction PCs. 
+2. Calculate FetchPC and index in packet from PC.
+3. Check if it is sequentially next PC
+	If instruction == first in packet (either index == 0 or coming in from a branch/jump etc), then get prediction(s) using FetchPC- should return (fetch_width * num_subentries) predictions and related info. All must be saved into FTQ.
+	On subsequent calls, check if PC is within fetch_packet and if it is sequential, if both, then 
+		If PC is not sequential i.e. taken branch, then  
+*/
+
+/*
+Changes to "get" multiple predictions per FetchPC
+The predictor will still return 1 prediction per PC, but branchprof will call get_prediction multiple times for each FetchPC using different indices.
+get_prediction must be called together for each PC
+Hence allocate must also be done at this time immediately after get_prediction, so allocate to last_insn must be removed, Predict + Allocate to insn and then Resolve + update later at resolution time.
+
+TODO - Check all cases
+In order to allocate_ftq_entry
+If PC == FetchPC aligned, then call get_prediction multiple times to get all the predictions, save each in FTQ.
+If PC != FetchPC - 
+	1. If 
+ 	2.
+*/
+
 void handle_branch(uint64_t pc, uint32_t insn_raw) {
 
-#ifdef DELETE1
-  // if ( pc == 0x665512)
-  printf("pc = %lx\n", pc);
-#endif // DELETE1
 
-  branchTarget = pc;
-  bb_over = 0, fb_over = 0;
-  misprediction = false;
+	aligned_fetch_pc = (pc >> (LOG2_FETCH_WIDTH + 2)) << (LOG2_FETCH_WIDTH + 2);
+	index_from_aligned_fetch_pc = (pc - aligned_fetch_pc)>>2; 
+
+	branchTarget = pc;
+  	bb_over = 0, fb_over = 0;
+  	misprediction = false;
 
   // for (int i = 0; i < m->ncpus; ++i)
   if (i0_done == true) {
@@ -381,27 +463,17 @@ void handle_branch(uint64_t pc, uint32_t insn_raw) {
       resolve_pc_minus_1_branch(pc);
     }
 
-    // Allocation - all info for last_insn
-    // For branches - resolveDir and branchTarget are not available for insn,
-    // branchtarget is available only in next CC even for jumps, so unavail for
-    // insn Best - allocate for last_insn, in the beginning just after resolving
-    // a branch
+	// Update ftq if last_insn != non_cti
+	if (last_insn != insn_t::non_cti)
+	{
+		ftq_update_resolvedinfo (last_inst_index_in_fetch, last_insn, last_resolveDir, branchTarget); 
+	}
+
 #ifdef SUPERSCALAR
 #ifdef FTQ
-    if (is_ftq_full() == false) {
-      allocate_ftq_entry(last_predDir, last_resolveDir, last_pc, last_insn,
-                         branchTarget, bp);
-      inst_index_in_fetch++;
-    } else {
-      fprintf(stderr, "%s\n", "FTQ full");
-    }
-
-    // TODO Check - Read FTQ + Update predictor based on all info about
-    // last_insn
     read_ftq_update_predictor();
 #endif // FTQ
 #else  // #ifndef SUPERSCALAR
-    // TODO Check last_pc, resolveDir, predDir, branchTarget
     bp.UpdatePredictor(last_pc, last_resolveDir, last_predDir, branchTarget);
 #endif // SUPERSCALAR
   }
@@ -411,7 +483,8 @@ void handle_branch(uint64_t pc, uint32_t insn_raw) {
   // Now start handling insn at pc
 
 #ifdef PC_TRACE
-  print_pc_insn(pc, insn_raw)
+fprintf (stderr, "\n");
+  print_pc_insn(pc, insn_raw);
 #endif
 
       if (((insn_raw & 0x7fff) == 0x73)) {
@@ -443,8 +516,30 @@ void handle_branch(uint64_t pc, uint32_t insn_raw) {
   update_bb_fb();
 #endif // EN_BB_FB_COUNT
 
-  // Get predDir for pc
-  predDir = bp.GetPrediction(pc);
+  // Get predDir - TODO new code - so Check
+  if (inst_index_in_fetch == 0)      // (pc == aligned_fetch_pc)
+  {
+  	uint64_t temp_pc = pc;
+  	set_ftq_index (inst_index_in_fetch);
+  	bool temp_predDir = false;
+  	for (int i = 0; i < FETCH_WIDTH; i++)
+  	{
+  		temp_predDir = bp.GetPrediction(temp_pc);
+  		// Allocate
+  		if (is_ftq_full() == false) {
+  			// Always allocate with default info - i.e. a non_cti 
+  			// At this point if 1st instruction for which correct info is avail is non-cti it is already updated
+  			// If it is cti - then branchtarget is avail in next CC and hence should only be updated condirionally then
+    		allocate_ftq_entry(temp_predDir, false, temp_pc, insn_t::non_cti, temp_pc+2, bp);
+    	} else {
+      fprintf(stderr, "%s\n", "FTQ full");
+    	}
+  		// Repeat for next sequential instruction
+  		temp_pc+=2;
+  	}
+  }
+  //Get predDir for the instruction
+  predDir = get_predDir_from_ftq (inst_index_in_fetch);
 
   // Update counters -
   // If this instruction is not a branch - straight case - predDir and
@@ -455,39 +550,17 @@ void handle_branch(uint64_t pc, uint32_t insn_raw) {
     handle_nb();
   }
 
-#ifdef DELETE1
-  if (pc == 0x665512) {
-    printf("pc = %lx, insn_raw = %x, insn = %d, last_pc = %lx, last_insn_raw = "
-           "%x, last_insn = %d, predDir = %d, resolveDir = %d\n",
-           pc, insn_raw, insn, last_pc, last_insn_raw, last_insn, predDir,
-           resolveDir);
-  }
-#endif // DELETE1
+  	benchmark_instruction_count++;
+  	last_inst_index_in_fetch = inst_index_in_fetch;
+	inst_index_in_fetch++;
 
-  benchmark_instruction_count++;
-
-  /******************************************************************
-  As given, the simulator (dromajo) always fetches correctly,
-  i.e. the FETCH_WIDTH instructions being received by the CPU are the actual
-  dynamic code execution stream, there is no wrong fetch, only wrong prediction
-  hence, all entries in FTQ are for correct instructions
-  hence -> ??? NO NEED TO NUKE UNLESS ITS REAL SUPERSCALAR RETURNING SEQUENTIAL
-  INSTRUCTIONS FROM STATIC BINARY ??? Hence, for now -> If branch is correctly
-  predicted -> update MPKI + update predictor - but pr, pr, up, up If branch is
-  mispredicted -> update MPKI + update predictor - pr, up, pr, up i.e. if
-  misprediction, immediately update rather than after FETCH_WIDTH instructions
-  and restart counter to collect FETCH_WIDTH instructions for next update
-
-  Also, update after FETCH_WIDTH instructions means update after 1 CC in
-  Superscalar Check if this needs to be delayed + split, i.e. global history to
-  be updated after a few CC, but actual predictor table to be
-  updated after commit
-  *******************************************************************/
-
-  last_pc = pc;
-  last_insn_raw = insn_raw;
-  last_insn = insn;
-  last_predDir = predDir;
+  	last_pc = pc;
+  	last_insn_raw = insn_raw;
+  	last_insn = insn;
+  	last_predDir = predDir;
+  	last_aligned_fetch_pc = aligned_fetch_pc;
+	last_index_from_aligned_fetch_pc = index_from_aligned_fetch_pc;
+  
   if (insn != insn_t::branch) {
     last_resolveDir = resolveDir;
     last_misprediction = misprediction;

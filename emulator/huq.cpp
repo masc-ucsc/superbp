@@ -68,19 +68,26 @@ void allocate_huq_entry(void)
 
 #ifdef DEBUG_HUQ
 #ifdef BATAGE
-  std::cout << "Entry # " << next_allocate_index
-            << " allocated to PC = " << std::hex << pc << std::dec << "\n";
+  std::cout << "HUQ Entry # " << next_allocate_index
+            << " allocated to target = " << std::hex << branchTarget << std::dec << "\n";
 #endif // BATAGE
 #endif // DEBUG_HUQ
 
   next_allocate_index = (next_allocate_index + 1) % NUM_HUQ_ENTRIES;
   filled_huq_entries++;
-#ifdef DEBUG_ALLOC
+#ifdef DEBUG_HUQ
   std::cout << "After allocation - filled_huq_entries = " << filled_huq_entries
             << ", next_allocate_index = " << next_allocate_index << "\n";
 #endif // DEBUG_HUQ
   return;
 }
+
+#ifdef BATAGE
+void huq_update_resolvedinfo (uint16_t index, bool resolveDir)
+{
+	huq[index].resolveDir = resolveDir;
+}
+#endif // BATAGE
 
 #ifdef SUPERBP
 void get_huq_data(IMLI &IMLI_inst)
@@ -123,14 +130,14 @@ void get_huq_data()
 
 #ifdef DEBUG_HUQ
 #ifdef BATAGE
-  std::cout << "Entry # " << next_free_index
-            << " deallocated with PC = " << std::hex << huq_data_ptr->pc
+  std::cout << "HUQ Entry # " << next_free_index
+            << " deallocated with branchTarget = " << std::hex << huq_data_ptr->branchTarget
             << std::dec << "\n";
 #endif // BATAGE
 #endif // DEBUG_HUQ
   next_free_index = (next_free_index + 1) % NUM_HUQ_ENTRIES;
   filled_huq_entries--;
-#ifdef DEBUG_ALLOC
+#ifdef DEBUG_HUQ
   std::cout << "After deallocation - filled_huq_entries = "
             << filled_huq_entries << ", next_free_index = " << next_free_index
             << "\n";

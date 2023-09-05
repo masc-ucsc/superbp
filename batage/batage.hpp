@@ -8,6 +8,7 @@
 #include <vector>
 
 // ARM instructions are 4-byte aligned ==> shift PC by 2 bits
+// TODO - Check if the PC_SHIFT should be based on alignment or on instruction size, since we use RV32I
 #define PC_SHIFT 1 // 1 for RISCV
 
 // NUMG: number of tagged banks (also, number of non-null global history
@@ -77,7 +78,7 @@
 #define GHGBITS 2
 #endif
 
-#define DEBUG
+//#define DEBUG
 
 using namespace std;
 

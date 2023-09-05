@@ -12,7 +12,9 @@
 #include "../batage/batage.hpp"
 #endif
 
-#define NUM_HUQ_ENTRIES (2 * FETCH_WIDTH)
+//#define DEBUG_HUQ
+
+#define NUM_HUQ_ENTRIES (FETCH_WIDTH * INFO_PER_ENTRY)
 
 class huq_entry {
 
@@ -80,6 +82,7 @@ void get_huq_data(IMLI &IMLI_inst);
 #elif defined BATAGE
 void allocate_huq_entry(/*const uint64_t& pc,*/ const uint64_t &branchTarget,
                         const bool &resolveDir);
+void huq_update_resolvedinfo (uint16_t index, bool resolveDir);
 void get_huq_data(huq_entry *huq_data_ptr);
 #endif
 void nuke_huq();

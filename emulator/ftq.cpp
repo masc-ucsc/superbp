@@ -71,18 +71,39 @@ void allocate_ftq_entry(void)
 #ifdef DEBUG_FTQ
 #ifdef BATAGE
   std::cout << "Entry # " << next_allocate_index
-            << " allocated to PC = " << std::hex << pc << std::dec << "\n";
+            << " allocated to PC = " << std::hex << pc << std::dec <<"\n";
 #endif // BATAGE
 #endif // DEBUG_FTQ
 
   next_allocate_index = (next_allocate_index + 1) % NUM_FTQ_ENTRIES;
   filled_ftq_entries++;
-#ifdef DEBUG_ALLOC
+#ifdef DEBUG_FTQ
   std::cout << "After allocation - filled_ftq_entries = " << filled_ftq_entries
             << ", next_allocate_index = " << next_allocate_index << "\n";
 #endif // DEBUG_FTQ
   return;
 }
+
+#ifdef BATAGE
+void set_ftq_index (uint16_t index)
+{
+	next_allocate_index = index;
+	next_free_index = index;
+}
+
+bool get_predDir_from_ftq (uint16_t index)
+{
+	return ftq[index].predDir;
+}
+
+void ftq_update_resolvedinfo (uint16_t index, insn_t insn, bool resolveDir, uint64_t branchTarget)
+{
+	ftq[index].insn = insn;
+	ftq[index].resolveDir = resolveDir;
+	ftq[index].branchTarget = branchTarget;
+	return;
+}
+#endif // BATAGE
 
 #ifdef SUPERBP
 void get_ftq_data(IMLI &IMLI_inst)
@@ -132,7 +153,7 @@ void get_ftq_data()
 #endif // DEBUG_FTQ
   next_free_index = (next_free_index + 1) % NUM_FTQ_ENTRIES;
   filled_ftq_entries--;
-#ifdef DEBUG_ALLOC
+#ifdef DEBUG_FTQ
   std::cout << "After deallocation - filled_ftq_entries = "
             << filled_ftq_entries << ", next_free_index = " << next_free_index
             << "\n";
@@ -173,8 +194,12 @@ void nuke_ftq() {
     filled_ftq_entries--;
   }
 #elif defined BATAGE
+#ifdef DEBUG_FTQ
+	fprintf (stderr, "nuke called with filled_ftq_entries = %u\n", filled_ftq_entries);
+#endif // DEBUG_FTQ 
+	//ftq_entry* temp;
   while (filled_ftq_entries != 0) {
-    ftq[next_free_index].~ftq_entry();
+    //*temp = std::move(ftq[next_free_index]);
     next_free_index = (next_free_index + 1) % NUM_FTQ_ENTRIES;
     filled_ftq_entries--;
   }

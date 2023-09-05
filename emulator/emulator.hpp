@@ -8,7 +8,8 @@
 
 #define SUPERSCALAR
 #ifdef SUPERSCALAR
-#define FETCH_WIDTH 2
+#define LOG2_FETCH_WIDTH 1
+#define FETCH_WIDTH (1 << LOG2_FETCH_WIDTH)
 #define FTQ
 #else // SUPERSCALAR
 #define FETCH_WIDTH 1

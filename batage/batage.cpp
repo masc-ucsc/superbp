@@ -429,7 +429,8 @@ bool batage::predict(uint32_t pc, const histories &p) {
   // For superscalar - save s, p, hit
   bool predict = s[bp].pred();
 
-  fprintf(stderr, "ba.predict pc=%lld predict:%d\n", pc, predict);
+	// TODO Temporarily Diabled
+  //fprintf(stderr, "ba.predict pc=%llx predict:%d\n", pc, predict);
 
   return predict;
 }

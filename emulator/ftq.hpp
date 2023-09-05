@@ -20,7 +20,8 @@
 FILE* fp = fopen ("ftq_log.txt", w+);
 #endif*/
 
-#define NUM_FTQ_ENTRIES (2 * FETCH_WIDTH)
+//#define INFO_PER_ENTRY 1
+#define NUM_FTQ_ENTRIES (FETCH_WIDTH * INFO_PER_ENTRY * 2)
 
 class ftq_entry {
 
@@ -43,26 +44,26 @@ public:
   Folded_history *ch_t_1;
 #elif defined BATAGE
 public:
-  bool predDir;
-  bool resolveDir;
-  uint64_t pc;
-  insn_t insn;
-  uint64_t branchTarget;
+  bool predDir;			// 1 per instruction
+  bool resolveDir;		// 1 per instruction
+  uint64_t pc;			/* 1 per instruction (option is to do 1 per fetch_pc + index for each instruction, will save space) */
+  insn_t insn;			// 1 per instruction
+  uint64_t branchTarget;// 1 per instruction - TODO Check if required
 
-  vector<int32_t> hit;   // size = NUMG
-  vector<dualcounter> s; // size = NUMG
+  vector<int32_t> hit;   // size = NUMG - 1 per fetch_pc
+  vector<dualcounter> s; // size = NUMG - 1 per instruction
   int meta;
   int bp;
   // Check if required -> cd, cat , predictor.pred.<tagged_enry>.dualc,
   // predictor.pred.getg(hit[i]).dualc.n
 
-  int bi;
-  int bi2;
+  int bi;				// 1 per fetch packet
+  int bi2;				// 1 per fetch packet
   // int b[1<<LOGB];
   // int b2[1<<LOGB2];
-  int b_bi;
-  int b2_bi2;
-  std::vector<int> gi;
+  int b_bi;				// 1 per instruction
+  int b2_bi2;			// 1 per instruction
+  std::vector<int> gi;	// 1 per fetch packet
 
   // ptr, fold
 
@@ -131,6 +132,7 @@ using ftq_entry_ptr = ftq_entry *;
 
 bool is_ftq_full(void);
 bool is_ftq_empty(void);
+
 #ifdef SUPERBP
 void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target,
                         IMLI &IMLI_inst);
@@ -140,6 +142,10 @@ void allocate_ftq_entry(const bool &predDir, const bool &resolveDir,
                         const uint64_t &pc, const insn_t &insn,
                         const uint64_t &branchTarget,
                         const PREDICTOR &predictor); // , histories* hist_ptr);
+void set_ftq_index (uint16_t index);
+bool get_predDir_from_ftq (uint16_t index);
+void ftq_update_resolvedinfo (uint16_t index, insn_t insn, bool resolveDir, uint64_t branchTarget); 
 void get_ftq_data(ftq_entry *ftq_data_ptr);
+void deallocate_ftq_entry(void);
 #endif
 void nuke_ftq();
