@@ -21,7 +21,7 @@ FILE* fp = fopen ("ftq_log.txt", w+);
 #endif*/
 
 //#define INFO_PER_ENTRY 1
-#define NUM_FTQ_ENTRIES (FETCH_WIDTH * INFO_PER_ENTRY * 2)
+#define NUM_FTQ_ENTRIES (INFO_PER_ENTRY * 2)
 
 class ftq_entry {
 
@@ -50,6 +50,14 @@ public:
   insn_t insn;			// 1 per instruction
   uint64_t branchTarget;// 1 per instruction - TODO Check if required
 
+/* Changes for SS predictor
+hit - vector of banks that hit, stays the same
+s - vector of counters from hitting banks -> need correct vector for each pc
+bp - Dual counter procviding the final prediction, need correct for each 
+bi, bi2 - Stays the same
+gi - stays the same 
+b_bi, b2_bi2 - Must return a vector - one element for each subentry/ offset ???
+*/
   vector<int32_t> hit;   // size = NUMG - 1 per fetch_pc
   vector<dualcounter> s; // size = NUMG - 1 per instruction
   int meta;

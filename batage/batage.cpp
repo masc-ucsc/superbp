@@ -401,6 +401,10 @@ bool batage::predict(uint32_t pc, const histories &p) {
 #endif
     gi[i] = p.gindex(hash_pc, i);
     if (getgb(i).tag == p.gtag(hash_pc, i)) {
+#define CHECK_SS
+#ifdef CHECK_SS
+	fprintf (stderr, "pc = %llx, hash_pc = %llx, tag = %x\n", pc, hash_pc, getgb(i).tag );
+#endif // CHECK_SS
       hit.push_back(i);
       s.push_back(getgo(i, offset_within_entry).dualc);
     }

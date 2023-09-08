@@ -448,9 +448,13 @@ If PC != FetchPC -
 
 void handle_branch(uint64_t pc, uint32_t insn_raw) {
 
-
-	aligned_fetch_pc = (pc >> (LOG2_FETCH_WIDTH + 2)) << (LOG2_FETCH_WIDTH + 2);
-	index_from_aligned_fetch_pc = (pc - aligned_fetch_pc)>>2; 
+	// TODO - Written for 16 bit instructions, actual are mostly 32, so wrong aligned fetch_pc and offset
+	aligned_fetch_pc = (pc >> (LOG2_FETCH_WIDTH + 1)) << (LOG2_FETCH_WIDTH + 1);
+	index_from_aligned_fetch_pc = (pc - aligned_fetch_pc)>>1; 
+	
+	#ifdef CHECK_SS
+	//fprintf (stderr, "aligned_fetch_pc = %llu, index = %llu and ", aligned_fetch_pc, index_from_aligned_fetch_pc);
+	#endif // CHECK_SS
 
 	branchTarget = pc;
   	bb_over = 0, fb_over = 0;
@@ -515,6 +519,14 @@ fprintf (stderr, "\n");
 #ifdef EN_BB_FB_COUNT
   update_bb_fb();
 #endif // EN_BB_FB_COUNT
+
+/*
+Present - For PC with index = 0, get fetch_width predictions using expected/ sequential pcs.
+Two options - 
+1. Probably harder - Call get_prediciton multiple times, "all calls to sub entries in same entry must match the same tag". No change to ftq.
+2. Probably easier - Call get_prediction only once, it must return all (info per entry) predictions. FTQ must save the following info "correct and separate" for each of the pcs in every cc - 
+bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2 
+*/
 
   // Get predDir - TODO new code - so Check
   if (inst_index_in_fetch == 0)      // (pc == aligned_fetch_pc)

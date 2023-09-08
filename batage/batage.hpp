@@ -30,7 +30,8 @@
 #define BHYSTBITS 2
 
 // Check - change it to use FETCH_WIDTH
-#define FETCHWIDTH 1
+#define LOG2FETCHWIDTH 0
+#define FETCHWIDTH (1 << LOG2FETCHWIDTH) 
 #define NUM_TAKEN_BRANCHES 1
 #define INFO_PER_ENTRY (FETCHWIDTH * NUM_TAKEN_BRANCHES)
 #define LOGE 0 // log2(INFO_PER_ENTRY)
@@ -170,9 +171,9 @@ public:
   int b_bi;
   int b2_bi2;
   int *gi;               // hashes for the tagged banks
-  vector<int> hit;       // tell which banks have a hit
-  vector<dualcounter> s; // dual-counters for the hitting banks
-  int bp; // dual-counter providing the final BATAGE prediction - index within s
+  vector<int> hit;       // tell which banks have a hit - stays same for SS
+  vector<dualcounter> s; // dual-counters for the hitting banks - vector of vectors for SS
+  int bp; // dual-counter providing the final BATAGE prediction - index within s - vector for SS
   int cat;  // CAT counter
   int meta; // for a small accuracy boost
 #ifdef USE_CD
