@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <math.h>
 #include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
 
 #include "batage.hpp"
@@ -342,6 +343,8 @@ batage::batage() {
   predict_pcs = fopen("predict_pcs.txt", "w+");
   update_pcs = fopen("update_pcs.txt", "w+");
 #endif // DEBUG
+
+s.reserve(INFO_PER_ENTRY);
 }
 
 #ifdef BANK_INTERLEAVING
@@ -381,35 +384,44 @@ tagged_entry &batage::getgo(int i, uint32_t offset_within_entry) {
 #endif
 }
 
-bool batage::predict(uint32_t pc, const histories &p) {
+std::vector<bool>& batage::predict_vec(uint32_t pc, const histories &p) {
 
 #ifdef DEBUG
-  fprintf(predict_pcs, "%lu \n", pc);
+  //fprintf(predict_pcs, "%lu \n", pc);
+  fprintf (stderr, "predict for pc = %llx\n", pc);
 #endif // DEBUG
 
 #ifdef PC_SHIFT
   uint32_t hash_pc = pc ^ (pc >> PC_SHIFT);
 #endif
 
-  uint32_t offset_within_entry = hash_pc % INFO_PER_ENTRY;
+  uint32_t offset_within_entry; // = hash_pc % INFO_PER_ENTRY;
 
   hit.clear();
-  s.clear();
+  // std::cerr << "00000" << "\n";
+  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  {
+  	s[offset_within_entry].clear();
+  }
+  // std::cerr << "11111" << "\n";
   for (int i = 0; i < NUMG; i++) {
 #ifdef BANK_INTERLEAVING
     bank[i] = p.phybank(i);
 #endif
     gi[i] = p.gindex(hash_pc, i);
     if (getgb(i).tag == p.gtag(hash_pc, i)) {
-#define CHECK_SS
+//#define CHECK_SS
 #ifdef CHECK_SS
 	fprintf (stderr, "pc = %llx, hash_pc = %llx, tag = %x\n", pc, hash_pc, getgb(i).tag );
 #endif // CHECK_SS
       hit.push_back(i);
-      s.push_back(getgo(i, offset_within_entry).dualc);
+      for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  		{
+      		s[offset_within_entry].push_back(getgo(i, offset_within_entry).dualc);
+      	}
     }
   }
-
+	// std::cerr << "22222" << "\n";
 #ifdef BANK_INTERLEAVING
 #ifndef SIMFASTER
   check_bank_conflicts();
@@ -418,21 +430,42 @@ bool batage::predict(uint32_t pc, const histories &p) {
 
   bi = hash_pc & ((1 << LOGBE) - 1);
   bi2 = bi & ((1 << LOGB2E) - 1);
-  b_bi = b[bi][offset_within_entry];
-  b2_bi2 = b2[bi2][offset_within_entry];
-  s.push_back(dualcounter(b_bi, b2_bi2));
-
-  // bp = index within s
-  bp = 0;
-  for (int i = 1; i < (int)s.size(); i++) {
-    if (s[i].conflevel(meta) < s[bp].conflevel(meta)) {
-      bp = i;
-    }
+  b_bi.clear();
+  b2_bi2.clear();
+  // std::cerr << "33333" << "\n";
+  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  {
+  		b_bi.push_back (b[bi][offset_within_entry]);
+  		b2_bi2.push_back(b2[bi2][offset_within_entry]);
+  		s[offset_within_entry].push_back(dualcounter(b_bi[offset_within_entry], b2_bi2[offset_within_entry]));
   }
+	// std::cerr << "44444" << "\n";
+  // bp = index within s
+  bp.clear();
+  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  {
+  int t = 0;
+  	for (int i = 1; i < (int)s.size(); i++) {
+    	if (s[offset_within_entry][i].conflevel(meta) < s[offset_within_entry][t].conflevel(meta)) {
+      	t = i;
+    	}
+  	}
+  	bp.push_back(t);
+  	#ifdef DEBUG
+  		fprintf (stderr, "Offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_entry, bp[offset_within_entry], b_bi[offset_within_entry], b2_bi2[offset_within_entry]);
+	#endif // DEBUG
+  }
+ 
 
+	// std::cerr << "55555" << "\n";
   // For superscalar - save s, p, hit
-  bool predict = s[bp].pred();
-
+  predict.clear();
+  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  {
+   	//predict[offset_within_entry] = s[offset_within_entry][bp].pred();
+   	predict.push_back(s[offset_within_entry][bp[offset_within_entry]].pred());
+  }
+	// std::cerr << "66666" << "\n";
 	// TODO Temporarily Diabled
   //fprintf(stderr, "ba.predict pc=%llx predict:%d\n", pc, predict);
 
@@ -456,7 +489,7 @@ void batage::update_bimodal(bool taken, uint32_t offset_within_entry) {
 
 // i - index within s
 void batage::update_entry(int i, uint32_t offset_within_entry, bool taken) {
-  ASSERT(i < s.size());
+  ASSERT(i < s[offset_within_entry].size());
   if (i < (int)hit.size()) {
     getgo(hit[i], offset_within_entry).dualc.update(taken);
   } else {
@@ -466,11 +499,12 @@ void batage::update_entry(int i, uint32_t offset_within_entry, bool taken) {
 
 /*For superscalar - anything that is non constant & is used before/ without
  * assigning a value must be saved in ftq*/
-void batage::update(uint32_t pc, bool taken, const histories &p,
+void batage::update(uint32_t pc, uint32_t offset_within_entry, bool taken, const histories &p,
                     bool noalloc = false) {
 
 #ifdef DEBUG
-  fprintf(update_pcs, "%lu \n", pc);
+  //fprintf(update_pcs, "%lu \n", pc);
+    fprintf (stderr, "update for pc = %llx, ", pc);
 #endif // DEBUG
 
 #ifdef PC_SHIFT
@@ -478,14 +512,18 @@ void batage::update(uint32_t pc, bool taken, const histories &p,
   pc ^= pc >> PC_SHIFT;
 #endif
 
-  uint32_t offset_within_entry = pc % INFO_PER_ENTRY;
-  b[bi][offset_within_entry] = b_bi;
-  b2[bi2][offset_within_entry] = b2_bi2;
+  //uint32_t offset_within_entry = pc % INFO_PER_ENTRY;
+  
+  #ifdef DEBUG
+  fprintf (stderr, "offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_entry, bp[offset_within_entry], b_bi[offset_within_entry], b2_bi2[offset_within_entry]);
+  #endif // DEBUG
+  b[bi][offset_within_entry] = b_bi[offset_within_entry];
+  b2[bi2][offset_within_entry] = b2_bi2[offset_within_entry];
 
 #ifdef USE_META
-  if ((s.size() > 1) && (s[0].sum() == 1) && s[1].highconf() &&
-      (s[0].pred() != s[1].pred())) {
-    if (s[0].pred() == taken) {
+  if ((s[offset_within_entry].size() > 1) && (s[offset_within_entry][0].sum() == 1) && s[offset_within_entry][1].highconf() &&
+      (s[offset_within_entry][0].pred() != s[offset_within_entry][1].pred())) {
+    if (s[offset_within_entry][0].pred() == taken) {
       if (meta < 15)
         meta++;
     } else {
@@ -496,34 +534,34 @@ void batage::update(uint32_t pc, bool taken, const histories &p,
 #endif
 
   // update from 0 to bp-1
-  for (int i = 0; i < bp; i++) {
-    if ((meta >= 0) || s[i].lowconf() || (s[i].pred() != s[bp].pred()) ||
+  for (int i = 0; i < bp[offset_within_entry]; i++) {
+    if ((meta >= 0) || s[offset_within_entry][i].lowconf() || (s[offset_within_entry][i].pred() != s[offset_within_entry][bp[offset_within_entry]].pred()) ||
         ((rando() % 8) == 0)) {
       getgo(hit[i], offset_within_entry).dualc.update(taken);
     }
   }
   // update at bp
-  if ((bp < (int)hit.size()) && s[bp].highconf() && s[bp + 1].highconf() &&
-      (s[bp + 1].pred() == taken) &&
-      ((s[bp].pred() == taken) || (cat >= (CATMAX / 2)))) {
-    if (!s[bp].saturated() || ((meta < 0) && ((rando() % 8) == 0))) {
-      getgo(hit[bp], offset_within_entry).dualc.decay();
+  if ((bp[offset_within_entry] < (int)hit.size()) && s[offset_within_entry][bp[offset_within_entry]].highconf() && s[offset_within_entry][bp[offset_within_entry] + 1].highconf() &&
+      (s[offset_within_entry][bp[offset_within_entry] + 1].pred() == taken) &&
+      ((s[offset_within_entry][bp[offset_within_entry]].pred() == taken) || (cat >= (CATMAX / 2)))) {
+    if (!s[offset_within_entry][bp[offset_within_entry]].saturated() || ((meta < 0) && ((rando() % 8) == 0))) {
+      getgo(hit[bp[offset_within_entry]], offset_within_entry).dualc.decay();
     }
   } else {
-    update_entry(bp, offset_within_entry, taken);
+    update_entry(bp[offset_within_entry], offset_within_entry, taken);
   }
   // update at bp+1
-  if (!s[bp].highconf() && (bp < (int)hit.size())) {
-    update_entry(bp + 1, offset_within_entry, taken);
+  if (!s[offset_within_entry][bp[offset_within_entry]].highconf() && (bp[offset_within_entry] < (int)hit.size())) {
+    update_entry(bp[offset_within_entry] + 1, offset_within_entry, taken);
   }
 
   // ALLOCATE
   // TODO Check what to do for these getg (for allocation)
-  bool allocate = !noalloc && (s[bp].pred() != taken);
+  bool allocate = !noalloc && (s[offset_within_entry][bp[offset_within_entry]].pred() != taken);
 
   if (allocate && ((int)(rando() % MINAP) >= ((cat * MINAP) / (CATMAX + 1)))) {
     int i = (hit.size() > 0) ? hit[0] : NUMG;
-    i -= rando() % (1 + s[0].diff() * SKIPMAX / dualcounter::nmax);
+    i -= rando() % (1 + s[offset_within_entry][0].diff() * SKIPMAX / dualcounter::nmax);
     int mhc = 0;
     while (--i >= 0) {
       if (getgo(i, offset_within_entry).dualc.highconf()) {

@@ -35,6 +35,8 @@ extern uint64_t instruction_count;    // total # of instructions - including
                                       // skipped and benchmark instructions
 uint64_t benchmark_instruction_count; // total # of benchmarked instructions
                                       // only - excluding skip instructions
+                                      
+uint64_t packet_pc;
 
 /*
 * missPredict per branch
@@ -191,15 +193,15 @@ static inline void read_ftq_update_predictor() {
 
         // Store the read predictor fields into the predictor
         copy_ftq_data_to_predictor(&ftq_data);
-		  #ifdef DEBUG
+		  #ifdef DEBUG_FTQ
   fprintf (stderr, "Updating predictor tables for pc = %llx with resolvdir = %d, i = %d \n", update_pc, update_resolveDir, i);
   #endif
-        bp.Updatetables(update_pc, update_resolveDir);
-  #ifdef DEBUG
+        bp.Updatetables(update_pc, i, update_resolveDir);
+  #ifdef DEBUG_FTQ
   fprintf (stderr, "Update predictor tables done for pc = %llx \n", update_pc);
   #endif
         if (update_insn != insn_t::non_cti) {
-			  #ifdef DEBUG
+			  #ifdef DEBUG_HUQ
   			fprintf (stderr, "Allocate huq entry for pc = %llx, target = %llx, resolvedir = %d \n", update_pc, update_branchTarget, update_resolveDir);
   			#endif
           allocate_huq_entry(/*update_pc,*/ update_branchTarget,
@@ -222,21 +224,21 @@ static inline void read_ftq_update_predictor() {
     }
     inst_index_in_fetch = 0;
     #ifdef DEBUG
-  	//fprintf (stderr, "||||||||||||||||||||||||||| NUKING FTQ |||||||||||||||||||||||||| \n");
+  	fprintf (stderr, "||||||||||||||||||||||||||| NUKING FTQ |||||||||||||||||||||||||| \n");
   	#endif
   	// TODO - Check if nuke necessary/ correct
     nuke_ftq();
-    #ifdef DEBUG
+    #ifdef DEBUG_HUQ
   	fprintf (stderr, "Popping huq, Updating histories \n");
   	#endif
     while (!is_huq_empty()) {
       get_huq_data(&huq_data);
-      	#ifdef DEBUG
+      	#ifdef DEBUG_HUQ
   			fprintf (stderr, "Updating history for target = %llx, resolvedir = %d \n", huq_data.branchTarget, huq_data.resolveDir);
   			#endif
       bp.Updatehistory(huq_data.resolveDir, huq_data.branchTarget);
     }
-    #ifdef DEBUG
+    #ifdef DEBUG_HUQ
   	fprintf (stderr, "Update histories done \n");
   	#endif
     /*last_pc = update_pc;
@@ -533,22 +535,44 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   {
   	uint64_t temp_pc = pc;
   	set_ftq_index (inst_index_in_fetch);
-  	bool temp_predDir = false;
-  	for (int i = 0; i < FETCH_WIDTH; i++)
+  	
+  	// temp_predDir = bp.GetPrediction(temp_pc);
+  	std::vector<bool> vec_predDir(INFO_PER_ENTRY, false);
+  	#ifdef DEBUG_FTQ
+    {
+      std::cerr << "getting predictions" << "\n";
+    }
+    #endif // DEBUG_FTQ
+	//vec_predDir = std::move(bp.GetPrediction(temp_pc));
+	vec_predDir = bp.GetPrediction(temp_pc);	
+	#ifdef DEBUG_FTQ
+    {
+      std::cerr << "got predictions" << "\n";
+    }
+#endif // DEBUG_FTQ
+	
+  	for (int i = 0; i < INFO_PER_ENTRY; i++)
   	{
-  		temp_predDir = bp.GetPrediction(temp_pc);
+ 
   		// Allocate
   		if (is_ftq_full() == false) {
   			// Always allocate with default info - i.e. a non_cti 
   			// At this point if 1st instruction for which correct info is avail is non-cti it is already updated
   			// If it is cti - then branchtarget is avail in next CC and hence should only be updated condirionally then
-    		allocate_ftq_entry(temp_predDir, false, temp_pc, insn_t::non_cti, temp_pc+2, bp);
+    		allocate_ftq_entry(vec_predDir[i], false, temp_pc, insn_t::non_cti, temp_pc+2, bp);
     	} else {
       fprintf(stderr, "%s\n", "FTQ full");
     	}
   		// Repeat for next sequential instruction
   		temp_pc+=2;
   	}
+  	
+  	
+  	
+  	
+  	
+  	
+  	
   }
   //Get predDir for the instruction
   predDir = get_predDir_from_ftq (inst_index_in_fetch);

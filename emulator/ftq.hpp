@@ -21,7 +21,7 @@ FILE* fp = fopen ("ftq_log.txt", w+);
 #endif*/
 
 //#define INFO_PER_ENTRY 1
-#define NUM_FTQ_ENTRIES (INFO_PER_ENTRY * 2)
+#define NUM_FTQ_ENTRIES (FETCH_WIDTH * INFO_PER_ENTRY * 2)
 
 class ftq_entry {
 
@@ -59,9 +59,9 @@ gi - stays the same
 b_bi, b2_bi2 - Must return a vector - one element for each subentry/ offset ???
 */
   vector<int32_t> hit;   // size = NUMG - 1 per fetch_pc
-  vector<dualcounter> s; // size = NUMG - 1 per instruction
+  vector<vector<dualcounter>> s; // size = NUMG - 1 per instruction
   int meta;
-  int bp;
+  vector<int> bp;
   // Check if required -> cd, cat , predictor.pred.<tagged_enry>.dualc,
   // predictor.pred.getg(hit[i]).dualc.n
 
@@ -69,8 +69,8 @@ b_bi, b2_bi2 - Must return a vector - one element for each subentry/ offset ???
   int bi2;				// 1 per fetch packet
   // int b[1<<LOGB];
   // int b2[1<<LOGB2];
-  int b_bi;				// 1 per instruction
-  int b2_bi2;			// 1 per instruction
+  vector<int> b_bi;				// 1 per instruction
+  vector<int> b2_bi2;			// 1 per instruction
   std::vector<int> gi;	// 1 per fetch packet
 
   // ptr, fold
