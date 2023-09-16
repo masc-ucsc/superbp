@@ -94,7 +94,7 @@ void branchprof_init() {
 #endif // PC_TRACE
   }
 #ifdef FTQ
-  std::cout << "NUM_FTQ_ENTRIES = " << NUM_FTQ_ENTRIES << "\n\n";
+  std::cerr << "NUM_FTQ_ENTRIES = " << NUM_FTQ_ENTRIES << "\n\n";
 #endif // FTQ
   return;
 }
@@ -153,10 +153,16 @@ static inline void update_counters_pc_minus_1_branch() {
   if (last_predDir == last_resolveDir) {
     last_misprediction = false;
     correct_prediction_count++;
+    #ifdef DEBUG
+  	fprintf (stderr, "Branch correctly predicted \n");
+  	#endif
   } else {
     last_misprediction = true;
     misprediction_count++;     // Both mispredicted T and NT
     branch_mispredict_count++; // Both mispredicted T and NT
+    #ifdef DEBUG
+  	fprintf (stderr, "Branch Mispredicted \n");
+  	#endif
   }
 }
 
@@ -175,7 +181,7 @@ static inline void read_ftq_update_predictor() {
   #endif
 
 #ifdef DEBUG_FTQ
-    /*std::cout << "Deallocating - inst_index_in_fetch = " << inst_index_in_fetch
+    /*std::cerr << "Deallocating - inst_index_in_fetch = " << inst_index_in_fetch
               << " last_misprediction = " << last_misprediction
               << " last_resolveDir = " << last_resolveDir << "\n";*/
 #endif
@@ -247,7 +253,7 @@ static inline void read_ftq_update_predictor() {
     // branchTarget = update_branchTarget;
 #ifdef DEBUG_FTQ
     {
-      std::cout << "After deallocations over - inst_index_in_fetch = "
+      std::cerr << "After deallocations over - inst_index_in_fetch = "
                 << inst_index_in_fetch << "\n";
     }
 #endif // DEBUG_FTQ
@@ -259,9 +265,9 @@ static inline void resolve_pc_minus_1_branch(uint64_t pc) {
 
   if (pc - last_pc == 4) {
     last_resolveDir = false;
-#ifdef PC_TRACE
+#ifdef DEBUG
     fprintf(pc_trace, "%32s\n", "Not Taken Branch");
-    fprintf(stderr, "%32s\n", "Not Taken Branch");
+    fprintf(stderr, "%llx is %32s\n", last_pc, "Not Taken Branch");
 #endif
   } else {
     last_resolveDir = true;
@@ -269,9 +275,9 @@ static inline void resolve_pc_minus_1_branch(uint64_t pc) {
 #ifdef EN_BB_FB_COUNT
     fb_over = 1;
 #endif // EN_BB_FB_COUNT
-#ifdef PC_TRACE
+#ifdef DEBUG
     fprintf(pc_trace, "%32s\n", "Taken Branch");
-    fprintf(stderr, "%32s\n", "Taken Branch");
+    fprintf(stderr, "%llx is %32s\n", last_pc, "Taken Branch");
 #endif
   }
 
@@ -290,7 +296,7 @@ static inline void close_pc_minus_1_branch(uint64_t pc) {
   return;
 }
 
-static inline void close_pc_jump(uint32_t insn_raw) {
+static inline void close_pc_jump(uint64_t pc, uint32_t insn_raw) {
   jump_count++;
   cti_count++;
   resolveDir = true;
@@ -300,30 +306,34 @@ static inline void close_pc_jump(uint32_t insn_raw) {
   fb_over = 1;
 #endif // EN_BB_FB_COUNT
 
+#ifdef DEBUG
+fprintf(stderr, "%llx is %32s\n", pc, "Jump");
+#endif
+
 #ifdef PC_TRACE
   if ((((insn_raw & 0xffffff80) == 0x0))) // ECall
   {
     fprintf(pc_trace, "%32s\n", "ECALL type");
-    fprintf(stderr, "%32s\n", "ECALL type");
+    //fprintf(stderr, "%llx is %32s\n", "ECALL type");
   } else if ((insn_raw == 0x100073) || (insn_raw == 0x200073) ||
              (insn_raw == 0x30200073) || (insn_raw == 0x7b200073)) // EReturn
   {
     fprintf(pc_trace, "%32s\n", "ERET type");
-    fprintf(stderr, "%32s\n", "ERET type");
+    //fprintf(stderr, "%llx is %32s\n", "ERET type");
   }
 
   // Jump
   else if ((insn_raw & 0xf) == 0x7) {
     if (((insn_raw & 0xf80) >> 7) == 0x0) {
       fprintf(pc_trace, "%32s\n", "Return");
-      fprintf(stderr, "%32s\n", "Return");
+      //fprintf(stderr, "%llx is %32s\n", "Return");
     } else {
       fprintf(pc_trace, "%32s\n", "Reg based Fxn Call");
-      fprintf(stderr, "%32s\n", "Reg based Fxn Call");
+      //fprintf(stderr, "%llx is %32s\n", "Reg based Fxn Call");
     }
   } else {
     fprintf(pc_trace, "%32s\n", "PC relative Fxn Call");
-    fprintf(stderr, "%32s\n", "PC relative Fxn Call");
+    //fprintf(stderr, "%llx is %32s\n", "PC relative Fxn Call");
   }
 #endif
 }
@@ -389,12 +399,21 @@ static inline void handle_nb() {
   if (predDir == resolveDir) {
     misprediction = false;
     correct_prediction_count++;
+    #ifdef DEBUG
+  	//fprintf (stderr, "Non branch correctly predicted \n");
+  	#endif
   } else {
     misprediction = true;
     misprediction_count++;
+    #ifdef DEBUG
+  	fprintf (stderr, "Non branch Mispredicted \n");
+  	#endif
   }
   if ((insn == insn_t::non_cti) && (predDir == true)) {
     misscontrol_count++;
+    #ifdef DEBUG
+  	fprintf (stderr, " that is also a Non_CTI \n");
+  	#endif
   }
 }
 
@@ -472,7 +491,7 @@ void handle_branch(uint64_t pc, uint32_t insn_raw) {
 	// Update ftq if last_insn != non_cti
 	if (last_insn != insn_t::non_cti)
 	{
-		ftq_update_resolvedinfo (last_inst_index_in_fetch, last_insn, last_resolveDir, branchTarget); 
+		ftq_update_resolvedinfo (last_inst_index_in_fetch, last_pc, last_insn, last_resolveDir, branchTarget); 
 	}
 
 #ifdef SUPERSCALAR
@@ -496,7 +515,7 @@ fprintf (stderr, "\n");
       if (((insn_raw & 0x7fff) == 0x73)) {
     // ECall and ERet
     insn = insn_t::jump;
-    close_pc_jump(insn_raw);
+    close_pc_jump(pc, insn_raw);
   }
   else if (((insn_raw & 0x70) == 0x60)) {
     if (((insn_raw & 0xf) == 0x3)) {
@@ -505,7 +524,7 @@ fprintf (stderr, "\n");
     } else // Jump
     {
       insn = insn_t::jump;
-      close_pc_jump(insn_raw);
+      close_pc_jump(pc, insn_raw);
     }
   }
   else // Non CTI

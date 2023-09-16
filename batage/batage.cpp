@@ -411,9 +411,9 @@ std::vector<bool>& batage::predict_vec(uint32_t pc, const histories &p) {
     gi[i] = p.gindex(hash_pc, i);
     if (getgb(i).tag == p.gtag(hash_pc, i)) {
 //#define CHECK_SS
-#ifdef CHECK_SS
-	fprintf (stderr, "pc = %llx, hash_pc = %llx, tag = %x\n", pc, hash_pc, getgb(i).tag );
-#endif // CHECK_SS
+#ifdef DEBUG
+	fprintf (stderr, "bank %d hit\n", i);
+#endif DEBUG
       hit.push_back(i);
       for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
   		{
@@ -421,6 +421,12 @@ std::vector<bool>& batage::predict_vec(uint32_t pc, const histories &p) {
       	}
     }
   }
+  #ifdef DEBUG
+  if (hit.empty())
+  {
+	fprintf (stderr, "No bank hit\n");
+	}
+#endif DEBUG
 	// std::cerr << "22222" << "\n";
 #ifdef BANK_INTERLEAVING
 #ifndef SIMFASTER
@@ -439,13 +445,26 @@ std::vector<bool>& batage::predict_vec(uint32_t pc, const histories &p) {
   		b2_bi2.push_back(b2[bi2][offset_within_entry]);
   		s[offset_within_entry].push_back(dualcounter(b_bi[offset_within_entry], b2_bi2[offset_within_entry]));
   }
+  
+    #ifdef DEBUG
+  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  {
+  	for (int j=0; j < s[offset_within_entry].size(); j++)
+  	{
+  fprintf (stderr, "For prediction - s[%d][%d] = %d, %d\n", offset_within_entry, j, \
+  s[offset_within_entry][j].n[0], s[offset_within_entry][j].n[1]);
+  	}
+  }
+  #endif // DEBUG
+  
+  
 	// std::cerr << "44444" << "\n";
   // bp = index within s
   bp.clear();
   for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
   {
   int t = 0;
-  	for (int i = 1; i < (int)s.size(); i++) {
+  	for (int i = 1; i < (int)s[offset_within_entry].size(); i++) {
     	if (s[offset_within_entry][i].conflevel(meta) < s[offset_within_entry][t].conflevel(meta)) {
       	t = i;
     	}
@@ -504,7 +523,8 @@ void batage::update(uint32_t pc, uint32_t offset_within_entry, bool taken, const
 
 #ifdef DEBUG
   //fprintf(update_pcs, "%lu \n", pc);
-    fprintf (stderr, "update for pc = %llx, ", pc);
+  uint64_t orig_pc = pc;
+    fprintf (stderr, "update for pc = %llx, ", orig_pc);
 #endif // DEBUG
 
 #ifdef PC_SHIFT
@@ -515,7 +535,7 @@ void batage::update(uint32_t pc, uint32_t offset_within_entry, bool taken, const
   //uint32_t offset_within_entry = pc % INFO_PER_ENTRY;
   
   #ifdef DEBUG
-  fprintf (stderr, "offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_entry, bp[offset_within_entry], b_bi[offset_within_entry], b2_bi2[offset_within_entry]);
+  //fprintf (stderr, "offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_entry, bp[offset_within_entry], b_bi[offset_within_entry], b2_bi2[offset_within_entry]);
   #endif // DEBUG
   b[bi][offset_within_entry] = b_bi[offset_within_entry];
   b2[bi2][offset_within_entry] = b2_bi2[offset_within_entry];
@@ -559,6 +579,11 @@ void batage::update(uint32_t pc, uint32_t offset_within_entry, bool taken, const
   // TODO Check what to do for these getg (for allocation)
   bool allocate = !noalloc && (s[offset_within_entry][bp[offset_within_entry]].pred() != taken);
 
+  #ifdef DEBUG
+  fprintf (stderr, "For allocation - s[%d][%d] = %d, %d\n", offset_within_entry, bp[offset_within_entry], \
+  s[offset_within_entry][bp[offset_within_entry]].n[0], s[offset_within_entry][bp[offset_within_entry]].n[1]);
+  #endif // DEBUG
+
   if (allocate && ((int)(rando() % MINAP) >= ((cat * MINAP) / (CATMAX + 1)))) {
     int i = (hit.size() > 0) ? hit[0] : NUMG;
     i -= rando() % (1 + s[offset_within_entry][0].diff() * SKIPMAX / dualcounter::nmax);
@@ -577,6 +602,9 @@ void batage::update(uint32_t pc, uint32_t offset_within_entry, bool taken, const
       } else {
         // TODO Check what to do for these three
         getgb(i).tag = p.gtag(pc, i);
+  #ifdef DEBUG
+  fprintf (stderr, "pc = %llx Allocated entry in bank %d\n", orig_pc, i);
+  #endif // DEBUG
         for (uint32_t offset = 0; offset < INFO_PER_ENTRY; offset++) {
           getgo(i, offset).dualc.reset();
           if (offset == offset_within_entry) {

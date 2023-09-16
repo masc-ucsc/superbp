@@ -21,7 +21,7 @@ FILE* fp = fopen ("ftq_log.txt", w+);
 #endif*/
 
 //#define INFO_PER_ENTRY 1
-#define NUM_FTQ_ENTRIES (FETCH_WIDTH * INFO_PER_ENTRY * 2)
+#define NUM_FTQ_ENTRIES (INFO_PER_ENTRY * 2)
 
 class ftq_entry {
 
@@ -153,7 +153,7 @@ void allocate_ftq_entry(const bool &predDir, const bool &resolveDir,
                         const PREDICTOR &predictor); // , histories* hist_ptr);
 void set_ftq_index (uint16_t index);
 bool get_predDir_from_ftq (uint16_t index);
-void ftq_update_resolvedinfo (uint16_t index, insn_t insn, bool resolveDir, uint64_t branchTarget); 
+void ftq_update_resolvedinfo (uint16_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget); 
 void get_ftq_data(ftq_entry *ftq_data_ptr);
 void deallocate_ftq_entry(void);
 #endif
