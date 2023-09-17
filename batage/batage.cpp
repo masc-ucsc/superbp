@@ -307,13 +307,16 @@ tagged_entry::tagged_entry() {
 }
 
 batage::batage() {
+
   g = new tagged_entry **[NUMG];
+  
   for (int i = 0; i < NUMG; i++) {
     g[i] = new tagged_entry *[1 << LOGGE];
     for (int j = 0; j < (1 << LOGGE); j++) {
       g[i][j] = new tagged_entry[INFO_PER_ENTRY];
     }
   }
+  
   gi = new int[NUMG];
 
   for (int i = 0; i < (1 << LOGBE); i++) {
@@ -321,11 +324,13 @@ batage::batage() {
       b[i][j] = 0; // not-taken prediction
     }
   }
+  
   for (int i = 0; i < (1 << LOGB2E); i++) {
     for (int j = 0; j < INFO_PER_ENTRY; j++) {
       b2[i][j] = (1 << BHYSTBITS) - 1; // weak state
     }
   }
+  
   cat = 0;
   meta = -1;
 #ifdef USE_META
@@ -407,8 +412,14 @@ std::vector<bool>& batage::predict_vec(uint32_t pc, const histories &p) {
   for (int i = 0; i < NUMG; i++) {
 #ifdef BANK_INTERLEAVING
     bank[i] = p.phybank(i);
+#ifdef DEBUG
+//fprintf (stderr, "For predict, bank[%d] = %d \n ", i, bank[i]);
+#endif // DEBUG
 #endif
     gi[i] = p.gindex(hash_pc, i);
+#ifdef DEBUG
+//fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
+#endif // DEBUG
     if (getgb(i).tag == p.gtag(hash_pc, i)) {
 //#define CHECK_SS
 #ifdef DEBUG
@@ -518,18 +529,20 @@ void batage::update_entry(int i, uint32_t offset_within_entry, bool taken) {
 
 /*For superscalar - anything that is non constant & is used before/ without
  * assigning a value must be saved in ftq*/
-void batage::update(uint32_t pc, uint32_t offset_within_entry, bool taken, const histories &p,
+void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_entry, bool taken, const histories &p,
                     bool noalloc = false) {
 
 #ifdef DEBUG
   //fprintf(update_pcs, "%lu \n", pc);
   uint64_t orig_pc = pc;
-    fprintf (stderr, "update for pc = %llx, ", orig_pc);
+    fprintf (stderr, "update for pc = %llx, fetch_pc = %llx\n", orig_pc, fetch_pc);
 #endif // DEBUG
 
+// Hash was using "actual pc", since this is used only for new entry allocation, NOT for counter update
+// Changed to use fetch_pc
 #ifdef PC_SHIFT
   // pc ^= pc << 5;
-  pc ^= pc >> PC_SHIFT;
+  pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
 #endif
 
   //uint32_t offset_within_entry = pc % INFO_PER_ENTRY;
@@ -537,6 +550,7 @@ void batage::update(uint32_t pc, uint32_t offset_within_entry, bool taken, const
   #ifdef DEBUG
   //fprintf (stderr, "offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_entry, bp[offset_within_entry], b_bi[offset_within_entry], b2_bi2[offset_within_entry]);
   #endif // DEBUG
+  // TODO - Check, might/ should not be necessary
   b[bi][offset_within_entry] = b_bi[offset_within_entry];
   b2[bi2][offset_within_entry] = b2_bi2[offset_within_entry];
 
@@ -552,6 +566,19 @@ void batage::update(uint32_t pc, uint32_t offset_within_entry, bool taken, const
     }
   }
 #endif
+
+#ifdef BANK_INTERLEAVING
+#ifdef DEBUG
+  /*for (int i = 0; i < NUMG; i++) {
+fprintf (stderr, "For update, bank[%d] = %d \n ", i, bank[i]);
+}*/
+#endif // DEBUG
+#endif
+#ifdef DEBUG
+/*  for (int i = 0; i < NUMG; i++) {
+fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
+}*/
+#endif // DEBUG
 
   // update from 0 to bp-1
   for (int i = 0; i < bp[offset_within_entry]; i++) {

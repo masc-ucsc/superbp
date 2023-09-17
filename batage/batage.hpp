@@ -30,7 +30,7 @@
 #define BHYSTBITS 2
 
 // Check - change it to use FETCH_WIDTH
-#define LOG2FETCHWIDTH 1
+#define LOG2FETCHWIDTH 4
 #define FETCHWIDTH (1 << LOG2FETCHWIDTH)
 #define NUM_TAKEN_BRANCHES 1
 #define INFO_PER_ENTRY (FETCHWIDTH * NUM_TAKEN_BRANCHES)
@@ -79,7 +79,7 @@
 #define GHGBITS 2
 #endif
 
-#define DEBUG
+//#define DEBUG
 
 using namespace std;
 
@@ -170,7 +170,7 @@ public:
   int bi2;                             // hash for the bimodal hysteresis
   vector<int> b_bi;
   vector<int> b2_bi2;
-  int *gi;               // hashes for the tagged banks
+  int *gi;               // Hashes for/Indices into the tagged banks
   vector<int> hit;       // tell which banks have a hit - stays same for SS
   vector<vector<dualcounter>> s; // dual-counters for the hitting banks - vector of vectors for SS
   vector<int> bp; // dual-counter providing the final BATAGE prediction - index within s - vector for SS
@@ -190,7 +190,7 @@ public:
   std::vector<bool>& predict_vec(uint32_t pc, const histories &p);
   void update_bimodal(bool taken, uint32_t offset_within_entry);
   void update_entry(int i, uint32_t offset_within_entry, bool taken);
-  void update(uint32_t pc, uint32_t offset_within_entry, bool taken, const histories &p, bool noalloc);
+  void update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_entry, bool taken, const histories &p, bool noalloc);
   int size();
 #ifdef BANK_INTERLEAVING
   void check_bank_conflicts();

@@ -36,7 +36,7 @@ extern uint64_t instruction_count;    // total # of instructions - including
 uint64_t benchmark_instruction_count; // total # of benchmarked instructions
                                       // only - excluding skip instructions
                                       
-uint64_t packet_pc;
+uint64_t fetch_pc;
 
 /*
 * missPredict per branch
@@ -168,7 +168,7 @@ static inline void update_counters_pc_minus_1_branch() {
 
 #ifdef FTQ
 static inline void read_ftq_update_predictor() {
-  uint64_t update_pc, update_branchTarget;
+  uint64_t update_pc, update_fetch_pc, update_branchTarget;
   insn_t update_insn;
   bool update_predDir, update_resolveDir;
 
@@ -196,13 +196,14 @@ static inline void read_ftq_update_predictor() {
         update_resolveDir = ftq_data.resolveDir;
         update_predDir = ftq_data.predDir;
         update_branchTarget = ftq_data.branchTarget;
+        update_fetch_pc = ftq_data.fetch_pc;
 
         // Store the read predictor fields into the predictor
         copy_ftq_data_to_predictor(&ftq_data);
 		  #ifdef DEBUG_FTQ
   fprintf (stderr, "Updating predictor tables for pc = %llx with resolvdir = %d, i = %d \n", update_pc, update_resolveDir, i);
   #endif
-        bp.Updatetables(update_pc, i, update_resolveDir);
+        bp.Updatetables(update_pc, update_fetch_pc, i, update_resolveDir);
   #ifdef DEBUG_FTQ
   fprintf (stderr, "Update predictor tables done for pc = %llx \n", update_pc);
   #endif
@@ -488,8 +489,8 @@ void handle_branch(uint64_t pc, uint32_t insn_raw) {
       resolve_pc_minus_1_branch(pc);
     }
 
-	// Update ftq if last_insn != non_cti
-	if (last_insn != insn_t::non_cti)
+	// Update ftq for all insns, even if last_insn == non_cti
+	//if (last_insn != insn_t::non_cti)
 	{
 		ftq_update_resolvedinfo (last_inst_index_in_fetch, last_pc, last_insn, last_resolveDir, branchTarget); 
 	}
@@ -552,6 +553,7 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   // Get predDir - TODO new code - so Check
   if (inst_index_in_fetch == 0)      // (pc == aligned_fetch_pc)
   {
+  	fetch_pc = pc;
   	uint64_t temp_pc = pc;
   	set_ftq_index (inst_index_in_fetch);
   	
@@ -578,7 +580,7 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   			// Always allocate with default info - i.e. a non_cti 
   			// At this point if 1st instruction for which correct info is avail is non-cti it is already updated
   			// If it is cti - then branchtarget is avail in next CC and hence should only be updated condirionally then
-    		allocate_ftq_entry(vec_predDir[i], false, temp_pc, insn_t::non_cti, temp_pc+2, bp);
+    		allocate_ftq_entry(vec_predDir[i], false, temp_pc, insn_t::non_cti, temp_pc+2, fetch_pc, bp);
     	} else {
       fprintf(stderr, "%s\n", "FTQ full");
     	}

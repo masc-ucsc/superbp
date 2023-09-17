@@ -30,6 +30,7 @@ void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target,
 void allocate_ftq_entry(const bool &predDir, const bool &resolveDir,
                         const uint64_t &pc, const insn_t &insn,
                         const uint64_t &branchTarget,
+                        const uint64_t &fetch_pc,
                         const PREDICTOR &predictor) // , histories* hist_ptr)
 #else
 void allocate_ftq_entry(void)
@@ -65,7 +66,7 @@ void allocate_ftq_entry(void)
 #elif defined BATAGE
   // ftq_entry f {predDir, resolveDir, pc, branchTarget, predictor.pred.hit,
   // predictor.pred.s, predictor.pred.meta};
-  ftq_entry f{predDir, resolveDir, pc, insn, branchTarget, predictor};
+  ftq_entry f{predDir, resolveDir, pc, insn, branchTarget, fetch_pc, predictor};
   // Move assignment
   ftq[next_allocate_index] = std::move(f);
 #endif

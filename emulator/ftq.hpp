@@ -47,6 +47,7 @@ public:
   bool predDir;			// 1 per instruction
   bool resolveDir;		// 1 per instruction
   uint64_t pc;			/* 1 per instruction (option is to do 1 per fetch_pc + index for each instruction, will save space) */
+  uint64_t fetch_pc;
   insn_t insn;			// 1 per instruction
   uint64_t branchTarget;// 1 per instruction - TODO Check if required
 
@@ -83,7 +84,7 @@ public:
 
   // Constructor - to allocate entry
   ftq_entry(const bool &predDir1, const bool &resolveDir1, const uint64_t &pc1,
-            const insn_t &insn1, const uint64_t &branchTarget1,
+            const insn_t &insn1, const uint64_t &branchTarget1, const uint64_t &fetch_pc, 
             const PREDICTOR &predictor)
       /*: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget
          {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta
@@ -94,7 +95,8 @@ public:
          {std::vector<int>(std::begin(predictor.pred.b2),
          std::end(predictor.pred.b2))}*/
       : predDir{predDir1}, resolveDir{resolveDir1}, pc{pc1}, insn{insn1},
-        branchTarget{branchTarget1}, hit{predictor.pred.hit},
+        branchTarget{branchTarget1}, fetch_pc{fetch_pc},
+        hit{predictor.pred.hit},
         s{predictor.pred.s}, meta{predictor.pred.meta}, bp{predictor.pred.bp},
         bi{predictor.pred.bi}, bi2{predictor.pred.bi2},
         b_bi{predictor.pred.b_bi}, b2_bi2{predictor.pred.b2_bi2},
@@ -108,6 +110,7 @@ public:
     pc = std::move(src.pc);
     insn = std::move(src.insn);
     branchTarget = std::move(src.branchTarget);
+    fetch_pc = std::move(src.fetch_pc);
 
     hit = std::move(src.hit);
     s = std::move(src.s);
@@ -150,6 +153,7 @@ void get_ftq_data(IMLI &IMLI_inst);
 void allocate_ftq_entry(const bool &predDir, const bool &resolveDir,
                         const uint64_t &pc, const insn_t &insn,
                         const uint64_t &branchTarget,
+                        const uint64_t &fetch_pc,
                         const PREDICTOR &predictor); // , histories* hist_ptr);
 void set_ftq_index (uint16_t index);
 bool get_predDir_from_ftq (uint16_t index);
