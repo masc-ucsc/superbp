@@ -30,7 +30,7 @@
 #define BHYSTBITS 2
 
 // Check - change it to use FETCH_WIDTH
-#define LOG2FETCHWIDTH 4
+#define LOG2FETCHWIDTH 1
 #define FETCHWIDTH (1 << LOG2FETCHWIDTH)
 #define NUM_TAKEN_BRANCHES 1
 #define INFO_PER_ENTRY (FETCHWIDTH * NUM_TAKEN_BRANCHES)
@@ -79,7 +79,7 @@
 #define GHGBITS 2
 #endif
 
-//#define DEBUG
+#define DEBUG
 
 using namespace std;
 

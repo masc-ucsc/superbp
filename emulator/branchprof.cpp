@@ -174,7 +174,8 @@ static inline void read_ftq_update_predictor() {
 
   uint8_t partial_pop = (last_misprediction || last_resolveDir);
 
-  if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) {
+	// For multiple taken predictions, changed from FETCH_WIDTH to INFO_PER_ENTRY 
+  if ((inst_index_in_fetch == INFO_PER_ENTRY) || partial_pop) {
   
   #ifdef DEBUG_FTQ
   fprintf (stderr, "\nread_ftq_update_predictor : inst_index_in_fetch = %u, partial_pop = %d\n", inst_index_in_fetch, partial_pop);
@@ -186,7 +187,7 @@ static inline void read_ftq_update_predictor() {
               << " last_resolveDir = " << last_resolveDir << "\n";*/
 #endif
 
-    for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH);
+    for (int i = 0; i < (partial_pop ? inst_index_in_fetch : INFO_PER_ENTRY);
          i++) {
       if (!is_ftq_empty()) {
         get_ftq_data(&ftq_data);
