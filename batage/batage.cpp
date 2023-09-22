@@ -350,6 +350,8 @@ batage::batage() {
 #endif // DEBUG
 
 s.reserve(INFO_PER_ENTRY);
+
+int dummy = batage::size();
 }
 
 #ifdef BANK_INTERLEAVING
@@ -424,7 +426,7 @@ std::vector<bool>& batage::predict_vec(uint32_t pc, const histories &p) {
 //#define CHECK_SS
 #ifdef DEBUG
 	fprintf (stderr, "bank %d hit\n", i);
-#endif DEBUG
+#endif //DEBUG
       hit.push_back(i);
       for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
   		{
@@ -437,7 +439,7 @@ std::vector<bool>& batage::predict_vec(uint32_t pc, const histories &p) {
   {
 	fprintf (stderr, "No bank hit\n");
 	}
-#endif DEBUG
+#endif //DEBUG
 	// std::cerr << "22222" << "\n";
 #ifdef BANK_INTERLEAVING
 #ifndef SIMFASTER
@@ -652,7 +654,12 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 
 int batage::size() {
   int totsize = (1 << LOGB) + (BHYSTBITS << LOGB2);
-  totsize += NUMG * ((dualcounter::size() + TAGBITS) << LOGG);
-  return totsize; // number of bits
+  fprintf (stderr, "Bimodal size = %u bits\n", totsize);
+  totsize += NUMG * (((dualcounter::size()*INFO_PER_ENTRY) + TAGBITS) << LOGGE);
+  fprintf (stderr, "dualcounter size = %u, Total size = %u bits, LOGG = %d, LOGGE_ORIG = %d, LOGGE = %d\n", dualcounter::size(), totsize, LOGG, LOGGE_ORIG, LOGGE);
+  
+    fprintf (stderr, " NEW_BITS_PER_TABLE = %u, NEW_ENTRY_SIZE = %u, NEW_ENTRIES_PER_TABLE = %u \n", NEW_BITS_PER_TABLE, NEW_ENTRY_SIZE, NEW_ENTRIES_PER_TABLE);
+        fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);
+    return totsize; // number of bits
   // the storage for counters 'cat', 'meta' and 'cd' is neglected here
 }

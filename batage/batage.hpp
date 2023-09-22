@@ -37,7 +37,17 @@
 #define LOGE ((int)log2(INFO_PER_ENTRY))
 #define LOGBE (LOGB - LOGE)
 #define LOGB2E (LOGB2 - LOGE)
-#define LOGGE (LOGG - LOGE)
+#define LOGGE_ORIG (LOGG - LOGE)
+
+#define NEW_BITS_PER_TABLE (TAGBITS * (INFO_PER_ENTRY-1) * (1<<LOGGE_ORIG))
+#define NEW_ENTRY_SIZE (TAGBITS + (INFO_PER_ENTRY * dualcounter::size() ) )
+#define NEW_ENTRIES_PER_TABLE NEW_BITS_PER_TABLE/NEW_ENTRY_SIZE
+//#define LOG2_NEW_ENTRIES_PER_TABLE ((int)log2(NEW_ENTRIES_PER_TABLE))
+
+#define LOGGE  (((int)log2((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE)))
+
+#define LOST_ENTRIES_PER_TABLE ((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE - (1 << LOGGE))
+#define LOST_ENTRIES_TOTAL LOST_ENTRIES_PER_TABLE * NUMG
 
 // SKIPMAX: maximum number of banks skipped on allocation
 // if you change NUMG, you must re-tune SKIPMAX
