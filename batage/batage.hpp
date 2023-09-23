@@ -89,7 +89,7 @@
 #define GHGBITS 2
 #endif
 
-#define DEBUG
+//#define DEBUG
 
 using namespace std;
 

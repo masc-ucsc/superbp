@@ -22,8 +22,9 @@
 #ifdef BRANCHPROF
 #include "branchprof.hpp"
 #include "predictor.hpp"
-uint64_t maxinsns;
-uint64_t skip_insns;
+uint64_t maxinsns = 0;
+uint64_t skip_insns = 0;
+char* bp_logfile = NULL;
 #endif
 
 uint64_t instruction_count; // total # of instructions - including skipped nd
@@ -113,12 +114,111 @@ static void sigintr_handler(int dummy) {
 
 int main(int argc, char **argv) {
 
-  RISCVMachine *m = virt_machine_main(argc, argv);
-  if (!m)
-    return 1;
+#define HACKERY
+#ifdef HACKERY
+// Handles just one command line argument in emulator.cpp, removes it from the argv and sends remaining to dromajo
+/*
+int c;
+while (1) {
+        int this_option_optind = optind ? optind : 1;
+        int option_index = 0;
+        static struct option long_options[] = {
+            {"bp_logfile",     required_argument, 0,  0 }
+        };
+
+       c = getopt_long(argc, argv, "f:0:",
+                 long_options, &option_index);
+        if (c == -1)
+            break;
+
+       switch (c) {
+        case 0:
+            printf("option %s", long_options[option_index].name);
+            if (optarg)
+                printf(" with arg %s", optarg);
+            printf("\n");
+            bp_logfile = strdup( optarg);
+            printf("bp_logfile with value '%s'\n", bp_logfile);
+            break;
+
+       case 'f':
+            bp_logfile = strdup(optarg);
+            printf("bp_logfile with value '%s'\n", bp_logfile);
+            break;
+
+       case '?':
+            break;
+
+       default:
+            printf("?? getopt returned character code 0%o ??\n", c);
+        }
+    }*/
+
+std::vector<std::string> arguments;
+std::string argumentToRemove = "--bp_logfile";
+bool skipNext = false; // Flag to skip the next optarg
+ 
+for (int i = 0; i < argc; ++i) {
+        std::string currentArg = argv[i];
+
+        // Check if the current argument matches the one to be removed
+        if (currentArg == argumentToRemove) {
+            // If it matches, set the skipNext flag and continue to the next iteration
+            skipNext = true;
+            continue;
+        }
+
+        // If skipNext is set, skip this argument (optarg) and reset the flag
+        if (skipNext) {
+            bp_logfile = new char[currentArg.size() + 1];
+            strcpy(bp_logfile, currentArg.c_str());
+            fprintf (stderr, "bplogfile = %s\n", bp_logfile);
+            skipNext = false;
+            continue;
+        }
+
+        // If it doesn't match and skipNext is not set, add it to the modified arguments
+        arguments.push_back(currentArg);    
+    }
+    
+    
+          // Create a new char* array to hold the modified arguments
+         char** newArgv = new char*[arguments.size() + 1];
+         
+         // Copy the modified arguments from the vector to the new char* array
+    	for (size_t i = 0; i < arguments.size(); ++i) {
+        	newArgv[i] = new char[arguments[i].size() + 1];
+        	strcpy(newArgv[i], arguments[i].c_str());
+   	}
+   	
+   	// Set the last element of the new argv to nullptr (required by convention)
+    	newArgv[arguments.size()] = nullptr;
+    	
+    	 // Update argc to reflect the number of modified arguments
+    	int newArgc = static_cast<int>(arguments.size());
+    	
+    	 fprintf (stderr, "New args\n");
+   for (int i = 0; i < newArgc; ++i) {
+        fprintf ( stderr, "%s \n", newArgv[i]);
+    }
+	fprintf (stderr, "New args over\n");
+
+    // Update argv and argc to point to the new array
+    //argv = newArgv;
+    //argc = newArgc;
+
+#endif // HACKERY
+
 
 #ifdef BRANCHPROF
-  branchprof_init();
+  branchprof_init(bp_logfile);
+#endif // BRANCHPROF
+
+  RISCVMachine *m = virt_machine_main(newArgc, newArgv);
+  if (!m)
+    return 1;
+    
+    #ifdef BRANCHPROF
   maxinsns = m->common.maxinsns;
   skip_insns = m->common.skip_insns;
 #endif // BRANCHPROF

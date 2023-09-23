@@ -76,15 +76,15 @@ static int16_t inst_index_in_fetch = 0, last_inst_index_in_fetch; // starts from
 
 extern uint64_t maxinsns, skip_insns;
 
-void branchprof_init() {
+void branchprof_init(char* bp_logfile) {
   // PREDICTOR bp;
-  pc_trace = fopen("pc_trace.txt", "w");
-  if (pc_trace == nullptr) {
-    fprintf(dromajo_stderr,
-            "\nerror: could not open pc_trace.txt for dumping trace\n");
-    exit(-3);
+  pc_trace = fopen(bp_logfile, "w");
+  if (pc_trace == nullptr) {	
+    fprintf(stderr,
+            "\nerror: could not open %s for dumping trace\n", bp_logfile);
+    //exit(-3);
   } else {
-    fprintf(dromajo_stderr, "\nOpened dromajo_simpoint.bb for dumping trace\n");
+    fprintf(stderr, "\nOpened dromajo_simpoint.bb for dumping trace\n");
     fprintf(pc_trace,
             "FETCH_WIDTH = %u, SKIP_COUNT = %lu, benchmark_count = %lu \n",
             FETCH_WIDTH, skip_insns, maxinsns);

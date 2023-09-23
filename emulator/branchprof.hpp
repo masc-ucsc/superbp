@@ -5,7 +5,7 @@
 #include "ftq.hpp"
 #endif // FTQ
 
-void branchprof_init();
+void branchprof_init(char* logfile);
 void branchprof_exit();
 #ifdef FTQ
 static inline void copy_ftq_data_to_predictor(ftq_entry *ftq_data_ptr);
