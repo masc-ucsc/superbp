@@ -391,15 +391,15 @@ tagged_entry &batage::getgo(int i, uint32_t offset_within_entry) {
 #endif
 }
 
-std::vector<bool>& batage::predict_vec(uint32_t pc, const histories &p) {
+std::vector<bool>& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
 
 #ifdef DEBUG
-  //fprintf(predict_pcs, "%lu \n", pc);
-  fprintf (stderr, "predict for pc = %llx\n", pc);
+  //fprintf(predict_pcs, "%lu \n", fetch_pc);
+  fprintf (stderr, "predict for fetch_pc = %llx\n", fetch_pc);
 #endif // DEBUG
 
 #ifdef PC_SHIFT
-  uint32_t hash_pc = pc ^ (pc >> PC_SHIFT);
+  uint32_t hash_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
 #endif
 
   uint32_t offset_within_entry; // = hash_pc % INFO_PER_ENTRY;

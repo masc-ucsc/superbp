@@ -39,15 +39,20 @@
 #define LOGB2E (LOGB2 - LOGE)
 #define LOGGE_ORIG (LOGG - LOGE)
 
+#define SINGLE_TAG
+#ifdef SINGLE_TAG
 #define NEW_BITS_PER_TABLE (TAGBITS * (INFO_PER_ENTRY-1) * (1<<LOGGE_ORIG))
 #define NEW_ENTRY_SIZE (TAGBITS + (INFO_PER_ENTRY * dualcounter::size() ) )
 #define NEW_ENTRIES_PER_TABLE NEW_BITS_PER_TABLE/NEW_ENTRY_SIZE
 //#define LOG2_NEW_ENTRIES_PER_TABLE ((int)log2(NEW_ENTRIES_PER_TABLE))
-
 #define LOGGE  (((int)log2((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE)))
 
 #define LOST_ENTRIES_PER_TABLE ((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE - (1 << LOGGE))
 #define LOST_ENTRIES_TOTAL LOST_ENTRIES_PER_TABLE * NUMG
+
+#else // SINGLE_TAG
+#define LOGGE LOGGE_ORIG
+#endif // SINGLE_TAG
 
 // SKIPMAX: maximum number of banks skipped on allocation
 // if you change NUMG, you must re-tune SKIPMAX
@@ -197,7 +202,7 @@ public:
   batage();
   tagged_entry &getgb(int i);
   tagged_entry &getgo(int i, uint32_t offset_within_entry);
-  std::vector<bool>& predict_vec(uint32_t pc, const histories &p);
+  std::vector<bool>& predict_vec(uint32_t fetch_pc, const histories &p);
   void update_bimodal(bool taken, uint32_t offset_within_entry);
   void update_entry(int i, uint32_t offset_within_entry, bool taken);
   void update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_entry, bool taken, const histories &p, bool noalloc);
