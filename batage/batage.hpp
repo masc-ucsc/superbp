@@ -18,19 +18,18 @@
 // bimodal prediction bits LOGB2: log2 of the number of bimodal hysteresis
 // entries LOGG: log2 of the number of entries in one tagged bank TAGBITS: tag
 // size BHYSTBITS: number of bimodal hysteresis bits
-#define NUMG 26
+#define NUMG 12
 #define MAXHIST 700
 #define MINHIST 4
 #define MAXPATH 30
 #define PATHBITS 6
 #define LOGB 12
 #define LOGB2 10
-#define LOGG 7
 #define TAGBITS 12
 #define BHYSTBITS 2
 
 // Check - change it to use FETCH_WIDTH
-#define LOG2FETCHWIDTH 1
+#define LOG2FETCHWIDTH 2
 #define FETCHWIDTH (1 << LOG2FETCHWIDTH)
 #define NUM_TAKEN_BRANCHES 1
 #define INFO_PER_ENTRY (FETCHWIDTH * NUM_TAKEN_BRANCHES)
@@ -39,20 +38,29 @@
 #define LOGB2E (LOGB2 - LOGE)
 #define LOGGE_ORIG (LOGG - LOGE)
 
+#define NUM_ENTRIES 13312
+#define LOGG 9
+#define ORIG_ENTRIES_PER_TABLE ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY)  //1902
+
 #define SINGLE_TAG
 #ifdef SINGLE_TAG
-#define NEW_BITS_PER_TABLE (TAGBITS * (INFO_PER_ENTRY-1) * (1<<LOGGE_ORIG))
+#define NEW_BITS_PER_TABLE (TAGBITS * (INFO_PER_ENTRY-1) * (ORIG_ENTRIES_PER_TABLE))
 #define NEW_ENTRY_SIZE (TAGBITS + (INFO_PER_ENTRY * dualcounter::size() ) )
 #define NEW_ENTRIES_PER_TABLE NEW_BITS_PER_TABLE/NEW_ENTRY_SIZE
 //#define LOG2_NEW_ENTRIES_PER_TABLE ((int)log2(NEW_ENTRIES_PER_TABLE))
-#define LOGGE  (((int)log2((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE)))
 
+#define LOGGE  (((int)log2(ORIG_ENTRIES_PER_TABLE + NEW_ENTRIES_PER_TABLE)))
+
+/*
 #define LOST_ENTRIES_PER_TABLE ((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE - (1 << LOGGE))
 #define LOST_ENTRIES_TOTAL LOST_ENTRIES_PER_TABLE * NUMG
+*/
 
 #else // SINGLE_TAG
 #define LOGGE LOGGE_ORIG
 #endif // SINGLE_TAG
+
+#define ENTRIES_PER_TABLE (ORIG_ENTRIES_PER_TABLE + NEW_ENTRIES_PER_TABLE)
 
 // SKIPMAX: maximum number of banks skipped on allocation
 // if you change NUMG, you must re-tune SKIPMAX

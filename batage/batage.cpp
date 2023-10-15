@@ -246,7 +246,8 @@ int histories::gindex(uint32_t pc, int i) const {
   ASSERT((i >= 0) && (i < NUMG));
   uint32_t hash = pc ^ i ^ chg[i].fold ^
                   (chgg[i].fold << (chg[i].clength - chgg[i].clength));
-  return hash & ((1 << LOGGE) - 1);
+   int raw_index = hash & ((1 << LOGGE) - 1);
+   return (raw_index % ENTRIES_PER_TABLE);
 }
 
 int histories::gtag(uint32_t pc, int i) const {
@@ -311,8 +312,8 @@ batage::batage() {
   g = new tagged_entry **[NUMG];
   
   for (int i = 0; i < NUMG; i++) {
-    g[i] = new tagged_entry *[1 << LOGGE];
-    for (int j = 0; j < (1 << LOGGE); j++) {
+    g[i] = new tagged_entry *[ENTRIES_PER_TABLE];
+    for (int j = 0; j < (ENTRIES_PER_TABLE); j++) {
       g[i][j] = new tagged_entry[INFO_PER_ENTRY];
     }
   }
@@ -655,11 +656,11 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 int batage::size() {
   int totsize = (1 << LOGB) + (BHYSTBITS << LOGB2);
   fprintf (stderr, "Bimodal size = %u bits\n", totsize);
-  totsize += NUMG * (((dualcounter::size()*INFO_PER_ENTRY) + TAGBITS) << LOGGE);
-  fprintf (stderr, "dualcounter size = %u, Total size = %u bits, LOGG = %d, LOGGE_ORIG = %d, LOGGE = %d\n", dualcounter::size(), totsize, LOGG, LOGGE_ORIG, LOGGE);
+  totsize += NUMG * (((dualcounter::size()*INFO_PER_ENTRY) + TAGBITS) * ENTRIES_PER_TABLE);
+  fprintf (stderr, "dualcounter size = %u, Total size = %u bits, LOGG = %d, ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, LOGGE = %d\n", dualcounter::size(), totsize, LOGG, ENTRIES_PER_TABLE, LOGGE_ORIG, LOGGE);
   
     fprintf (stderr, " NEW_BITS_PER_TABLE = %u, NEW_ENTRY_SIZE = %u, NEW_ENTRIES_PER_TABLE = %u \n", NEW_BITS_PER_TABLE, NEW_ENTRY_SIZE, NEW_ENTRIES_PER_TABLE);
-        fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);
+        /*fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);*/
     return totsize; // number of bits
   // the storage for counters 'cat', 'meta' and 'cd' is neglected here
 }
