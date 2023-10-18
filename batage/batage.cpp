@@ -352,7 +352,6 @@ batage::batage() {
 
 s.reserve(INFO_PER_ENTRY);
 
-int dummy = batage::size();
 }
 
 #ifdef BANK_INTERLEAVING
@@ -400,8 +399,19 @@ std::vector<bool>& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
 #endif // DEBUG
 
 #ifdef PC_SHIFT
+uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
+#ifndef SINGLE_TAG
+    vector <uint32_t> hash_pc;
+  uint32_t pc;
+  for ( int i = 0;  i < INFO_PER_ENTRY;  i++)
+  {
+  	pc = fetch_pc + (i<<2);
+  	hash_pc.push_back(pc ^ (pc >> PC_SHIFT));
+  }
+#else
   uint32_t hash_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
 #endif
+#endif // PC_SHIFT
 
   uint32_t offset_within_entry; // = hash_pc % INFO_PER_ENTRY;
 
@@ -419,11 +429,11 @@ std::vector<bool>& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
 //fprintf (stderr, "For predict, bank[%d] = %d \n ", i, bank[i]);
 #endif // DEBUG
 #endif
-    gi[i] = p.gindex(hash_pc, i);
+    		gi[i] = p.gindex(hash_fetch_pc, i);
 #ifdef DEBUG
 //fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
 #endif // DEBUG
-    if (getgb(i).tag == p.gtag(hash_pc, i)) {
+    if (getgb(i).tag == p.gtag(hash_fetch_pc, i)) {
 //#define CHECK_SS
 #ifdef DEBUG
 	fprintf (stderr, "bank %d hit\n", i);
@@ -448,7 +458,7 @@ std::vector<bool>& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
 #endif
 #endif
 
-  bi = hash_pc & ((1 << LOGBE) - 1);
+  bi = hash_fetch_pc & ((1 << LOGBE) - 1);
   bi2 = bi & ((1 << LOGB2E) - 1);
   b_bi.clear();
   b2_bi2.clear();
@@ -537,15 +547,15 @@ void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_entry
 
 #ifdef DEBUG
   //fprintf(update_pcs, "%lu \n", pc);
-  uint64_t orig_pc = pc;
-    fprintf (stderr, "update for pc = %llx, fetch_pc = %llx\n", orig_pc, fetch_pc);
+    fprintf (stderr, "update for pc = %llx, fetch_pc = %llx\n", pc, fetch_pc);
 #endif // DEBUG
 
 // Hash was using "actual pc", since this is used only for new entry allocation, NOT for counter update
 // Changed to use fetch_pc
 #ifdef PC_SHIFT
   // pc ^= pc << 5;
-  pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
+  uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
+  uint32_t hash_pc = pc ^ (pc >> PC_SHIFT);
 #endif
 
   //uint32_t offset_within_entry = pc % INFO_PER_ENTRY;
@@ -631,9 +641,9 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
           mhc++;
       } else {
         // TODO Check what to do for these three
-        getgb(i).tag = p.gtag(pc, i);
+        getgb(i).tag = p.gtag(hash_fetch_pc, i);
   #ifdef DEBUG
-  fprintf (stderr, "pc = %llx Allocated entry in bank %d\n", orig_pc, i);
+  fprintf (stderr, "pc = %llx Allocated entry in bank %d\n", pc, i);
   #endif // DEBUG
         for (uint32_t offset = 0; offset < INFO_PER_ENTRY; offset++) {
           getgo(i, offset).dualc.reset();
@@ -656,10 +666,17 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 int batage::size() {
   int totsize = (1 << LOGB) + (BHYSTBITS << LOGB2);
   fprintf (stderr, "Bimodal size = %u bits\n", totsize);
+  #ifndef SINGLE_TAG
+    totsize += NUMG * (((dualcounter::size()+ TAGBITS) *INFO_PER_ENTRY) * ENTRIES_PER_TABLE);
+  #else // SINGLE_TAG
   totsize += NUMG * (((dualcounter::size()*INFO_PER_ENTRY) + TAGBITS) * ENTRIES_PER_TABLE);
+  #endif // SINGLE_TAG
   fprintf (stderr, "dualcounter size = %u, Total size = %u bits, LOGG = %d, ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, LOGGE = %d\n", dualcounter::size(), totsize, LOGG, ENTRIES_PER_TABLE, LOGGE_ORIG, LOGGE);
   
-    fprintf (stderr, " NEW_BITS_PER_TABLE = %u, NEW_ENTRY_SIZE = %u, NEW_ENTRIES_PER_TABLE = %u \n", NEW_BITS_PER_TABLE, NEW_ENTRY_SIZE, NEW_ENTRIES_PER_TABLE);
+  #ifdef SINGLE_TAG
+    fprintf (stderr, " NEW_ENTRIES_PER_TABLE = %u \n", NEW_ENTRIES_PER_TABLE);
+        /*fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);*/
+   #endif // SINGLE_TAG
         /*fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);*/
     return totsize; // number of bits
   // the storage for counters 'cat', 'meta' and 'cd' is neglected here
