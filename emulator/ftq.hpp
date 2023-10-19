@@ -52,14 +52,16 @@ public:
   uint64_t branchTarget;// 1 per instruction - TODO Check if required
 
 /* Changes for SS predictor
-hit - vector of banks that hit, stays the same
+hit - vector of banks that hit, stays the same for single tag; for multi tag - one vector per pc
 s - vector of counters from hitting banks -> need correct vector for each pc
 bp - Dual counter procviding the final prediction, need correct for each 
 bi, bi2 - Stays the same
 gi - stays the same 
 b_bi, b2_bi2 - Must return a vector - one element for each subentry/ offset ???
 */
-  vector<int32_t> hit;   // size = NUMG - 1 per fetch_pc
+
+  vector<vector<int32_t>> hit;
+
   vector<vector<dualcounter>> s; // size = NUMG - 1 per instruction
   int meta;
   vector<int> bp;

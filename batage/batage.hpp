@@ -42,7 +42,7 @@
 #define LOGG (11)
 #define ORIG_ENTRIES_PER_TABLE ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY)  //1902
 
-#define SINGLE_TAG
+//#define SINGLE_TAG
 #ifdef SINGLE_TAG
 #define NEW_BITS_PER_TABLE (TAGBITS * (INFO_PER_ENTRY-1) * (ORIG_ENTRIES_PER_TABLE))
 #define NEW_ENTRY_SIZE (TAGBITS + (INFO_PER_ENTRY * dualcounter::size() ) )
@@ -195,7 +195,11 @@ public:
   vector<int> b_bi;
   vector<int> b2_bi2;
   int *gi;               // Hashes for/Indices into the tagged banks
-  vector<int> hit;       // tell which banks have a hit - stays same for SS
+  
+
+  vector<vector<int>> hit;       // tell which banks have a hit - stays same for single tag SS - a vector each for multitag SS
+
+  
   vector<vector<dualcounter>> s; // dual-counters for the hitting banks - vector of vectors for SS
   vector<int> bp; // dual-counter providing the final BATAGE prediction - index within s - vector for SS
   vector<bool> predict; // (INFO_PER_ENTRY);

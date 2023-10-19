@@ -352,6 +352,9 @@ batage::batage() {
 
 s.reserve(INFO_PER_ENTRY);
 
+
+hit.reserve(INFO_PER_ENTRY);
+
 }
 
 #ifdef BANK_INTERLEAVING
@@ -370,6 +373,7 @@ void batage::check_bank_conflicts() {
 #endif
 
 // i is the bank number - not the index within bank
+// Index is taken from gi, must be saved from prediction to update
 tagged_entry &batage::getgb(int i) {
   ASSERT((i >= 0) && (i < NUMG));
 #ifdef BANK_INTERLEAVING
@@ -381,6 +385,7 @@ tagged_entry &batage::getgb(int i) {
 }
 
 // i is the bank number - not the index within bank
+// Index is taken from gi, must be saved from prediction to update
 tagged_entry &batage::getgo(int i, uint32_t offset_within_entry) {
   ASSERT((i >= 0) && (i < NUMG));
 #ifdef BANK_INTERLEAVING
@@ -410,18 +415,47 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
   }
 #else
   uint32_t hash_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
-#endif
+#endif // SINGLE_TAG
 #endif // PC_SHIFT
 
   uint32_t offset_within_entry; // = hash_pc % INFO_PER_ENTRY;
-
-  hit.clear();
+  
   // std::cerr << "00000" << "\n";
   for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
   {
+  	hit[offset_within_entry].clear();
   	s[offset_within_entry].clear();
   }
-  // std::cerr << "11111" << "\n";
+  
+for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+   {
+   
+     	for (int i = 0; i < NUMG; i++) {
+		#ifdef BANK_INTERLEAVING
+    		bank[i] = p.phybank(i);
+		#ifdef DEBUG
+		//fprintf (stderr, "For predict, bank[%d] = %d \n ", i, bank[i]);
+		#endif // DEBUG
+		#endif
+    		gi[i] = p.gindex(hash_fetch_pc, i);
+		#ifdef DEBUG
+		//fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
+		#endif // DEBUG
+   
+     #ifndef SINGLE_TAG
+   		if (getgo(i, offset_within_entry).tag == p.gtag(hash_pc[offset_within_entry], i)) {
+    #else
+    	        if (getgb(i).tag == p.gtag(hash_fetch_pc, i)) {
+    #endif
+			#ifdef DEBUG
+			fprintf (stderr, "bank %d hit for offset %d\n", i, offset_within_entry);
+			#endif //DEBUG
+     		 	hit[offset_within_entry].push_back(i);
+			s[offset_within_entry].push_back(getgo(i, offset_within_entry).dualc);
+      		}
+      	} 	
+    }
+  /*
   for (int i = 0; i < NUMG; i++) {
 #ifdef BANK_INTERLEAVING
     bank[i] = p.phybank(i);
@@ -429,11 +463,12 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
 //fprintf (stderr, "For predict, bank[%d] = %d \n ", i, bank[i]);
 #endif // DEBUG
 #endif
-    		gi[i] = p.gindex(hash_fetch_pc, i);
+    gi[i] = p.gindex(hash_fetch_pc, i);
 #ifdef DEBUG
 //fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
 #endif // DEBUG
-    if (getgb(i).tag == p.gtag(hash_fetch_pc, i)) {
+
+    if (getgb(i).tag == p.gtag(hash_pc, i)) {
 //#define CHECK_SS
 #ifdef DEBUG
 	fprintf (stderr, "bank %d hit\n", i);
@@ -444,14 +479,16 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
       		s[offset_within_entry].push_back(getgo(i, offset_within_entry).dualc);
       	}
     }
-  }
+}*/
+
+
   #ifdef DEBUG
   if (hit.empty())
   {
 	fprintf (stderr, "No bank hit\n");
 	}
 #endif //DEBUG
-	// std::cerr << "22222" << "\n";
+
 #ifdef BANK_INTERLEAVING
 #ifndef SIMFASTER
   check_bank_conflicts();
@@ -462,7 +499,7 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
   bi2 = bi & ((1 << LOGB2E) - 1);
   b_bi.clear();
   b2_bi2.clear();
-  // std::cerr << "33333" << "\n";
+
   for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
   {
   		b_bi.push_back (b[bi][offset_within_entry]);
@@ -480,8 +517,7 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
   	}
   }
   #endif // DEBUG
-  
-  
+
 	// std::cerr << "44444" << "\n";
   // bp = index within s
   bp.clear();
@@ -533,8 +569,8 @@ void batage::update_bimodal(bool taken, uint32_t offset_within_entry) {
 // i - index within s
 void batage::update_entry(int i, uint32_t offset_within_entry, bool taken) {
   ASSERT(i < s[offset_within_entry].size());
-  if (i < (int)hit.size()) {
-    getgo(hit[i], offset_within_entry).dualc.update(taken);
+  if (i < (int)hit[offset_within_entry].size()) {
+    getgo(hit[offset_within_entry][i], offset_within_entry).dualc.update(taken);
   } else {
     update_bimodal(taken, offset_within_entry);
   }
@@ -597,21 +633,21 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
   for (int i = 0; i < bp[offset_within_entry]; i++) {
     if ((meta >= 0) || s[offset_within_entry][i].lowconf() || (s[offset_within_entry][i].pred() != s[offset_within_entry][bp[offset_within_entry]].pred()) ||
         ((rando() % 8) == 0)) {
-      getgo(hit[i], offset_within_entry).dualc.update(taken);
+      getgo(hit[offset_within_entry][i], offset_within_entry).dualc.update(taken);
     }
   }
   // update at bp
-  if ((bp[offset_within_entry] < (int)hit.size()) && s[offset_within_entry][bp[offset_within_entry]].highconf() && s[offset_within_entry][bp[offset_within_entry] + 1].highconf() &&
+  if ((bp[offset_within_entry] < (int)hit[offset_within_entry].size()) && s[offset_within_entry][bp[offset_within_entry]].highconf() && s[offset_within_entry][bp[offset_within_entry] + 1].highconf() &&
       (s[offset_within_entry][bp[offset_within_entry] + 1].pred() == taken) &&
       ((s[offset_within_entry][bp[offset_within_entry]].pred() == taken) || (cat >= (CATMAX / 2)))) {
     if (!s[offset_within_entry][bp[offset_within_entry]].saturated() || ((meta < 0) && ((rando() % 8) == 0))) {
-      getgo(hit[bp[offset_within_entry]], offset_within_entry).dualc.decay();
+      getgo(hit[offset_within_entry][bp[offset_within_entry]], offset_within_entry).dualc.decay();
     }
   } else {
     update_entry(bp[offset_within_entry], offset_within_entry, taken);
   }
   // update at bp+1
-  if (!s[offset_within_entry][bp[offset_within_entry]].highconf() && (bp[offset_within_entry] < (int)hit.size())) {
+  if (!s[offset_within_entry][bp[offset_within_entry]].highconf() && (bp[offset_within_entry] < (int)hit[offset_within_entry].size())) {
     update_entry(bp[offset_within_entry] + 1, offset_within_entry, taken);
   }
 
@@ -625,7 +661,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
   #endif // DEBUG
 
   if (allocate && ((int)(rando() % MINAP) >= ((cat * MINAP) / (CATMAX + 1)))) {
-    int i = (hit.size() > 0) ? hit[0] : NUMG;
+    int i = (hit[offset_within_entry].size() > 0) ? hit[offset_within_entry][0] : NUMG;
     i -= rando() % (1 + s[offset_within_entry][0].diff() * SKIPMAX / dualcounter::nmax);
     int mhc = 0;
     while (--i >= 0) {
@@ -640,17 +676,31 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
         if (!getgo(i, offset_within_entry).dualc.veryhighconf())
           mhc++;
       } else {
-        // TODO Check what to do for these three
+      
+        // TODO Check what to do for these three - allocation should be same for SINGLE_TAG and MULTI_TAG
+
+        #ifndef SINGLE_TAG
+        getgo(i, offset_within_entry).tag = p.gtag(hash_pc , i);
+        #else // SINGLE_TAG
         getgb(i).tag = p.gtag(hash_fetch_pc, i);
+        #endif // SINGLE_TAG
+        
   #ifdef DEBUG
   fprintf (stderr, "pc = %llx Allocated entry in bank %d\n", pc, i);
   #endif // DEBUG
+  
+  #ifndef SINGLE_TAG
+  	getgo(i, offset_within_entry).dualc.reset();
+  	getgo(i, offset_within_entry).dualc.update(taken);
+  #else // SINGLE_TAG
         for (uint32_t offset = 0; offset < INFO_PER_ENTRY; offset++) {
           getgo(i, offset).dualc.reset();
           if (offset == offset_within_entry) {
             getgo(i, offset).dualc.update(taken);
           }
         }
+    #endif // SINGLE_TAG
+        
         cat += CATR_NUM - mhc * CATR_DEN;
         cat = min(CATMAX, max(0, cat));
 #ifdef USE_CD
@@ -660,24 +710,27 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
         break;
       }
     }
-  }
+  } // allocate over
+  
 }
 
 int batage::size() {
   int totsize = (1 << LOGB) + (BHYSTBITS << LOGB2);
   fprintf (stderr, "Bimodal size = %u bits\n", totsize);
+  
   #ifndef SINGLE_TAG
     totsize += NUMG * (((dualcounter::size()+ TAGBITS) *INFO_PER_ENTRY) * ENTRIES_PER_TABLE);
   #else // SINGLE_TAG
   totsize += NUMG * (((dualcounter::size()*INFO_PER_ENTRY) + TAGBITS) * ENTRIES_PER_TABLE);
   #endif // SINGLE_TAG
+  
   fprintf (stderr, "dualcounter size = %u, Total size = %u bits, LOGG = %d, ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, LOGGE = %d\n", dualcounter::size(), totsize, LOGG, ENTRIES_PER_TABLE, LOGGE_ORIG, LOGGE);
   
   #ifdef SINGLE_TAG
     fprintf (stderr, " NEW_ENTRIES_PER_TABLE = %u \n", NEW_ENTRIES_PER_TABLE);
         /*fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);*/
    #endif // SINGLE_TAG
-        /*fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);*/
+   
     return totsize; // number of bits
   // the storage for counters 'cat', 'meta' and 'cd' is neglected here
 }
