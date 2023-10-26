@@ -410,7 +410,7 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
   uint32_t pc;
   for ( int i = 0;  i < INFO_PER_ENTRY;  i++)
   {
-  	pc = fetch_pc + (i<<2);
+  	pc = fetch_pc + (i<<1);
   	hash_pc.push_back(pc ^ (pc >> PC_SHIFT));
   }
 #else

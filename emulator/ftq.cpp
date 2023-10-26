@@ -101,7 +101,7 @@ bool get_predDir_from_ftq (uint16_t index)
 
 void ftq_update_resolvedinfo (uint16_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget)
 {
-	ftq[index].pc = branch_pc;
+	//ftq[index].pc = branch_pc;
 	ftq[index].insn = insn;
 	ftq[index].resolveDir = resolveDir;
 	ftq[index].branchTarget = branchTarget;
