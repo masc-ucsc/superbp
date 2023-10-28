@@ -32,7 +32,18 @@
 #define LOG2FETCHWIDTH (4)
 #define FETCHWIDTH (1 << LOG2FETCHWIDTH)
 #define NUM_TAKEN_BRANCHES (1)
+
+//#define SINGLE_TAG
+#ifndef SINGLE_TAG
+#define XIANGSHAN
+#endif
+
+#ifdef XIANGSHAN
+#define INFO_PER_ENTRY  ( (FETCHWIDTH >= 2) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2:  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
+#else
 #define INFO_PER_ENTRY (FETCHWIDTH * NUM_TAKEN_BRANCHES)
+#endif // XIANGSHAN
+
 #define LOGE ((int)log2(INFO_PER_ENTRY))
 #define LOGBE (LOGB - LOGE)
 #define LOGB2E (LOGB2 - LOGE)
@@ -40,9 +51,9 @@
 
 #define NUM_ENTRIES (13312)
 #define LOGG (11)
+//#define ORIG_ENTRIES_PER_TABLE (NUM_ENTRIES/NUMG)  //1902
 #define ORIG_ENTRIES_PER_TABLE ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY)  //1902
 
-#define SINGLE_TAG
 #ifdef SINGLE_TAG
 #define NEW_BITS_PER_TABLE (TAGBITS * (INFO_PER_ENTRY-1) * (ORIG_ENTRIES_PER_TABLE))
 #define NEW_ENTRY_SIZE (TAGBITS + (INFO_PER_ENTRY * dualcounter::size() ) )
@@ -217,8 +228,8 @@ public:
   tagged_entry &getgo(int i, uint32_t offset_within_entry);
   std::vector<bool>& predict_vec(uint32_t fetch_pc, const histories &p);
   void update_bimodal(bool taken, uint32_t offset_within_entry);
-  void update_entry(int i, uint32_t offset_within_entry, bool taken);
-  void update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_entry, bool taken, const histories &p, bool noalloc);
+  void update_entry(int i, uint32_t offset_within_packet, bool taken);
+  void update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packet, bool taken, const histories &p, bool noalloc);
   int size();
 #ifdef BANK_INTERLEAVING
   void check_bank_conflicts();

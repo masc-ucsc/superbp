@@ -350,10 +350,8 @@ batage::batage() {
   update_pcs = fopen("update_pcs.txt", "w+");
 #endif // DEBUG
 
-s.reserve(INFO_PER_ENTRY);
-
-
-hit.reserve(INFO_PER_ENTRY);
+s.reserve(FETCHWIDTH);
+hit.reserve(FETCHWIDTH);
 
 }
 
@@ -408,7 +406,7 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
 #ifndef SINGLE_TAG
     vector <uint32_t> hash_pc;
   uint32_t pc;
-  for ( int i = 0;  i < INFO_PER_ENTRY;  i++)
+  for ( int i = 0;  i < FETCHWIDTH;  i++)
   {
   	pc = fetch_pc + (i<<1);
   	hash_pc.push_back(pc ^ (pc >> PC_SHIFT));
@@ -418,17 +416,23 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
 #endif // SINGLE_TAG
 #endif // PC_SHIFT
 
-  uint32_t offset_within_entry; // = hash_pc % INFO_PER_ENTRY;
+  uint32_t offset_within_entry, offset_within_packet; // = hash_pc % INFO_PER_ENTRY;
   
   // std::cerr << "00000" << "\n";
-  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
-  	hit[offset_within_entry].clear();
-  	s[offset_within_entry].clear();
+  	hit[offset_within_packet].clear();
+  	s[offset_within_packet].clear();
   }
   
-for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
    {
+   
+   	 #ifdef XIANGSHAN
+   		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY);
+   	#else
+   		offset_within_entry = offset_within_packet;
+   	#endif
    
      	for (int i = 0; i < NUMG; i++) {
 		#ifdef BANK_INTERLEAVING
@@ -443,17 +447,17 @@ for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_withi
 		#endif // DEBUG
    
      #ifndef SINGLE_TAG
-   		if (getgo(i, offset_within_entry).tag == p.gtag(hash_pc[offset_within_entry], i)) {
+   		if (getgo(i, offset_within_entry).tag == p.gtag(hash_pc[offset_within_packet], i)) {
     #else
     	        if (getgb(i).tag == p.gtag(hash_fetch_pc, i)) {
     #endif
 			#ifdef DEBUG
 			fprintf (stderr, "bank %d hit for offset %d\n", i, offset_within_entry);
 			#endif //DEBUG
-     		 	hit[offset_within_entry].push_back(i);
-			s[offset_within_entry].push_back(getgo(i, offset_within_entry).dualc);
+     		 	hit[offset_within_packet].push_back(i);
+			s[offset_within_packet].push_back(getgo(i, offset_within_entry).dualc);
       		}
-      	} 	
+      	}
     }
   /*
   for (int i = 0; i < NUMG; i++) {
@@ -500,11 +504,18 @@ for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_withi
   b_bi.clear();
   b2_bi2.clear();
 
-  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
+  
+     	 #ifdef XIANGSHAN
+   		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY);
+   	#else
+   		offset_within_entry = offset_within_packet;
+   	#endif
+   	
   		b_bi.push_back (b[bi][offset_within_entry]);
   		b2_bi2.push_back(b2[bi2][offset_within_entry]);
-  		s[offset_within_entry].push_back(dualcounter(b_bi[offset_within_entry], b2_bi2[offset_within_entry]));
+  		s[offset_within_packet].push_back(dualcounter(b_bi[offset_within_packet], b2_bi2[offset_within_packet]));
   }
   
     #ifdef DEBUG
@@ -521,17 +532,17 @@ for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_withi
 	// std::cerr << "44444" << "\n";
   // bp = index within s
   bp.clear();
-  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
   int t = 0;
-  	for (int i = 1; i < (int)s[offset_within_entry].size(); i++) {
-    	if (s[offset_within_entry][i].conflevel(meta) < s[offset_within_entry][t].conflevel(meta)) {
+  	for (int i = 1; i < (int)s[offset_within_packet].size(); i++) {
+    	if (s[offset_within_packet][i].conflevel(meta) < s[offset_within_packet][t].conflevel(meta)) {
       	t = i;
     	}
   	}
   	bp.push_back(t);
   	#ifdef DEBUG
-  		fprintf (stderr, "Offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_entry, bp[offset_within_entry], b_bi[offset_within_entry], b2_bi2[offset_within_entry]);
+  		fprintf (stderr, "Offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_packet, bp[offset_within_packet], b_bi[offset_within_packet], b2_bi2[offset_within_packet]);
 	#endif // DEBUG
   }
  
@@ -539,10 +550,10 @@ for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_withi
 	// std::cerr << "55555" << "\n";
   // For superscalar - save s, p, hit
   predict.clear();
-  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
    	//predict[offset_within_entry] = s[offset_within_entry][bp].pred();
-   	predict.push_back(s[offset_within_entry][bp[offset_within_entry]].pred());
+   	predict.push_back(s[offset_within_packet][bp[offset_within_packet]].pred());
   }
 	// std::cerr << "66666" << "\n";
 	// TODO Temporarily Diabled
@@ -567,10 +578,18 @@ void batage::update_bimodal(bool taken, uint32_t offset_within_entry) {
 }
 
 // i - index within s
-void batage::update_entry(int i, uint32_t offset_within_entry, bool taken) {
-  ASSERT(i < s[offset_within_entry].size());
-  if (i < (int)hit[offset_within_entry].size()) {
-    getgo(hit[offset_within_entry][i], offset_within_entry).dualc.update(taken);
+void batage::update_entry(int i, uint32_t offset_within_packet, bool taken) {
+  
+  ASSERT(i < s[offset_within_packet].size());
+  
+#ifdef XIANGSHAN
+  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY);
+#else
+  uint32_t offset_within_entry = offset_within_packet;
+#endif
+  
+  if (i < (int)hit[offset_within_packet].size()) {
+    getgo(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
   } else {
     update_bimodal(taken, offset_within_entry);
   }
@@ -578,7 +597,7 @@ void batage::update_entry(int i, uint32_t offset_within_entry, bool taken) {
 
 /*For superscalar - anything that is non constant & is used before/ without
  * assigning a value must be saved in ftq*/
-void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_entry, bool taken, const histories &p,
+void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packet, bool taken, const histories &p,
                     bool noalloc = false) {
 
 #ifdef DEBUG
@@ -594,19 +613,24 @@ void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_entry
   uint32_t hash_pc = pc ^ (pc >> PC_SHIFT);
 #endif
 
-  //uint32_t offset_within_entry = pc % INFO_PER_ENTRY;
+#ifdef XIANGSHAN
+  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY);
+#else
+  uint32_t offset_within_entry = offset_within_packet;
+#endif
   
   #ifdef DEBUG
   //fprintf (stderr, "offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_entry, bp[offset_within_entry], b_bi[offset_within_entry], b2_bi2[offset_within_entry]);
   #endif // DEBUG
+  
   // TODO - Check, might/ should not be necessary
-  b[bi][offset_within_entry] = b_bi[offset_within_entry];
-  b2[bi2][offset_within_entry] = b2_bi2[offset_within_entry];
+  b[bi][offset_within_entry] = b_bi[offset_within_packet];
+  b2[bi2][offset_within_entry] = b2_bi2[offset_within_packet];
 
 #ifdef USE_META
-  if ((s[offset_within_entry].size() > 1) && (s[offset_within_entry][0].sum() == 1) && s[offset_within_entry][1].highconf() &&
-      (s[offset_within_entry][0].pred() != s[offset_within_entry][1].pred())) {
-    if (s[offset_within_entry][0].pred() == taken) {
+  if ((s[offset_within_packet].size() > 1) && (s[offset_within_packet][0].sum() == 1) && s[offset_within_packet][1].highconf() &&
+      (s[offset_within_packet][0].pred() != s[offset_within_packet][1].pred())) {
+    if (s[offset_within_packet][0].pred() == taken) {
       if (meta < 15)
         meta++;
     } else {
@@ -630,39 +654,39 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 #endif // DEBUG
 
   // update from 0 to bp-1
-  for (int i = 0; i < bp[offset_within_entry]; i++) {
-    if ((meta >= 0) || s[offset_within_entry][i].lowconf() || (s[offset_within_entry][i].pred() != s[offset_within_entry][bp[offset_within_entry]].pred()) ||
+  for (int i = 0; i < bp[offset_within_packet]; i++) {
+    if ((meta >= 0) || s[offset_within_packet][i].lowconf() || (s[offset_within_packet][i].pred() != s[offset_within_packet][bp[offset_within_packet]].pred()) ||
         ((rando() % 8) == 0)) {
-      getgo(hit[offset_within_entry][i], offset_within_entry).dualc.update(taken);
+      getgo(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
     }
   }
   // update at bp
-  if ((bp[offset_within_entry] < (int)hit[offset_within_entry].size()) && s[offset_within_entry][bp[offset_within_entry]].highconf() && s[offset_within_entry][bp[offset_within_entry] + 1].highconf() &&
-      (s[offset_within_entry][bp[offset_within_entry] + 1].pred() == taken) &&
-      ((s[offset_within_entry][bp[offset_within_entry]].pred() == taken) || (cat >= (CATMAX / 2)))) {
-    if (!s[offset_within_entry][bp[offset_within_entry]].saturated() || ((meta < 0) && ((rando() % 8) == 0))) {
-      getgo(hit[offset_within_entry][bp[offset_within_entry]], offset_within_entry).dualc.decay();
+  if ((bp[offset_within_packet] < (int)hit[offset_within_packet].size()) && s[offset_within_packet][bp[offset_within_packet]].highconf() && s[offset_within_packet][bp[offset_within_packet] + 1].highconf() &&
+      (s[offset_within_packet][bp[offset_within_packet] + 1].pred() == taken) &&
+      ((s[offset_within_packet][bp[offset_within_packet]].pred() == taken) || (cat >= (CATMAX / 2)))) {
+    if (!s[offset_within_packet][bp[offset_within_packet]].saturated() || ((meta < 0) && ((rando() % 8) == 0))) {
+      getgo(hit[offset_within_packet][bp[offset_within_packet]], offset_within_entry).dualc.decay();
     }
   } else {
-    update_entry(bp[offset_within_entry], offset_within_entry, taken);
+    update_entry(bp[offset_within_packet], offset_within_packet, taken);
   }
   // update at bp+1
-  if (!s[offset_within_entry][bp[offset_within_entry]].highconf() && (bp[offset_within_entry] < (int)hit[offset_within_entry].size())) {
-    update_entry(bp[offset_within_entry] + 1, offset_within_entry, taken);
+  if (!s[offset_within_packet][bp[offset_within_packet]].highconf() && (bp[offset_within_packet] < (int)hit[offset_within_packet].size())) {
+    update_entry(bp[offset_within_packet] + 1, offset_within_packet, taken);
   }
 
   // ALLOCATE
   // TODO Check what to do for these getg (for allocation)
-  bool allocate = !noalloc && (s[offset_within_entry][bp[offset_within_entry]].pred() != taken);
+  bool allocate = !noalloc && (s[offset_within_packet][bp[offset_within_packet]].pred() != taken);
 
   #ifdef DEBUG
-  fprintf (stderr, "For allocation - s[%d][%d] = %d, %d\n", offset_within_entry, bp[offset_within_entry], \
-  s[offset_within_entry][bp[offset_within_entry]].n[0], s[offset_within_entry][bp[offset_within_entry]].n[1]);
+  fprintf (stderr, "For allocation - s[%d][%d] = %d, %d\n", offset_within_packet, bp[offset_within_packet], \
+  s[offset_within_packet][bp[offset_within_packet]].n[0], s[offset_within_packet][bp[offset_within_packet]].n[1]);
   #endif // DEBUG
 
   if (allocate && ((int)(rando() % MINAP) >= ((cat * MINAP) / (CATMAX + 1)))) {
-    int i = (hit[offset_within_entry].size() > 0) ? hit[offset_within_entry][0] : NUMG;
-    i -= rando() % (1 + s[offset_within_entry][0].diff() * SKIPMAX / dualcounter::nmax);
+    int i = (hit[offset_within_packet].size() > 0) ? hit[offset_within_packet][0] : NUMG;
+    i -= rando() % (1 + s[offset_within_packet][0].diff() * SKIPMAX / dualcounter::nmax);
     int mhc = 0;
     while (--i >= 0) {
       if (getgo(i, offset_within_entry).dualc.highconf()) {
