@@ -175,7 +175,7 @@ static inline void read_ftq_update_predictor() {
   uint8_t partial_pop = (last_misprediction || last_resolveDir);
 
 	// For multiple taken predictions, changed from FETCH_WIDTH to INFO_PER_ENTRY 
-  if ((inst_index_in_fetch == INFO_PER_ENTRY) || partial_pop) {
+  if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) {
   
   #ifdef DEBUG_FTQ
   fprintf (stderr, "\nread_ftq_update_predictor : inst_index_in_fetch = %u, partial_pop = %d\n", inst_index_in_fetch, partial_pop);
@@ -187,7 +187,7 @@ static inline void read_ftq_update_predictor() {
               << " last_resolveDir = " << last_resolveDir << "\n";*/
 #endif
 
-    for (int i = 0; i < (partial_pop ? inst_index_in_fetch : INFO_PER_ENTRY);
+    for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH);
          i++) {
       if (!is_ftq_empty()) {
         get_ftq_data(&ftq_data);
@@ -236,24 +236,24 @@ static inline void read_ftq_update_predictor() {
   	#endif
   	// TODO - Check if nuke necessary/ correct
     nuke_ftq();
-    #ifdef DEBUG_HUQ
+    #ifdef DEBUG
   	fprintf (stderr, "Popping huq, Updating histories \n");
   	#endif
     while (!is_huq_empty()) {
       get_huq_data(&huq_data);
-      	#ifdef DEBUG_HUQ
+      	#ifdef DEBUG
   			fprintf (stderr, "Updating history for target = %llx, resolvedir = %d \n", huq_data.branchTarget, huq_data.resolveDir);
   			#endif
       bp.Updatehistory(huq_data.resolveDir, huq_data.branchTarget);
     }
-    #ifdef DEBUG_HUQ
+    #ifdef DEBUG
   	fprintf (stderr, "Update histories done \n");
   	#endif
     /*last_pc = update_pc;
     last_resolveDir = update_resolveDir;
     last_predDir = update_predDir;*/
     // branchTarget = update_branchTarget;
-#ifdef DEBUG_FTQ
+#ifdef DEBUG
     {
       std::cerr << "After deallocations over - inst_index_in_fetch = "
                 << inst_index_in_fetch << "\n";
@@ -559,21 +559,21 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   	set_ftq_index (inst_index_in_fetch);
   	
   	// temp_predDir = bp.GetPrediction(temp_pc);
-  	std::vector<bool> vec_predDir(INFO_PER_ENTRY, false);
-  	#ifdef DEBUG_FTQ
+  	std::vector<bool> vec_predDir(FETCH_WIDTH, false);
+  	#ifdef DEBUG
     {
       std::cerr << "getting predictions" << "\n";
     }
-    #endif // DEBUG_FTQ
+    #endif // DEBUG
 	//vec_predDir = std::move(bp.GetPrediction(temp_pc));
 	vec_predDir = bp.GetPrediction(temp_pc);	
-	#ifdef DEBUG_FTQ
+	#ifdef DEBUG
     {
       std::cerr << "got predictions" << "\n";
     }
-#endif // DEBUG_FTQ
+#endif // DEBUG
 	
-  	for (int i = 0; i < INFO_PER_ENTRY; i++)
+  	for (int i = 0; i < FETCH_WIDTH; i++)
   	{
  
   		// Allocate
@@ -589,7 +589,11 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   		temp_pc+=2;
   	}
   	
-  	
+#ifdef DEBUG
+    {
+      std::cerr << "FTQ allocarions done" << "\n";
+    }
+#endif // DEBUG  	
   	
   	
   	
@@ -599,6 +603,11 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   //Get predDir for the instruction
   predDir = get_predDir_from_ftq (inst_index_in_fetch);
 
+#ifdef DEBUG
+    {
+      std::cerr << "Prediction gotten from ftq" << "\n";
+    }
+#endif // DEBUG  
   // Update counters -
   // If this instruction is not a branch - straight case - predDir and
   // resolveDir in sync If this instruction is a branch - it will be resolved in

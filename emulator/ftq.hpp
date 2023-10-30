@@ -21,7 +21,7 @@ FILE* fp = fopen ("ftq_log.txt", w+);
 #endif*/
 
 //#define INFO_PER_ENTRY 1
-#define NUM_FTQ_ENTRIES (INFO_PER_ENTRY * 2)
+#define NUM_FTQ_ENTRIES (FETCH_WIDTH * 2)
 
 class ftq_entry {
 

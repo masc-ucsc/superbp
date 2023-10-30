@@ -203,17 +203,17 @@ histories::histories() {
   cht = new folded_history[NUMG];
   chtt = new folded_history[NUMG];
   for (int i = 0; i < NUMG; i++) {
-    chg[i].init(hist[i], LOGGE, 1);
+    chg[i].init(hist[i], LOGGE(i), 1);
     cht[i].init(hist[i], TAGBITS, 1);
     int hashparam = 1;
-    if (LOGGE == TAGBITS) {
-      hashparam = (lcm(LOGGE, LOGGE - 3) > lcm(LOGGE, LOGGE - 2)) ? 3 : 2;
+    if (LOGGE(i) == TAGBITS) {
+      hashparam = (lcm(LOGGE(i), LOGGE(i) - 3) > lcm(LOGGE(i), LOGGE(i) - 2)) ? 3 : 2;
     }
     if (hist[i] <= MAXPATH) {
-      chgg[i].init(hist[i], LOGGE - hashparam, PATHBITS);
+      chgg[i].init(hist[i], LOGGE(i) - hashparam, PATHBITS);
       chtt[i].init(hist[i], TAGBITS - 1, PATHBITS);
     } else {
-      chgg[i].init(hist[i], LOGGE - hashparam, 1);
+      chgg[i].init(hist[i], LOGGE(i) - hashparam, 1);
       chtt[i].init(hist[i], TAGBITS - 1, 1);
     }
   }
@@ -244,13 +244,25 @@ void histories::update(uint32_t targetpc, bool taken) {
 
 int histories::gindex(uint32_t pc, int i) const {
   ASSERT((i >= 0) && (i < NUMG));
+#ifdef DEBUG_GINDEX
+//fprintf (stderr, "gindex, %lx, %d \n", pc, i);
+#endif
   uint32_t hash = pc ^ i ^ chg[i].fold ^
                   (chgg[i].fold << (chg[i].clength - chgg[i].clength));
-   int raw_index = hash & ((1 << LOGGE) - 1);
-   return (raw_index % ENTRIES_PER_TABLE);
+   int raw_index = hash & ((1 << LOGGE(i)) - 1);
+   int rolled_index = (raw_index % ENTRIES_PER_TABLE(i));
+#ifdef DEBUG_GINDEX
+fprintf (stderr, "ENTRIES_PER_TABLE = %d, rolled_index = %d \n", ENTRIES_PER_TABLE(i), rolled_index);
+#endif
+   return rolled_index;
 }
 
 int histories::gtag(uint32_t pc, int i) const {
+
+#ifdef DEBUG 
+//fprintf (stderr, "gtag, %d, %d \n", pc, i);
+#endif
+
   ASSERT((i >= 0) && (i < NUMG));
   uint32_t hash = (pc + i) ^ reverse(cht[i].fold, cht[i].clength) ^
                   (chtt[i].fold << (cht[i].clength - chtt[i].clength));
@@ -312,8 +324,8 @@ batage::batage() {
   g = new tagged_entry **[NUMG];
   
   for (int i = 0; i < NUMG; i++) {
-    g[i] = new tagged_entry *[ENTRIES_PER_TABLE];
-    for (int j = 0; j < (ENTRIES_PER_TABLE); j++) {
+    g[i] = new tagged_entry *[ENTRIES_PER_TABLE(i)];
+    for (int j = 0; j < (ENTRIES_PER_TABLE(i)); j++) {
       g[i][j] = new tagged_entry[INFO_PER_ENTRY];
     }
   }
@@ -385,6 +397,11 @@ tagged_entry &batage::getgb(int i) {
 // i is the bank number - not the index within bank
 // Index is taken from gi, must be saved from prediction to update
 tagged_entry &batage::getgo(int i, uint32_t offset_within_entry) {
+
+#ifdef DEBUG 
+//fprintf (stderr, "getgo, %d, %d \n", i, offset_within_entry);
+#endif
+
   ASSERT((i >= 0) && (i < NUMG));
 #ifdef BANK_INTERLEAVING
   ASSERT((bank[i] >= 0) && (bank[i] < NUMG));
@@ -418,7 +435,10 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
 
   uint32_t offset_within_entry, offset_within_packet; // = hash_pc % INFO_PER_ENTRY;
   
-  // std::cerr << "00000" << "\n";
+#ifdef DEBUG
+  std::cerr << "00000" << "\n";
+#endif
+  
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
   	hit[offset_within_packet].clear();
@@ -442,23 +462,30 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 		#endif // DEBUG
 		#endif
     		gi[i] = p.gindex(hash_fetch_pc, i);
+    		
 		#ifdef DEBUG
+		std::cerr << "11111" << "\n";
 		//fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
 		#endif // DEBUG
    
      #ifndef SINGLE_TAG
-   		if (getgo(i, offset_within_entry).tag == p.gtag(hash_pc[offset_within_packet], i)) {
+   		if (getgo(i, offset_within_entry).tag == p.gtag(hash_pc[offset_within_packet], i))
     #else
-    	        if (getgb(i).tag == p.gtag(hash_fetch_pc, i)) {
+    	        if (getgb(i).tag == p.gtag(hash_fetch_pc, i)) 
     #endif
+    		{
 			#ifdef DEBUG
-			fprintf (stderr, "bank %d hit for offset %d\n", i, offset_within_entry);
+			fprintf (stderr, "bank %d hit for offset %d\n", i, offset_within_packet);
 			#endif //DEBUG
      		 	hit[offset_within_packet].push_back(i);
 			s[offset_within_packet].push_back(getgo(i, offset_within_entry).dualc);
       		}
+      		#ifdef DEBUG
+     std::cerr << "22222" << "\n";	
+     #endif // DEBUG
       	}
     }
+    
   /*
   for (int i = 0; i < NUMG; i++) {
 #ifdef BANK_INTERLEAVING
@@ -499,6 +526,10 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 #endif
 #endif
 
+#ifdef DEBUG
+std::cerr << "33333" << "\n";
+#endif // DEBUG
+
   bi = hash_fetch_pc & ((1 << LOGBE) - 1);
   bi2 = bi & ((1 << LOGB2E) - 1);
   b_bi.clear();
@@ -519,17 +550,17 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
   }
   
     #ifdef DEBUG
-  for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
+  /*for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
   {
   	for (int j=0; j < s[offset_within_entry].size(); j++)
   	{
-  fprintf (stderr, "For prediction - s[%d][%d] = %d, %d\n", offset_within_entry, j, \
-  s[offset_within_entry][j].n[0], s[offset_within_entry][j].n[1]);
+  fprintf (stderr, "For prediction - s[%d][%d] = %d, %d\n", offset_within_packet, j, \
+  s[offset_within_packet][j].n[0], s[offset_within_packet][j].n[1]);
   	}
-  }
+  }*/
+  std::cerr << "44444" << "\n";
   #endif // DEBUG
-
-	// std::cerr << "44444" << "\n";
+	
   // bp = index within s
   bp.clear();
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
@@ -542,12 +573,14 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
   	}
   	bp.push_back(t);
   	#ifdef DEBUG
-  		fprintf (stderr, "Offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_packet, bp[offset_within_packet], b_bi[offset_within_packet], b2_bi2[offset_within_packet]);
+  		//fprintf (stderr, "Offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_packet, bp[offset_within_packet], b_bi[offset_within_packet], b2_bi2[offset_within_packet]);
 	#endif // DEBUG
   }
  
-
-	// std::cerr << "55555" << "\n";
+#ifdef DEBUG
+	std::cerr << "55555" << "\n";
+	#endif // DEBUG
+	
   // For superscalar - save s, p, hit
   predict.clear();
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
@@ -555,7 +588,9 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
    	//predict[offset_within_entry] = s[offset_within_entry][bp].pred();
    	predict.push_back(s[offset_within_packet][bp[offset_within_packet]].pred());
   }
-	// std::cerr << "66666" << "\n";
+  #ifdef DEBUG
+	std::cerr << "66666" << "\n";
+	#endif // DEBUG
 	// TODO Temporarily Diabled
   //fprintf(stderr, "ba.predict pc=%llx predict:%d\n", pc, predict);
 
@@ -739,19 +774,28 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 }
 
 int batage::size() {
-  int totsize = (1 << LOGB) + (BHYSTBITS << LOGB2);
-  fprintf (stderr, "Bimodal size = %u bits\n", totsize);
+  int bimodal_size, table_size, totsize;
   
+  bimodal_size = (1 << LOGB) + (BHYSTBITS << LOGB2);
+  fprintf (stderr, "Bimodal size = %u bits\n", bimodal_size);
+  
+  for (int i = 0; i < NUMG; i++)
+  {
+  
+    fprintf (stderr, "table %d, ORIG_ENTRIES_PER_TABLE = %d, LOGG = %d, SS_ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, ENTRIES_PER_TABLE = %d, LOGGE = %d\n", i, ORIG_ENTRIES_PER_TABLE(i), LOGG(i), SS_ENTRIES_PER_TABLE(i), LOGGE_ORIG(i), ENTRIES_PER_TABLE(i), LOGGE(i));
+    
   #ifndef SINGLE_TAG
-    totsize += NUMG * (((dualcounter::size()+ TAGBITS) *INFO_PER_ENTRY) * ENTRIES_PER_TABLE);
+   table_size =  (((dualcounter::size()+ TAGBITS) *INFO_PER_ENTRY) * ENTRIES_PER_TABLE(i));
   #else // SINGLE_TAG
-  totsize += NUMG * (((dualcounter::size()*INFO_PER_ENTRY) + TAGBITS) * ENTRIES_PER_TABLE);
+  table_size =  (((dualcounter::size()*INFO_PER_ENTRY) + TAGBITS) * ENTRIES_PER_TABLE(i));
   #endif // SINGLE_TAG
+  totsize += table_size;
+  }
   
-  fprintf (stderr, "dualcounter size = %u, Total size = %u bits, LOGG = %d, ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, LOGGE = %d\n", dualcounter::size(), totsize, LOGG, ENTRIES_PER_TABLE, LOGGE_ORIG, LOGGE);
+  fprintf (stderr, "Total size = %u bits\n", totsize);
   
   #ifdef SINGLE_TAG
-    fprintf (stderr, " NEW_ENTRIES_PER_TABLE = %u \n", NEW_ENTRIES_PER_TABLE);
+    //fprintf (stderr, " NEW_ENTRIES_PER_TABLE = %u \n", NEW_ENTRIES_PER_TABLE(i));
         /*fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);*/
    #endif // SINGLE_TAG
    

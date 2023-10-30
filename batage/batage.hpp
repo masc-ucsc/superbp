@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include <math.h>
 
 // ARM instructions are 4-byte aligned ==> shift PC by 2 bits
 // TODO - Check if the PC_SHIFT should be based on alignment or on instruction size, since we use RV32I
@@ -33,13 +34,13 @@
 #define FETCHWIDTH (1 << LOG2FETCHWIDTH)
 #define NUM_TAKEN_BRANCHES (1)
 
-//#define SINGLE_TAG
+#define SINGLE_TAG
 #ifndef SINGLE_TAG
 #define XIANGSHAN
 #endif
 
 #ifdef XIANGSHAN
-#define INFO_PER_ENTRY  ( (FETCHWIDTH >= 2) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2:  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
+#define INFO_PER_ENTRY  ( (FETCHWIDTH >= 2) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1 :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
 #else
 #define INFO_PER_ENTRY (FETCHWIDTH * NUM_TAKEN_BRANCHES)
 #endif // XIANGSHAN
@@ -47,20 +48,26 @@
 #define LOGE ((int)log2(INFO_PER_ENTRY))
 #define LOGBE (LOGB - LOGE)
 #define LOGB2E (LOGB2 - LOGE)
-#define LOGGE_ORIG (LOGG - LOGE)
 
-#define NUM_ENTRIES (13312)
-#define LOGG (11)
-//#define ORIG_ENTRIES_PER_TABLE (NUM_ENTRIES/NUMG)  //1902
-#define ORIG_ENTRIES_PER_TABLE ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY)  //1902
+#define NUM_ENTRIES (13320) // (13320)
+
+//#define LOGG (11)
+//#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY) 
+
+#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1110 : ( (i < 8) ? 1110 : 1110 ) ) 
+#define LOGG(i)  (int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)))
+
+#define SS_ENTRIES_PER_TABLE(i) (ORIG_ENTRIES_PER_TABLE(i) / INFO_PER_ENTRY)
+#define LOGGE_ORIG(i)  (LOGG(i) - LOGE)
 
 #ifdef SINGLE_TAG
-#define NEW_BITS_PER_TABLE (TAGBITS * (INFO_PER_ENTRY-1) * (ORIG_ENTRIES_PER_TABLE))
+#define NEW_BITS_PER_TABLE(i) (TAGBITS * (INFO_PER_ENTRY-1) * (ORIG_ENTRIES_PER_TABLE(i)))
 #define NEW_ENTRY_SIZE (TAGBITS + (INFO_PER_ENTRY * dualcounter::size() ) )
-#define NEW_ENTRIES_PER_TABLE (NEW_BITS_PER_TABLE/NEW_ENTRY_SIZE)
+#define NEW_ENTRIES_PER_TABLE(i) (NEW_BITS_PER_TABLE(i)/NEW_ENTRY_SIZE)
 //#define LOG2_NEW_ENTRIES_PER_TABLE ((int)log2(NEW_ENTRIES_PER_TABLE))
 
-#define LOGGE  ((int)ceil(log2(ORIG_ENTRIES_PER_TABLE + NEW_ENTRIES_PER_TABLE)))
+//#define LOGGE  ((int)ceil(log2(ORIG_ENTRIES_PER_TABLE + NEW_ENTRIES_PER_TABLE)))
+#define LOGGE(i)  ((int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)+ NEW_ENTRIES_PER_TABLE(i))))
 
 /*
 #define LOST_ENTRIES_PER_TABLE ((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE - (1 << LOGGE))
@@ -68,11 +75,11 @@
 */
 
 #else // SINGLE_TAG
-#define NEW_ENTRIES_PER_TABLE (0)
-#define LOGGE (LOGGE_ORIG)
+#define NEW_ENTRIES_PER_TABLE(i) (0)
+#define LOGGE(i)  (LOGGE_ORIG(i)) 
 #endif // SINGLE_TAG
 
-#define ENTRIES_PER_TABLE (ORIG_ENTRIES_PER_TABLE + NEW_ENTRIES_PER_TABLE)
+#define ENTRIES_PER_TABLE(i) (SS_ENTRIES_PER_TABLE(i) + NEW_ENTRIES_PER_TABLE(i))
 
 // SKIPMAX: maximum number of banks skipped on allocation
 // if you change NUMG, you must re-tune SKIPMAX
@@ -115,6 +122,7 @@
 #endif
 
 //#define DEBUG
+//#define DEBUG_GINDEX
 
 using namespace std;
 
