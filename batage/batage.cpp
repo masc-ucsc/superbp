@@ -774,7 +774,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 }
 
 int batage::size() {
-  int bimodal_size, table_size, totsize;
+  int bimodal_size = 0, table_size = 0, totsize = 0;
   
   bimodal_size = (1 << LOGB) + (BHYSTBITS << LOGB2);
   fprintf (stderr, "Bimodal size = %u bits\n", bimodal_size);
