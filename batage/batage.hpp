@@ -46,8 +46,10 @@
 #endif // XIANGSHAN
 
 #define LOGE ((int)log2(INFO_PER_ENTRY))
-#define LOGBE (LOGB - LOGE)
-#define LOGB2E (LOGB2 - LOGE)
+
+#define LOGFE  ((int)log2(FETCHWIDTH))
+#define LOGBE (LOGB - LOGFE)
+#define LOGB2E (LOGB2 - LOGFE)
 
 #define NUM_ENTRIES (13320) // (13320)
 
