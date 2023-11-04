@@ -326,7 +326,7 @@ batage::batage() {
   for (int i = 0; i < NUMG; i++) {
     g[i] = new tagged_entry *[ENTRIES_PER_TABLE(i)];
     for (int j = 0; j < (ENTRIES_PER_TABLE(i)); j++) {
-      g[i][j] = new tagged_entry[INFO_PER_ENTRY];
+      g[i][j] = new tagged_entry[INFO_PER_ENTRY(i)];
     }
   }
   
@@ -449,7 +449,7 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
    {
    
    	 #ifdef XIANGSHAN
-   		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY);
+   		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
    	#else
    		offset_within_entry = offset_within_packet;
    	#endif
@@ -539,7 +539,7 @@ std::cerr << "33333" << "\n";
   {
   
      	 #ifdef XIANGSHAN
-   		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY);
+   		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
    	#else
    		offset_within_entry = offset_within_packet;
    	#endif
@@ -618,7 +618,7 @@ void batage::update_entry(int i, uint32_t offset_within_packet, bool taken) {
   ASSERT(i < s[offset_within_packet].size());
   
 #ifdef XIANGSHAN
-  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY);
+  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
 #else
   uint32_t offset_within_entry = offset_within_packet;
 #endif
@@ -649,7 +649,7 @@ void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packe
 #endif
 
 #ifdef XIANGSHAN
-  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY);
+  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
 #else
   uint32_t offset_within_entry = offset_within_packet;
 #endif
@@ -752,7 +752,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
   	getgo(i, offset_within_entry).dualc.reset();
   	getgo(i, offset_within_entry).dualc.update(taken);
   #else // SINGLE_TAG
-        for (uint32_t offset = 0; offset < INFO_PER_ENTRY; offset++) {
+        for (uint32_t offset = 0; offset < INFO_PER_ENTRY(i); offset++) {
           getgo(i, offset).dualc.reset();
           if (offset == offset_within_entry) {
             getgo(i, offset).dualc.update(taken);
@@ -785,9 +785,9 @@ int batage::size() {
     fprintf (stderr, "table %d, ORIG_ENTRIES_PER_TABLE = %d, LOGG = %d, SS_ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, ENTRIES_PER_TABLE = %d, LOGGE = %d\n", i, ORIG_ENTRIES_PER_TABLE(i), LOGG(i), SS_ENTRIES_PER_TABLE(i), LOGGE_ORIG(i), ENTRIES_PER_TABLE(i), LOGGE(i));
     
   #ifndef SINGLE_TAG
-   table_size =  (((dualcounter::size()+ TAGBITS) *INFO_PER_ENTRY) * ENTRIES_PER_TABLE(i));
+   table_size =  (((dualcounter::size()+ TAGBITS) *INFO_PER_ENTRY(i)) * ENTRIES_PER_TABLE(i));
   #else // SINGLE_TAG
-  table_size =  (((dualcounter::size()*INFO_PER_ENTRY) + TAGBITS) * ENTRIES_PER_TABLE(i));
+  table_size =  (((dualcounter::size()*INFO_PER_ENTRY(i)) + TAGBITS) * ENTRIES_PER_TABLE(i));
   #endif // SINGLE_TAG
   totsize += table_size;
   }
