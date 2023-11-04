@@ -208,8 +208,8 @@ public:
 
 class batage {
 public:
-  int b[1 << LOGBE][INFO_PER_ENTRY];   // bimodal predictions
-  int b2[1 << LOGB2E][INFO_PER_ENTRY]; // bimodal hystereses
+  int b[1 << LOGBE][FETCHWIDTH];   // bimodal predictions
+  int b2[1 << LOGB2E][FETCHWIDTH]; // bimodal hystereses
   tagged_entry ***g;                   // tagged entries
   int bi;                              // hash for the bimodal prediction
   int bi2;                             // hash for the bimodal hysteresis

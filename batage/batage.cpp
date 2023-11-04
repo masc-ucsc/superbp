@@ -333,13 +333,13 @@ batage::batage() {
   gi = new int[NUMG];
 
   for (int i = 0; i < (1 << LOGBE); i++) {
-    for (int j = 0; j < INFO_PER_ENTRY; j++) {
+    for (int j = 0; j < FETCHWIDTH; j++) {
       b[i][j] = 0; // not-taken prediction
     }
   }
   
   for (int i = 0; i < (1 << LOGB2E); i++) {
-    for (int j = 0; j < INFO_PER_ENTRY; j++) {
+    for (int j = 0; j < FETCHWIDTH; j++) {
       b2[i][j] = (1 << BHYSTBITS) - 1; // weak state
     }
   }
