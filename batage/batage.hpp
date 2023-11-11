@@ -36,7 +36,7 @@
 
 //#define SINGLE_TAG
 #ifndef SINGLE_TAG
-#define XIANGSHAN
+//#define XIANGSHAN
 #endif
 
 
@@ -58,7 +58,7 @@
 //#define LOGG (11)
 //#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY) 
 
-#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1110 : ( (i < 8) ? 1110 : 1110 ) ) 
+#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1104 : ( (i < 8) ? 1104 : 1104 ) ) 
 #define LOGG(i)  (int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)))
 
 #define SS_ENTRIES_PER_TABLE(i) (ORIG_ENTRIES_PER_TABLE(i) / INFO_PER_ENTRY(i))
@@ -87,7 +87,7 @@
 
 // SKIPMAX: maximum number of banks skipped on allocation
 // if you change NUMG, you must re-tune SKIPMAX
-#define SKIPMAX 5
+#define SKIPMAX 2
 
 // meta predictor, for a small accuracy boost (not in the BATAGE paper)
 // inspired from the meta predictor in TAGE, but used differently
@@ -98,10 +98,10 @@
 // CATR, CATMAX and MINAP must be re-tuned if you change NUMG or LOGG
 // for NUMG<~20, a smaller NUMG needs a smaller CATR
 // a larger predictor may need a larger CATMAX
-#define CATR_NUM 2
-#define CATR_DEN 3
+#define CATR_NUM 3
+#define CATR_DEN 4
 #define CATMAX ((CATR_NUM << 15) - 1)
-#define MINAP 16
+#define MINAP 11
 
 // controlled decay, for a tiny accuracy boost (not in the BATAGE paper)
 // CDR = CDR_NUM / CDR_DEN
@@ -110,10 +110,10 @@
 // in particular, if you decrease CATR, you should probably decrease CDR too
 #define USE_CD
 #ifdef USE_CD
-#define CDR_NUM 6
-#define CDR_DEN 5
+#define CDR_NUM 5
+#define CDR_DEN 4
 #define CDMAX ((CDR_NUM << 10) - 1)
-#define MINDP 7
+#define MINDP 5
 #endif
 
 // bank interleaving, inspired from Seznec's TAGE-SC-L (CBP 2016)
@@ -121,8 +121,8 @@
 #ifdef BANK_INTERLEAVING
 // taking MIDBANK=(NUMG-1)*0.4 is probably close to optimal
 // take GHGBITS=1 for NUMG<~10
-#define MIDBANK 10
-#define GHGBITS 2
+#define MIDBANK 5
+#define GHGBITS 1
 #endif
 
 //#define DEBUG
@@ -204,6 +204,9 @@ public:
 class tagged_entry {
 public:
   int tag;
+  #ifdef POS
+  int pos;
+  #endif // POS
   dualcounter dualc;
   tagged_entry();
 };
