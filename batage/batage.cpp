@@ -448,14 +448,17 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
   
 for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
    {
-   
-   	 #ifdef XIANGSHAN
+     	for (int i = 0; i < NUMG; i++) {
+     	
+     	/*
+     	   	 #ifdef XIANGSHAN
    		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
    	#else
    		offset_within_entry = offset_within_packet;
    	#endif
-   
-     	for (int i = 0; i < NUMG; i++) {
+     	*/
+     	offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+     	
 		#ifdef BANK_INTERLEAVING
     		bank[i] = p.phybank(i);
 		#ifdef DEBUG
@@ -538,12 +541,14 @@ std::cerr << "33333" << "\n";
 
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
-  
+  /*
      	 #ifdef XIANGSHAN
    		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
    	#else
    		offset_within_entry = offset_within_packet;
    	#endif
+   	*/
+   	//offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
    	
   		b_bi.push_back (b[bi][offset_within_packet]);
   		b2_bi2.push_back(b2[bi2][offset_within_packet]);
@@ -617,13 +622,15 @@ void batage::update_bimodal(bool taken, uint32_t offset_within_packet) {
 void batage::update_entry(int i, uint32_t offset_within_packet, bool taken) {
   
   ASSERT(i < s[offset_within_packet].size());
-  
+  /*
 #ifdef XIANGSHAN
   uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
 #else
   uint32_t offset_within_entry = offset_within_packet;
 #endif
-  
+*/
+   uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+   
   if (i < (int)hit[offset_within_packet].size()) {
     getgo(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
   } else {
@@ -649,12 +656,7 @@ void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packe
   uint32_t hash_pc = pc ^ (pc >> PC_SHIFT);
 #endif
 
-#ifdef XIANGSHAN
-  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
-#else
-  uint32_t offset_within_entry = offset_within_packet;
-#endif
-  
+
   #ifdef DEBUG
   //fprintf (stderr, "offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_entry, bp[offset_within_entry], b_bi[offset_within_entry], b2_bi2[offset_within_entry]);
   #endif // DEBUG
@@ -688,15 +690,25 @@ fprintf (stderr, "For update, bank[%d] = %d \n ", i, bank[i]);
 fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 }*/
 #endif // DEBUG
-
+uint32_t offset_within_entry ;
   // update from 0 to bp-1
   for (int i = 0; i < bp[offset_within_packet]; i++) {
+  /*
+#ifdef XIANGSHAN
+  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+#else
+  uint32_t offset_within_entry = offset_within_packet;
+#endif
+  */
+  offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
     if ((meta >= 0) || s[offset_within_packet][i].lowconf() || (s[offset_within_packet][i].pred() != s[offset_within_packet][bp[offset_within_packet]].pred()) ||
         ((rando() % 8) == 0)) {
       getgo(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
     }
   }
+  
   // update at bp
+  offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(bp[offset_within_packet]));
   if ((bp[offset_within_packet] < (int)hit[offset_within_packet].size()) && s[offset_within_packet][bp[offset_within_packet]].highconf() && s[offset_within_packet][bp[offset_within_packet] + 1].highconf() &&
       (s[offset_within_packet][bp[offset_within_packet] + 1].pred() == taken) &&
       ((s[offset_within_packet][bp[offset_within_packet]].pred() == taken) || (cat >= (CATMAX / 2)))) {
@@ -725,6 +737,15 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
     i -= rando() % (1 + s[offset_within_packet][0].diff() * SKIPMAX / dualcounter::nmax);
     int mhc = 0;
     while (--i >= 0) {
+    /*
+    #ifdef XIANGSHAN
+  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+#else
+  uint32_t offset_within_entry = offset_within_packet;
+#endif
+  */
+  offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+    
       if (getgo(i, offset_within_entry).dualc.highconf()) {
 #ifdef USE_CD
         if ((int)(rando() % MINDP) >= ((cd * MINDP) / (CDMAX + 1)))

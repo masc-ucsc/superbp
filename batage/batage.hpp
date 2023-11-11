@@ -34,7 +34,7 @@
 #define FETCHWIDTH (1 << LOG2FETCHWIDTH)
 #define NUM_TAKEN_BRANCHES (1)
 
-//#define SINGLE_TAG
+#define SINGLE_TAG
 #ifndef SINGLE_TAG
 #define XIANGSHAN
 #endif
