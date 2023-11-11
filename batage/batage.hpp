@@ -36,7 +36,7 @@
 
 //#define SINGLE_TAG
 #ifndef SINGLE_TAG
-//#define XIANGSHAN
+#define XIANGSHAN
 #endif
 
 
@@ -242,7 +242,7 @@ public:
   tagged_entry &getgb(int i);
   tagged_entry &getgo(int i, uint32_t offset_within_entry);
   std::vector<bool>& predict_vec(uint32_t fetch_pc, const histories &p);
-  void update_bimodal(bool taken, uint32_t offset_within_entry);
+  void update_bimodal(bool taken, uint32_t offset_within_packet);
   void update_entry(int i, uint32_t offset_within_packet, bool taken);
   void update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packet, bool taken, const histories &p, bool noalloc);
   int size();

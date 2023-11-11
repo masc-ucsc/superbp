@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
+#include <cassert>
 
 #include "batage.hpp"
 
@@ -544,8 +545,8 @@ std::cerr << "33333" << "\n";
    		offset_within_entry = offset_within_packet;
    	#endif
    	
-  		b_bi.push_back (b[bi][offset_within_entry]);
-  		b2_bi2.push_back(b2[bi2][offset_within_entry]);
+  		b_bi.push_back (b[bi][offset_within_packet]);
+  		b2_bi2.push_back(b2[bi2][offset_within_packet]);
   		s[offset_within_packet].push_back(dualcounter(b_bi[offset_within_packet], b2_bi2[offset_within_packet]));
   }
   
@@ -597,17 +598,17 @@ std::cerr << "33333" << "\n";
   return predict;
 }
 
-void batage::update_bimodal(bool taken, uint32_t offset_within_entry) {
+void batage::update_bimodal(bool taken, uint32_t offset_within_packet) {
   // see Loh et al., "Exploiting bias in the hysteresis bit of 2-bit saturating
   // counters in branch predictors", Journal of ILP, 2003
-  if (b[bi][offset_within_entry] == taken) {
-    if (b2[bi2][offset_within_entry] > 0)
-      b2[bi2][offset_within_entry]--;
+  if (b[bi][offset_within_packet] == taken) {
+    if (b2[bi2][offset_within_packet] > 0)
+      b2[bi2][offset_within_packet]--;
   } else {
-    if (b2[bi2][offset_within_entry] < ((1 << BHYSTBITS) - 1)) {
-      b2[bi2][offset_within_entry]++;
+    if (b2[bi2][offset_within_packet] < ((1 << BHYSTBITS) - 1)) {
+      b2[bi2][offset_within_packet]++;
     } else {
-      b[bi][offset_within_entry] = taken;
+      b[bi][offset_within_packet] = taken;
     }
   }
 }
@@ -626,7 +627,7 @@ void batage::update_entry(int i, uint32_t offset_within_packet, bool taken) {
   if (i < (int)hit[offset_within_packet].size()) {
     getgo(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
   } else {
-    update_bimodal(taken, offset_within_entry);
+    update_bimodal(taken, offset_within_packet);
   }
 }
 
@@ -659,8 +660,8 @@ void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packe
   #endif // DEBUG
   
   // TODO - Check, might/ should not be necessary
-  b[bi][offset_within_entry] = b_bi[offset_within_packet];
-  b2[bi2][offset_within_entry] = b2_bi2[offset_within_packet];
+  b[bi][offset_within_packet] = b_bi[offset_within_packet];
+  b2[bi2][offset_within_packet] = b2_bi2[offset_within_packet];
 
 #ifdef USE_META
   if ((s[offset_within_packet].size() > 1) && (s[offset_within_packet][0].sum() == 1) && s[offset_within_packet][1].highconf() &&
