@@ -41,7 +41,7 @@
 
 
 #ifdef XIANGSHAN
-#define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
+#define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
 #else
 //#define INFO_PER_ENTRY(i) ( (i < 4) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 8) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) ) ) 
 #define INFO_PER_ENTRY(i) ( (i < 4) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 8) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) ) ) 
@@ -58,7 +58,9 @@
 //#define LOGG (11)
 //#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY) 
 
-#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1104 : ( (i < 8) ? 1104 : 1104 ) ) 
+#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1168 : ( (i < 8) ? 1168 : 1168 ) ) 
+//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1104 : ( (i < 8) ? 1104 : 1104 ) ) 
+//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1264 : ( (i < 8) ? 1104 : 624 ) ) 
 #define LOGG(i)  (int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)))
 
 #define SS_ENTRIES_PER_TABLE(i) (ORIG_ENTRIES_PER_TABLE(i) / INFO_PER_ENTRY(i))
