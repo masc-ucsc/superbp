@@ -389,7 +389,7 @@ tagged_entry &batage::getgb(int i) {
   ASSERT((i >= 0) && (i < NUMG));
 #ifdef BANK_INTERLEAVING
   ASSERT((bank[i] >= 0) && (bank[i] < NUMG));
-  return g[bank[i]][gi[i]][0];
+  return g[bank[i]][gi[bank[i] ]][0];
 #else
   return g[i][gi[i]][0];
 #endif
@@ -397,7 +397,7 @@ tagged_entry &batage::getgb(int i) {
 
 // i is the bank number - not the index within bank
 // Index is taken from gi, must be saved from prediction to update
-tagged_entry &batage::getgo(int i, uint32_t offset_within_entry) {
+tagged_entry &batage::getgp(int i, uint32_t offset_within_packet) {
 
 #ifdef DEBUG 
 //fprintf (stderr, "getgo, %d, %d \n", i, offset_within_entry);
@@ -406,10 +406,35 @@ tagged_entry &batage::getgo(int i, uint32_t offset_within_entry) {
   ASSERT((i >= 0) && (i < NUMG));
 #ifdef BANK_INTERLEAVING
   ASSERT((bank[i] >= 0) && (bank[i] < NUMG));
-  return g[bank[i]][gi[i]][offset_within_entry];
+uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(bank[i]));
+assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(bank[i]))));
+  return g[bank[i]][gi[bank[i]]][offset_within_entry];
 #else
+uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+ assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(i))));
   return g[i][gi[i]][offset_within_entry];
 #endif
+}
+
+// i is the bank number - not the index within bank
+// Index is taken from gi, must be saved from prediction to update
+tagged_entry &batage::getge(int i, uint32_t offset_within_entry) {
+
+#ifdef DEBUG 
+//fprintf (stderr, "getgo, %d, %d \n", i, offset_within_entry);
+#endif
+
+  ASSERT((i >= 0) && (i < NUMG));
+/*#ifdef BANK_INTERLEAVING
+  ASSERT((bank[i] >= 0) && (bank[i] < NUMG));
+  assert( ((offset_within_entry_banki >= 0) && (offset_within_entry_banki< INFO_PER_ENTRY(bank[i]))));
+  return g[bank[i]][gi[bank[i] ]][offset_within_entry_banki];
+#else
+*/
+// Works with BANK_INTERLEAVING, this particulaar function already sends both the bank and index based on bank interleaving, so no need to do bank[i]
+ assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(i))));
+  return g[i][gi[i]][offset_within_entry];
+//#endif
 }
 
 std::vector<bool>& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
@@ -457,7 +482,7 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
    		offset_within_entry = offset_within_packet;
    	#endif
      	*/
-     	offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+     	//offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
      	
 		#ifdef BANK_INTERLEAVING
     		bank[i] = p.phybank(i);
@@ -473,7 +498,7 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 		#endif // DEBUG
    
      #ifndef SINGLE_TAG
-   		if (getgo(i, offset_within_entry).tag == p.gtag(hash_pc[offset_within_packet], i))
+   		if (getgp(i, offset_within_packet).tag == p.gtag(hash_pc[offset_within_packet], i))
     #else
     	        if (getgb(i).tag == p.gtag(hash_fetch_pc, i)) 
     #endif
@@ -482,7 +507,7 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 			fprintf (stderr, "bank %d hit for offset %d\n", i, offset_within_packet);
 			#endif //DEBUG
      		 	hit[offset_within_packet].push_back(i);
-			s[offset_within_packet].push_back(getgo(i, offset_within_entry).dualc);
+			s[offset_within_packet].push_back(getgp(i, offset_within_packet).dualc);
       		}
       		#ifdef DEBUG
      std::cerr << "22222" << "\n";	
@@ -632,7 +657,7 @@ void batage::update_entry(int i, uint32_t offset_within_packet, bool taken) {
    uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
    
   if (i < (int)hit[offset_within_packet].size()) {
-    getgo(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
+    getgp(hit[offset_within_packet][i], offset_within_packet).dualc.update(taken);
   } else {
     update_bimodal(taken, offset_within_packet);
   }
@@ -703,7 +728,7 @@ uint32_t offset_within_entry ;
   offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
     if ((meta >= 0) || s[offset_within_packet][i].lowconf() || (s[offset_within_packet][i].pred() != s[offset_within_packet][bp[offset_within_packet]].pred()) ||
         ((rando() % 8) == 0)) {
-      getgo(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
+      getgp(hit[offset_within_packet][i], offset_within_packet).dualc.update(taken);
     }
   }
   
@@ -713,7 +738,7 @@ uint32_t offset_within_entry ;
       (s[offset_within_packet][bp[offset_within_packet] + 1].pred() == taken) &&
       ((s[offset_within_packet][bp[offset_within_packet]].pred() == taken) || (cat >= (CATMAX / 2)))) {
     if (!s[offset_within_packet][bp[offset_within_packet]].saturated() || ((meta < 0) && ((rando() % 8) == 0))) {
-      getgo(hit[offset_within_packet][bp[offset_within_packet]], offset_within_entry).dualc.decay();
+      getgp(hit[offset_within_packet][bp[offset_within_packet]], offset_within_packet).dualc.decay();
     }
   } else {
     update_entry(bp[offset_within_packet], offset_within_packet, taken);
@@ -746,22 +771,22 @@ uint32_t offset_within_entry ;
   */
   offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
     
-      if (getgo(i, offset_within_entry).dualc.highconf()) {
+      if (getgp(i, offset_within_packet).dualc.highconf()) {
 #ifdef USE_CD
         if ((int)(rando() % MINDP) >= ((cd * MINDP) / (CDMAX + 1)))
-          getgo(i, offset_within_entry).dualc.decay();
+          getgp(i, offset_within_packet).dualc.decay();
 #else
         if ((rando() % 4) == 0)
-          getgo(i, offset_within_entry).dualc.decay();
+          getgp(i, offset_within_packet).dualc.decay();
 #endif
-        if (!getgo(i, offset_within_entry).dualc.veryhighconf())
+        if (!getgp(i, offset_within_packet).dualc.veryhighconf())
           mhc++;
       } else {
       
         // TODO Check what to do for these three - allocation should be same for SINGLE_TAG and MULTI_TAG
 
         #ifndef SINGLE_TAG
-        getgo(i, offset_within_entry).tag = p.gtag(hash_pc , i);
+        getgp(i, offset_within_packet).tag = p.gtag(hash_pc , i);
         #else // SINGLE_TAG
         getgb(i).tag = p.gtag(hash_fetch_pc, i);
         #endif // SINGLE_TAG
@@ -771,15 +796,34 @@ uint32_t offset_within_entry ;
   #endif // DEBUG
   
   #ifndef SINGLE_TAG
-  	getgo(i, offset_within_entry).dualc.reset();
-  	getgo(i, offset_within_entry).dualc.update(taken);
+  	getgp(i, offset_within_packet).dualc.reset();
+  	getgp(i, offset_within_packet).dualc.update(taken);
   #else // SINGLE_TAG
-        for (uint32_t offset = 0; offset < INFO_PER_ENTRY(i); offset++) {
-          getgo(i, offset).dualc.reset();
-          if (offset == offset_within_entry) {
-            getgo(i, offset).dualc.update(taken);
+  #ifdef BANK_INTERLEAVING
+  	uint32_t offset_within_entry_bank_i = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(bank[i]));
+  	for (uint32_t offset = 0; offset < INFO_PER_ENTRY(bank[i]); offset++) {
+  	  getge(bank[i], offset).dualc.reset();
+          if (offset == offset_within_entry_bank_i) {
+            getge(bank[i], offset).dualc.update(taken);
           }
+          /*else
+          {
+          	getge(i, offset).dualc.update(false);
+          }*/
         }
+  #else
+  	for (uint32_t offset = 0; offset < INFO_PER_ENTRY(i); offset++) {
+  	  getge(i, offset).dualc.reset();
+          if (offset == offset_within_entry) {
+            getge(i, offset).dualc.update(taken);
+          }
+          /*else
+          {
+          	getge(i, offset).dualc.update(false);
+          }*/
+        }
+  #endif // BANK_INTERLEAVING
+
     #endif // SINGLE_TAG
         
         cat += CATR_NUM - mhc * CATR_DEN;

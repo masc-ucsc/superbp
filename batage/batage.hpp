@@ -36,15 +36,16 @@
 
 #define SINGLE_TAG
 #ifndef SINGLE_TAG
-#define XIANGSHAN
+//#define XIANGSHAN
 #endif
 
 
 #ifdef XIANGSHAN
 #define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
 #else
-//#define INFO_PER_ENTRY(i) ( (i < 4) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 8) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) ) ) 
-#define INFO_PER_ENTRY(i) ( (i < 4) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 8) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) ) ) 
+//#define INFO_PER_ENTRY(i) ( (i < 3) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 6) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ( (i < 9) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>3) ) ) ) 
+#define INFO_PER_ENTRY(i) ( (i < 6) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) ) 
+//#define INFO_PER_ENTRY(i) ( (i < 4) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 8) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) ) ) 
 #endif // XIANGSHAN
 
 #define LOGE(i) ((int)log2(INFO_PER_ENTRY(i)))
@@ -53,12 +54,14 @@
 #define LOGBE (LOGB - LOGFE)
 #define LOGB2E (LOGB2 - LOGFE)
 
-#define NUM_ENTRIES (13320) // (13320)
+#define NUM_ENTRIES (14016) // (14016)
 
 //#define LOGG (11)
-//#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY) 
+//#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY(i)) 
 
-#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1168 : ( (i < 8) ? 1168 : 1168 ) ) 
+//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1168 : ( (i < 8) ? 1168 : 1168 ) ) 
+//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 3) ? 1648 : ( (i < 6) ? 1328 : ( (i < 9) ? 1008 : 688) ) ) 
+#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 6) ? 1488 : 848 ) 
 //#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1104 : ( (i < 8) ? 1104 : 1104 ) ) 
 //#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1264 : ( (i < 8) ? 1104 : 624 ) ) 
 #define LOGG(i)  (int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)))
@@ -119,7 +122,7 @@
 #endif
 
 // bank interleaving, inspired from Seznec's TAGE-SC-L (CBP 2016)
-#define BANK_INTERLEAVING
+//#define BANK_INTERLEAVING
 #ifdef BANK_INTERLEAVING
 // taking MIDBANK=(NUMG-1)*0.4 is probably close to optimal
 // take GHGBITS=1 for NUMG<~10
@@ -242,7 +245,8 @@ public:
 #endif
   batage();
   tagged_entry &getgb(int i);
-  tagged_entry &getgo(int i, uint32_t offset_within_entry);
+  tagged_entry &getgp(int i, uint32_t offset_within_packet);
+  tagged_entry &getge(int i, uint32_t offset_within_entry) ;
   std::vector<bool>& predict_vec(uint32_t fetch_pc, const histories &p);
   void update_bimodal(bool taken, uint32_t offset_within_packet);
   void update_entry(int i, uint32_t offset_within_packet, bool taken);
