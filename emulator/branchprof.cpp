@@ -114,6 +114,10 @@ void branchprof_exit() {
           (double)misprediction_count / (double)benchmark_instruction_count *
               1000);
 
+              for (int i = 0; i < NUMG; i++)
+              {
+              	fprintf(pc_trace, "Allocations on Table %d = %u\n", i, bp.get_allocs(i));
+              }
 #ifdef EN_BB_FB_COUNT
   fprintf(pc_trace, "bb_size = \n");
   for (int i = 0; i < MAX_BB_SIZE; i++) {

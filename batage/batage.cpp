@@ -363,8 +363,9 @@ batage::batage() {
   update_pcs = fopen("update_pcs.txt", "w+");
 #endif // DEBUG
 
-s.reserve(FETCHWIDTH);
 hit.reserve(FETCHWIDTH);
+s.reserve(FETCHWIDTH);
+allocs.reserve(NUMG);
 
 }
 
@@ -566,13 +567,7 @@ std::cerr << "33333" << "\n";
 
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
-  /*
-     	 #ifdef XIANGSHAN
-   		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
-   	#else
-   		offset_within_entry = offset_within_packet;
-   	#endif
-   	*/
+
    	//offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
    	
   		b_bi.push_back (b[bi][offset_within_packet]);
@@ -661,6 +656,11 @@ void batage::update_entry(int i, uint32_t offset_within_packet, bool taken) {
   } else {
     update_bimodal(taken, offset_within_packet);
   }
+}
+
+uint32_t batage::get_allocs(int table)
+{
+	return (allocs[table]);
 }
 
 /*For superscalar - anything that is non constant & is used before/ without
@@ -791,6 +791,12 @@ uint32_t offset_within_entry ;
         getgb(i).tag = p.gtag(hash_fetch_pc, i);
         #endif // SINGLE_TAG
         
+#ifdef BANK_INTERLEAVING
+ 	allocs[bank[i]]++;
+#else
+	allocs[i]++;
+#endif // BANK_INTERLEAVING
+
   #ifdef DEBUG
   fprintf (stderr, "pc = %llx Allocated entry in bank %d\n", pc, i);
   #endif // DEBUG
@@ -806,10 +812,6 @@ uint32_t offset_within_entry ;
           if (offset == offset_within_entry_bank_i) {
             getge(bank[i], offset).dualc.update(taken);
           }
-          /*else
-          {
-          	getge(i, offset).dualc.update(false);
-          }*/
         }
   #else
   	for (uint32_t offset = 0; offset < INFO_PER_ENTRY(i); offset++) {
@@ -817,10 +819,6 @@ uint32_t offset_within_entry ;
           if (offset == offset_within_entry) {
             getge(i, offset).dualc.update(taken);
           }
-          /*else
-          {
-          	getge(i, offset).dualc.update(false);
-          }*/
         }
   #endif // BANK_INTERLEAVING
 

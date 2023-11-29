@@ -29,6 +29,7 @@ public:
   void Updatetables(uint64_t PC, uint64_t fetch_pc, uint32_t offset_within_entry, bool resolveDir);
   void Updatehistory(bool resolveDir, uint64_t branchTarget);
   void TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget);
+  uint32_t get_allocs(int table);
 };
 
 #endif

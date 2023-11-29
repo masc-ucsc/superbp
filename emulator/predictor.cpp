@@ -32,3 +32,7 @@ void PREDICTOR::TrackOtherInst(uint64_t PC, bool branchDir,
   hist.update(branchTarget, true);
   return;
 }
+uint32_t PREDICTOR::get_allocs(int table)
+{
+	return (pred.get_allocs(table));
+}

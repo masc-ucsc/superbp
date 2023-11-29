@@ -43,9 +43,9 @@
 #ifdef XIANGSHAN
 #define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
 #else
-//#define INFO_PER_ENTRY(i) ( (i < 3) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 6) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ( (i < 9) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>3) ) ) ) 
-#define INFO_PER_ENTRY(i) ( (i < 6) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) ) 
-//#define INFO_PER_ENTRY(i) ( (i < 4) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 8) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) ) ) 
+//#define INFO_PER_ENTRY(i) ( (i >= 9) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i >= 6) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ( (i >= 3) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>3) ) ) ) 
+//#define INFO_PER_ENTRY(i) ( (i > 6) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) ) 
+#define INFO_PER_ENTRY(i) ( (i < 4) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 8) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) ) ) 
 #endif // XIANGSHAN
 
 #define LOGE(i) ((int)log2(INFO_PER_ENTRY(i)))
@@ -59,9 +59,9 @@
 //#define LOGG (11)
 //#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY(i)) 
 
-//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1168 : ( (i < 8) ? 1168 : 1168 ) ) 
-//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 3) ? 1648 : ( (i < 6) ? 1328 : ( (i < 9) ? 1008 : 688) ) ) 
-#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 6) ? 1488 : 848 ) 
+#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1168 : ( (i < 8) ? 1168 : 1168 ) ) 
+//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i >= 9) ? 1648 : ( (i >= 6) ? 1328 : ( (i >= 3) ? 1008 : 688) ) ) 
+//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 6) ? 1488 : 848 ) 
 //#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1104 : ( (i < 8) ? 1104 : 1104 ) ) 
 //#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1264 : ( (i < 8) ? 1104 : 624 ) ) 
 #define LOGG(i)  (int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)))
@@ -243,6 +243,8 @@ public:
   int *bank;
   bool *check;
 #endif
+vector<uint32_t> allocs;
+uint32_t get_allocs(int table);
   batage();
   tagged_entry &getgb(int i);
   tagged_entry &getgp(int i, uint32_t offset_within_packet);
