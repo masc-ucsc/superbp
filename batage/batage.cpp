@@ -407,11 +407,11 @@ tagged_entry &batage::getgp(int i, uint32_t offset_within_packet) {
   ASSERT((i >= 0) && (i < NUMG));
 #ifdef BANK_INTERLEAVING
   ASSERT((bank[i] >= 0) && (bank[i] < NUMG));
-uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(bank[i]));
+uint32_t offset_within_entry = get_offset_within_entry (offset_within_packet, bank[i]);
 assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(bank[i]))));
   return g[bank[i]][gi[bank[i]]][offset_within_entry];
 #else
-uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+uint32_t offset_within_entry = get_offset_within_entry (offset_within_packet, i);
  assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(i))));
   return g[i][gi[i]][offset_within_entry];
 #endif
@@ -436,6 +436,17 @@ tagged_entry &batage::getge(int i, uint32_t offset_within_entry) {
  assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(i))));
   return g[i][gi[i]][offset_within_entry];
 //#endif
+}
+
+uint32_t batage::get_offset_within_entry (uint32_t offset_within_packet, int table)
+{
+	#ifdef CONT_TAG
+	 return 0;
+	#elif defined MT_PLUS
+	return 0;
+	#else
+		return ( offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(table)) );
+	#endif
 }
 
 std::vector<bool>& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
@@ -475,16 +486,7 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
 for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
    {
      	for (int i = 0; i < NUMG; i++) {
-     	
-     	/*
-     	   	 #ifdef XIANGSHAN
-   		offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
-   	#else
-   		offset_within_entry = offset_within_packet;
-   	#endif
-     	*/
-     	//offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
-     	
+     	  	
 		#ifdef BANK_INTERLEAVING
     		bank[i] = p.phybank(i);
 		#ifdef DEBUG
@@ -510,39 +512,12 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
      		 	hit[offset_within_packet].push_back(i);
 			s[offset_within_packet].push_back(getgp(i, offset_within_packet).dualc);
       		}
-      		#ifdef DEBUG
+     #ifdef DEBUG
      std::cerr << "22222" << "\n";	
      #endif // DEBUG
       	}
     }
     
-  /*
-  for (int i = 0; i < NUMG; i++) {
-#ifdef BANK_INTERLEAVING
-    bank[i] = p.phybank(i);
-#ifdef DEBUG
-//fprintf (stderr, "For predict, bank[%d] = %d \n ", i, bank[i]);
-#endif // DEBUG
-#endif
-    gi[i] = p.gindex(hash_fetch_pc, i);
-#ifdef DEBUG
-//fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
-#endif // DEBUG
-
-    if (getgb(i).tag == p.gtag(hash_pc, i)) {
-//#define CHECK_SS
-#ifdef DEBUG
-	fprintf (stderr, "bank %d hit\n", i);
-#endif //DEBUG
-      hit.push_back(i);
-      for (offset_within_entry = 0; offset_within_entry < INFO_PER_ENTRY; offset_within_entry++)
-  		{
-      		s[offset_within_entry].push_back(getgo(i, offset_within_entry).dualc);
-      	}
-    }
-}*/
-
-
   #ifdef DEBUG
   if (hit.empty())
   {
@@ -567,8 +542,6 @@ std::cerr << "33333" << "\n";
 
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
-
-   	//offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
    	
   		b_bi.push_back (b[bi][offset_within_packet]);
   		b2_bi2.push_back(b2[bi2][offset_within_packet]);
@@ -642,14 +615,8 @@ void batage::update_bimodal(bool taken, uint32_t offset_within_packet) {
 void batage::update_entry(int i, uint32_t offset_within_packet, bool taken) {
   
   ASSERT(i < s[offset_within_packet].size());
-  /*
-#ifdef XIANGSHAN
-  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
-#else
-  uint32_t offset_within_entry = offset_within_packet;
-#endif
-*/
-   uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+
+   //uint32_t offset_within_entry = get_offset_within_entry (offset_within_packet, i);
    
   if (i < (int)hit[offset_within_packet].size()) {
     getgp(hit[offset_within_packet][i], offset_within_packet).dualc.update(taken);
@@ -718,14 +685,8 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 uint32_t offset_within_entry ;
   // update from 0 to bp-1
   for (int i = 0; i < bp[offset_within_packet]; i++) {
-  /*
-#ifdef XIANGSHAN
-  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
-#else
-  uint32_t offset_within_entry = offset_within_packet;
-#endif
-  */
-  offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+
+  //offset_within_entry = get_offset_within_entry (offset_within_packet, i);
     if ((meta >= 0) || s[offset_within_packet][i].lowconf() || (s[offset_within_packet][i].pred() != s[offset_within_packet][bp[offset_within_packet]].pred()) ||
         ((rando() % 8) == 0)) {
       getgp(hit[offset_within_packet][i], offset_within_packet).dualc.update(taken);
@@ -733,7 +694,7 @@ uint32_t offset_within_entry ;
   }
   
   // update at bp
-  offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(bp[offset_within_packet]));
+  // offset_within_entry = get_offset_within_entry ( offset_within_packet,  bp[offset_within_packet]); 
   if ((bp[offset_within_packet] < (int)hit[offset_within_packet].size()) && s[offset_within_packet][bp[offset_within_packet]].highconf() && s[offset_within_packet][bp[offset_within_packet] + 1].highconf() &&
       (s[offset_within_packet][bp[offset_within_packet] + 1].pred() == taken) &&
       ((s[offset_within_packet][bp[offset_within_packet]].pred() == taken) || (cat >= (CATMAX / 2)))) {
@@ -743,6 +704,7 @@ uint32_t offset_within_entry ;
   } else {
     update_entry(bp[offset_within_packet], offset_within_packet, taken);
   }
+  
   // update at bp+1
   if (!s[offset_within_packet][bp[offset_within_packet]].highconf() && (bp[offset_within_packet] < (int)hit[offset_within_packet].size())) {
     update_entry(bp[offset_within_packet] + 1, offset_within_packet, taken);
@@ -762,14 +724,8 @@ uint32_t offset_within_entry ;
     i -= rando() % (1 + s[offset_within_packet][0].diff() * SKIPMAX / dualcounter::nmax);
     int mhc = 0;
     while (--i >= 0) {
-    /*
-    #ifdef XIANGSHAN
-  uint32_t offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
-#else
-  uint32_t offset_within_entry = offset_within_packet;
-#endif
-  */
-  offset_within_entry = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(i));
+
+  offset_within_entry = get_offset_within_entry (offset_within_packet, i); 
     
       if (getgp(i, offset_within_packet).dualc.highconf()) {
 #ifdef USE_CD
@@ -806,7 +762,7 @@ uint32_t offset_within_entry ;
   	getgp(i, offset_within_packet).dualc.update(taken);
   #else // SINGLE_TAG
   #ifdef BANK_INTERLEAVING
-  	uint32_t offset_within_entry_bank_i = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(bank[i]));
+  	uint32_t offset_within_entry_bank_i = get_offset_within_entry (offset_within_packet, bank[i]);
   	for (uint32_t offset = 0; offset < INFO_PER_ENTRY(bank[i]); offset++) {
   	  getge(bank[i], offset).dualc.reset();
           if (offset == offset_within_entry_bank_i) {

@@ -34,14 +34,18 @@
 #define FETCHWIDTH (1 << LOG2FETCHWIDTH)
 #define NUM_TAKEN_BRANCHES (1)
 
-#define SINGLE_TAG
+//#define SINGLE_TAG
 #ifndef SINGLE_TAG
 //#define XIANGSHAN
-#endif
+#ifdef XIANGSHAN
+//#define CONT_TAG
+//#define MT_PLUS
+#endif // XIANGSHAN
+#endif //SINGLE_TAG
 
 
 #ifdef XIANGSHAN
-#define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
+#define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
 #else
 //#define INFO_PER_ENTRY(i) ( (i >= 9) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i >= 6) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ( (i >= 3) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>3) ) ) ) 
 //#define INFO_PER_ENTRY(i) ( (i > 6) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) ) 
@@ -247,6 +251,7 @@ uint32_t get_allocs(int table);
   tagged_entry &getgb(int i);
   tagged_entry &getgp(int i, uint32_t offset_within_packet);
   tagged_entry &getge(int i, uint32_t offset_within_entry) ;
+  uint32_t get_offset_within_entry (uint32_t offset_within_packet, int table);
   std::vector<bool>& predict_vec(uint32_t fetch_pc, const histories &p);
   void update_bimodal(bool taken, uint32_t offset_within_packet);
   void update_entry(int i, uint32_t offset_within_packet, bool taken);
