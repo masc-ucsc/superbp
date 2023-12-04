@@ -440,10 +440,10 @@ tagged_entry &batage::getge(int i, uint32_t offset_within_entry) {
 
 uint32_t batage::get_offset_within_entry (uint32_t offset_within_packet, int table)
 {
-	#ifdef CONT_TAG
-	 return 0;
-	#elif defined MT_PLUS
+	#ifdef MT_PLUS
 	return 0;
+	#elif defined XIANGSHAN
+		return ( offset_within_packet % INFO_PER_ENTRY(table)  );
 	#else
 		return ( offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(table)) );
 	#endif
