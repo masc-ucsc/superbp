@@ -35,7 +35,14 @@
 #define NUM_TAKEN_BRANCHES (1)
 
 //#define SINGLE_TAG
-#ifndef SINGLE_TAG
+#ifdef SINGLE_TAG
+#define POS
+#ifdef POS
+#define POSBITS 4
+#else // POS
+#define POSBITS 0
+#endif // POS
+#else // SINGLE_TAG
 #define XIANGSHAN
 #ifdef XIANGSHAN
 //#define CONT_MAP
@@ -46,12 +53,12 @@
 
 #ifdef XIANGSHAN
 //#define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
-#define INFO_PER_ENTRY(i) (2)
+#define INFO_PER_ENTRY(i) (1)
 #else
 //#define INFO_PER_ENTRY(i) ( (i >= 9) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i >= 6) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ( (i >= 3) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>3) ) ) ) 
 //#define INFO_PER_ENTRY(i) ( (i > 6) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) ) 
-//#define INFO_PER_ENTRY(i) ( (i < 4) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i < 8) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)) ) ) 
-//#define INFO_PER_ENTRY(i) (4)
+//#define INFO_PER_ENTRY(i) ( (i > 9) ? 2 : ( (i > 3) ? 1 : 1 ) ) 
+#define INFO_PER_ENTRY(i) (2)
 #endif // XIANGSHAN
 
 #define LOGE(i) ((int)log2(INFO_PER_ENTRY(i)))
@@ -64,9 +71,15 @@
 
 //#define LOGG (11)
 //#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY(i)) 
+#ifndef POS
+#define NUM_ENTRIES (14016) // (14016)
 
 //#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1168 : ( (i < 8) ? 1168 : 1168 ) ) 
 #define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 9) ? 3488 : ( (i > 3) ? 960 : 320 ) ) 
+#else // POS
+#define NUM_ENTRIES (11712)
+#define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 9) ? (312*12) : ( (i > 3) ? (48 * 12) : (16 * 12) ) ) 
+#endif // POS
 //#define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 6) ? 1488 : 848 ) 
 #define LOGG(i)  (int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)))
 
@@ -75,7 +88,7 @@
 
 #ifdef SINGLE_TAG
 #define NEW_BITS_PER_TABLE(i) (TAGBITS * (INFO_PER_ENTRY(i)-1) * (SS_ENTRIES_PER_TABLE(i)))
-#define NEW_ENTRY_SIZE(i) (TAGBITS + (INFO_PER_ENTRY(i) * dualcounter::size() ) )
+#define NEW_ENTRY_SIZE(i) (TAGBITS + (INFO_PER_ENTRY(i) * (POSBITS + dualcounter::size()) ) )
 #define NEW_ENTRIES_PER_TABLE(i) (NEW_BITS_PER_TABLE(i)/NEW_ENTRY_SIZE(i))
 //#define LOG2_NEW_ENTRIES_PER_TABLE ((int)log2(NEW_ENTRIES_PER_TABLE))
 
@@ -233,9 +246,11 @@ public:
   
 
   vector<vector<int>> hit;       // tell which banks have a hit - stays same for single tag SS - a vector each for multitag SS
-
   
   vector<vector<dualcounter>> s; // dual-counters for the hitting banks - vector of vectors for SS
+  
+  vector<vector<int>> poses;  // contains the offset within entry for the hitting subentry
+  
   vector<int> bp; // dual-counter providing the final BATAGE prediction - index within s - vector for SS
   vector<bool> predict; // (INFO_PER_ENTRY);
   int cat;  // CAT counter
@@ -256,7 +271,8 @@ uint32_t get_allocs(int table);
   uint32_t get_offset_within_entry (uint32_t offset_within_packet, int table);
   std::vector<bool>& predict_vec(uint32_t fetch_pc, const histories &p);
   void update_bimodal(bool taken, uint32_t offset_within_packet);
-  void update_entry(int i, uint32_t offset_within_packet, bool taken);
+  void update_entry_p(int i, uint32_t offset_within_packet, bool taken);
+  void update_entry_e(int i, uint32_t offset_within_packet, uint32_t offset_within_entry, bool taken);
   void update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packet, bool taken, const histories &p, bool noalloc);
   int size();
 #ifdef BANK_INTERLEAVING

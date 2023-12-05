@@ -142,6 +142,7 @@ void branchprof_exit() {
 static inline void copy_ftq_data_to_predictor(ftq_entry *ftq_data_ptr) {
   bp.pred.hit = ftq_data_ptr->hit;
   bp.pred.s = ftq_data_ptr->s;
+  bp.pred.poses = ftq_data_ptr->poses;
   bp.pred.meta = ftq_data_ptr->meta;
   bp.pred.bp = ftq_data_ptr->bp;
   bp.pred.bi = ftq_data_ptr->bi;

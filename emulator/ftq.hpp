@@ -63,6 +63,7 @@ b_bi, b2_bi2 - Must return a vector - one element for each subentry/ offset ???
   vector<vector<int32_t>> hit;
 
   vector<vector<dualcounter>> s; // size = NUMG - 1 per instruction
+  vector<vector<int>> poses; 
   int meta;
   vector<int> bp;
   // Check if required -> cd, cat , predictor.pred.<tagged_enry>.dualc,
@@ -99,7 +100,8 @@ public:
       : predDir{predDir1}, resolveDir{resolveDir1}, pc{pc1}, insn{insn1},
         branchTarget{branchTarget1}, fetch_pc{fetch_pc},
         hit{predictor.pred.hit},
-        s{predictor.pred.s}, meta{predictor.pred.meta}, bp{predictor.pred.bp},
+        s{predictor.pred.s}, poses{predictor.pred.poses}, 
+        meta{predictor.pred.meta}, bp{predictor.pred.bp},
         bi{predictor.pred.bi}, bi2{predictor.pred.bi2},
         b_bi{predictor.pred.b_bi}, b2_bi2{predictor.pred.b2_bi2},
         gi{ptr2vec(predictor.pred.gi, NUMG)} {}
@@ -116,6 +118,7 @@ public:
 
     hit = std::move(src.hit);
     s = std::move(src.s);
+    poses = std::move(src.poses);
     meta = std::move(src.meta);
     bp = std::move(src.bp);
 

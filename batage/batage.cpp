@@ -317,6 +317,9 @@ int histories::size() {
 
 tagged_entry::tagged_entry() {
   tag = 0;
+  #ifdef POS
+  pos = -1;
+  #endif // POS
   dualc.reset();
 }
 
@@ -325,6 +328,9 @@ batage::batage() {
   g = new tagged_entry **[NUMG];
   
   for (int i = 0; i < NUMG; i++) {
+#ifdef DEBUG_BATAGE
+fprintf (stderr, "ENTRIES_PER_TABLE(%d) = %d and INFO_PER_ENTRY(%d) = %d \n", i, ENTRIES_PER_TABLE(i), i, INFO_PER_ENTRY(i));
+#endif // DEBUG_BATAGE
     g[i] = new tagged_entry *[ENTRIES_PER_TABLE(i)];
     for (int j = 0; j < (ENTRIES_PER_TABLE(i)); j++) {
       g[i][j] = new tagged_entry[INFO_PER_ENTRY(i)];
@@ -366,6 +372,10 @@ batage::batage() {
 hit.reserve(FETCHWIDTH);
 s.reserve(FETCHWIDTH);
 allocs.reserve(NUMG);
+
+#if defined (POS) || defined (MT_PLUS)
+poses.reserve(FETCHWIDTH);
+#endif // POS
 
 }
 
@@ -449,6 +459,11 @@ uint32_t batage::get_offset_within_entry (uint32_t offset_within_packet, int tab
 	#endif
 }
 
+/*
+To add POS - with single tag - pos to offset_within_entry mapping is not constantand may chnage, so each subentry needs to be checked
+for prediction, match pos in addition to tag, if matched, then consider it a match and proceed as usual
+TODO - Check storing POS in FTQ is a good design choice - else rematch pos everytime
+*/
 std::vector<bool>& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
 
 #ifdef DEBUG
@@ -481,6 +496,9 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
   {
   	hit[offset_within_packet].clear();
   	s[offset_within_packet].clear();
+#if defined (POS) || defined (MT_PLUS)
+  	poses[offset_within_packet].clear();
+#endif
   }
   
 for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
@@ -500,23 +518,79 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 		//fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
 		#endif // DEBUG
    
+#ifdef MT_PLUS
+    		int j = 0;
+    		for (j = 0; j < INFO_PER_ENTRY(i); j++)
+    		{
+    			if (getge(i, j).tag == p.gtag ( hash_pc[offset_within_packet], i))
+    			{
+    				#ifdef DEBUG
+				fprintf (stderr, "For offset_within_packet = %d, bank = %d hit at subentry = %d\n", offset_within_packet, i, j);
+				#endif //DEBUG
+     		 		hit[offset_within_packet].push_back(i);
+				s[offset_within_packet].push_back(getge(i, j).dualc);
+				poses[offset_within_packet].push_back(j);
+				break;
+    			}
+    		}
+ #else // MT_PLUS
      #ifndef SINGLE_TAG
    		if (getgp(i, offset_within_packet).tag == p.gtag(hash_pc[offset_within_packet], i))
     #else
     	        if (getgb(i).tag == p.gtag(hash_fetch_pc, i)) 
     #endif
     		{
+			#ifndef POS
 			#ifdef DEBUG
 			fprintf (stderr, "bank %d hit for offset %d\n", i, offset_within_packet);
 			#endif //DEBUG
      		 	hit[offset_within_packet].push_back(i);
 			s[offset_within_packet].push_back(getgp(i, offset_within_packet).dualc);
+			#else // POS
+				int j;
+				for (j =0; j < INFO_PER_ENTRY(i); j++)
+				{
+					if (getge(i, j).pos == offset_within_packet)
+					{
+						#ifdef DEBUG
+						fprintf (stderr, "bank %d hit for offset %d\n", i, offset_within_packet);
+						#endif //DEBUG
+						
+						hit[offset_within_packet].push_back(i);
+						s[offset_within_packet].push_back(getge(i, j).dualc);
+						poses[offset_within_packet].push_back(j);
+						break;
+					}
+				}
+			#endif // POS	
       		}
+#endif // MT_PLUS
+      		
      #ifdef DEBUG
      std::cerr << "22222" << "\n";	
      #endif // DEBUG
       	}
     }
+    
+     #ifdef DEBUG_POS
+     for (int i = 0; i < FETCHWIDTH; i++)
+     {
+     
+     	if (poses[i].size() == 0)
+	{
+		std::cerr << "After prediction, poses [" << i << "] = empty \n";
+	}
+	else
+	{
+  		std::cerr << "After prediction, poses [" << i << "] = \n";
+      		for (int j = 0; j < poses[i].size(); j++)
+      		{
+      			std::cerr << poses[i][j];
+      		}
+      		std::cerr << "\n";
+  	}
+     }	
+     #endif // DEBUG_POS
     
   #ifdef DEBUG
   if (hit.empty())
@@ -542,7 +616,6 @@ std::cerr << "33333" << "\n";
 
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
-   	
   		b_bi.push_back (b[bi][offset_within_packet]);
   		b2_bi2.push_back(b2[bi2][offset_within_packet]);
   		s[offset_within_packet].push_back(dualcounter(b_bi[offset_within_packet], b2_bi2[offset_within_packet]));
@@ -571,14 +644,14 @@ std::cerr << "33333" << "\n";
     	}
   	}
   	bp.push_back(t);
-  	#ifdef DEBUG
-  		//fprintf (stderr, "Offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_packet, bp[offset_within_packet], b_bi[offset_within_packet], b2_bi2[offset_within_packet]);
-	#endif // DEBUG
+#ifdef DEBUG
+  	//fprintf (stderr, "Offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_packet, bp[offset_within_packet], b_bi[offset_within_packet], b2_bi2[offset_within_packet]);
+#endif // DEBUG
   }
  
 #ifdef DEBUG
 	std::cerr << "55555" << "\n";
-	#endif // DEBUG
+#endif // DEBUG
 	
   // For superscalar - save s, p, hit
   predict.clear();
@@ -612,14 +685,24 @@ void batage::update_bimodal(bool taken, uint32_t offset_within_packet) {
 }
 
 // i - index within s
-void batage::update_entry(int i, uint32_t offset_within_packet, bool taken) {
+void batage::update_entry_p(int i, uint32_t offset_within_packet, bool taken) {
+  
+  ASSERT(i < s[offset_within_packet].size());
+     
+  if (i < (int)hit[offset_within_packet].size()) {
+    getgp(hit[offset_within_packet][i], offset_within_packet).dualc.update(taken);
+  } else {
+    update_bimodal(taken, offset_within_packet);
+  }
+}
+
+// i - index within s
+void batage::update_entry_e(int i, uint32_t offset_within_packet, uint32_t offset_within_entry, bool taken) {
   
   ASSERT(i < s[offset_within_packet].size());
 
-   //uint32_t offset_within_entry = get_offset_within_entry (offset_within_packet, i);
-   
   if (i < (int)hit[offset_within_packet].size()) {
-    getgp(hit[offset_within_packet][i], offset_within_packet).dualc.update(taken);
+    getge(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
   } else {
     update_bimodal(taken, offset_within_packet);
   }
@@ -631,7 +714,13 @@ uint32_t batage::get_allocs(int table)
 }
 
 /*For superscalar - anything that is non constant & is used before/ without
- * assigning a value must be saved in ftq*/
+ assigning a value must be saved in ftq*/
+ /*
+To add POS - with single tag - pos to offset_within_entry mapping is not constantand may change, so each subentry needs to be checked
+For update, pos must either be matched again or taken from FTQ, if matched, then consider it a match and proceed as usual for update
+For allocation - pos must be populated with offset_within_packet
+TODO - Check storing POS in FTQ is a good design choice - else rematch pos everytime
+ */
 void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packet, bool taken, const histories &p,
                     bool noalloc = false) {
 
@@ -639,15 +728,19 @@ void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packe
   //fprintf(update_pcs, "%lu \n", pc);
     fprintf (stderr, "update for pc = %llx, fetch_pc = %llx\n", pc, fetch_pc);
 #endif // DEBUG
+     #ifdef DEBUG_POS
+      	std::cerr << "Before update, poses [" << offset_within_packet << "] = \n";
+      	for (int j = 0; j < poses[offset_within_packet].size(); j++)
+      	{
+      		std::cerr << poses[offset_within_packet][j];
+      	}
+      	std::cerr << "\n";
+#endif // DEBUG_POS
 
-// Hash was using "actual pc", since this is used only for new entry allocation, NOT for counter update
-// Changed to use fetch_pc
 #ifdef PC_SHIFT
-  // pc ^= pc << 5;
   uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
   uint32_t hash_pc = pc ^ (pc >> PC_SHIFT);
 #endif
-
 
   #ifdef DEBUG
   //fprintf (stderr, "offset = %d, bp = %d, b_bi = %d, b2_bi2 = %d\n", offset_within_entry, bp[offset_within_entry], b_bi[offset_within_entry], b2_bi2[offset_within_entry]);
@@ -683,17 +776,68 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 }*/
 #endif // DEBUG
 uint32_t offset_within_entry ;
-  // update from 0 to bp-1
-  for (int i = 0; i < bp[offset_within_packet]; i++) {
 
+  // update from 0 to bp-1
+  #if defined (POS) || defined (MT_PLUS)
+	for (int i = 0; i < bp[offset_within_packet]; i++) {
+
+		if (poses[offset_within_packet].size() == 0)
+		{
+			offset_within_entry = 0;
+		}
+		else
+		{
+			offset_within_entry = poses[offset_within_packet][i];    		
+		}
+
+		if ((meta >= 0) || s[offset_within_packet][i].lowconf() || 		(s[offset_within_packet][i].pred() != s[offset_within_packet][bp[offset_within_packet]].pred()) ||
+        ((rando() % 8) == 0)) {
+      getge(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
+    		}
+ 	 }
+#else // POS
+  for (int i = 0; i < bp[offset_within_packet]; i++) {
   //offset_within_entry = get_offset_within_entry (offset_within_packet, i);
     if ((meta >= 0) || s[offset_within_packet][i].lowconf() || (s[offset_within_packet][i].pred() != s[offset_within_packet][bp[offset_within_packet]].pred()) ||
         ((rando() % 8) == 0)) {
       getgp(hit[offset_within_packet][i], offset_within_packet).dualc.update(taken);
     }
   }
+#endif
   
   // update at bp
+#if defined (POS) || defined (MT_PLUS)
+if (poses[offset_within_packet].size() == 0)
+{
+	offset_within_entry = 0;
+}
+else
+{
+  offset_within_entry = poses[offset_within_packet][bp[offset_within_packet]];
+}
+        #ifdef DEBUG_POS
+      	std::cerr << "00000 \n";
+        #endif // DEBUG_POS
+    if ((bp[offset_within_packet] < (int)hit[offset_within_packet].size()) && s[offset_within_packet][bp[offset_within_packet]].highconf() && s[offset_within_packet][bp[offset_within_packet] + 1].highconf() &&
+      (s[offset_within_packet][bp[offset_within_packet] + 1].pred() == taken) &&
+      ((s[offset_within_packet][bp[offset_within_packet]].pred() == taken) || (cat >= (CATMAX / 2)))) {
+    if (!s[offset_within_packet][bp[offset_within_packet]].saturated() || ((meta < 0) && ((rando() % 8) == 0))) {
+         #ifdef DEBUG_POS
+      	std::cerr << "11111 \n";
+        #endif // DEBUG_POS
+      getge(hit[offset_within_packet][bp[offset_within_packet]], offset_within_entry).dualc.decay();
+    }
+  } else {
+           #ifdef DEBUG_POS
+      	std::cerr << "22222 \n";
+        #endif // DEBUG_POS
+// TODO Check
+    update_entry_e(bp[offset_within_packet], offset_within_packet, offset_within_entry, taken);
+               #ifdef DEBUG_POS
+      	std::cerr << "33333 \n";
+        #endif // DEBUG_POS
+  }
+#else  // POS
   // offset_within_entry = get_offset_within_entry ( offset_within_packet,  bp[offset_within_packet]); 
   if ((bp[offset_within_packet] < (int)hit[offset_within_packet].size()) && s[offset_within_packet][bp[offset_within_packet]].highconf() && s[offset_within_packet][bp[offset_within_packet] + 1].highconf() &&
       (s[offset_within_packet][bp[offset_within_packet] + 1].pred() == taken) &&
@@ -702,13 +846,38 @@ uint32_t offset_within_entry ;
       getgp(hit[offset_within_packet][bp[offset_within_packet]], offset_within_packet).dualc.decay();
     }
   } else {
-    update_entry(bp[offset_within_packet], offset_within_packet, taken);
+    update_entry_p(bp[offset_within_packet], offset_within_packet, taken);
   }
+  #endif //POS
   
   // update at bp+1
+#if defined (POS) || defined (MT_PLUS)
+
+        #ifdef DEBUG_POS
+      	std::cerr << "44444 \n";
+        #endif // DEBUG_POS
+
   if (!s[offset_within_packet][bp[offset_within_packet]].highconf() && (bp[offset_within_packet] < (int)hit[offset_within_packet].size())) {
-    update_entry(bp[offset_within_packet] + 1, offset_within_packet, taken);
+    	if (poses[offset_within_packet].size() == 0)
+{
+	offset_within_entry = 0;
+}
+else
+{
+  offset_within_entry = poses[offset_within_packet][bp[offset_within_packet]+1];
+}
+
+	update_entry_e(bp[offset_within_packet] + 1, offset_within_packet, offset_within_entry, taken);
   }
+
+        #ifdef DEBUG_POS
+      	std::cerr << "55555 \n";
+        #endif // DEBUG_POS
+#else
+  if (!s[offset_within_packet][bp[offset_within_packet]].highconf() && (bp[offset_within_packet] < (int)hit[offset_within_packet].size())) {
+    update_entry_p(bp[offset_within_packet] + 1, offset_within_packet, taken);
+  }
+#endif // POS
 
   // ALLOCATE
   // TODO Check what to do for these getg (for allocation)
@@ -724,6 +893,84 @@ uint32_t offset_within_entry ;
     i -= rando() % (1 + s[offset_within_packet][0].diff() * SKIPMAX / dualcounter::nmax);
     int mhc = 0;
     while (--i >= 0) {
+
+#if defined (POS) || defined (MT_PLUS)
+	int max_conf = -16000;
+	offset_within_entry = -1;
+	for (int j = 0; j < INFO_PER_ENTRY(i); j++)
+	{
+#ifdef POS
+		if (getge(i, j).pos == offset_within_packet)
+		{
+			offset_within_entry = j;
+			break;
+		}
+#endif // POS
+// TODO Check behavior of conflevel, may require <
+		if (getge(i, j).dualc.conflevel(meta) > max_conf)
+		{
+			offset_within_entry = j;
+		}
+	}
+	
+  	 if (getge(i, offset_within_entry).dualc.highconf()) {
+#ifdef USE_CD
+        if ((int)(rando() % MINDP) >= ((cd * MINDP) / (CDMAX + 1)))
+          getge(i, offset_within_entry).dualc.decay();
+#else
+        if ((rando() % 4) == 0)
+          getge(i, offset_within_entry).dualc.decay();
+#endif
+        if (!getge(i, offset_within_entry).dualc.veryhighconf())
+          mhc++;
+      } else {
+      
+        // TODO Check what to do for these three - allocation should be same for SINGLE_TAG and MULTI_TAG
+	#ifdef POS
+        getgb(i).tag = p.gtag(hash_fetch_pc, i);
+	getge(i, offset_within_entry).pos = offset_within_packet;
+	allocs[i]++;
+	#endif
+	#ifdef MT_PLUS
+        getge(i, offset_within_entry).tag = p.gtag(hash_pc , i);
+	allocs[i]++;
+	#endif
+
+  #ifdef DEBUG_ALLOC
+  fprintf (stderr, "pc = %llx Allocated entry in bank %d\n", pc, i);
+  #endif // DEBUG_ALLOC
+  
+  #ifdef MT_PLUS
+    	getge(i, offset_within_entry).dualc.reset();
+  	getge(i, offset_within_entry).dualc.update(taken);
+  #else // MT_PLUS
+  #ifdef BANK_INTERLEAVING
+  	uint32_t offset_within_entry_bank_i = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(bank[i]));
+  	for (uint32_t offset = 0; offset < INFO_PER_ENTRY(bank[i]); offset++) {
+  	  getge(bank[i], offset).dualc.reset();
+          if (offset == offset_within_entry_bank_i) {
+            getge(bank[i], offset).dualc.update(taken);
+          }
+        }
+  #else
+  	for (uint32_t offset = 0; offset < INFO_PER_ENTRY(i); offset++) {
+  	  getge(i, offset).dualc.reset();
+          if (offset == offset_within_entry) {
+            getge(i, offset).dualc.update(taken);
+          }
+        }
+  #endif // BANK_INTERLEAVING
+  #endif // MT_PLUS
+        cat += CATR_NUM - mhc * CATR_DEN;
+        cat = min(CATMAX, max(0, cat));
+#ifdef USE_CD
+        cd += CDR_NUM - mhc * CDR_DEN;
+        cd = min(CDMAX, max(0, cd));
+#endif
+        break;
+      }
+      
+#else // POS
 
   offset_within_entry = get_offset_within_entry (offset_within_packet, i); 
     
@@ -788,6 +1035,11 @@ uint32_t offset_within_entry ;
 #endif
         break;
       }
+#endif //POS
+
+  #ifdef DEBUG_ALLOC
+  std::cerr << "Done allocate \n";
+  #endif // DEBUG_ALLOC
     }
   } // allocate over
   
@@ -807,7 +1059,7 @@ int batage::size() {
   #ifndef SINGLE_TAG
    table_size =  (((dualcounter::size()+ TAGBITS) *INFO_PER_ENTRY(i)) * ENTRIES_PER_TABLE(i));
   #else // SINGLE_TAG
-  table_size =  (((dualcounter::size()*INFO_PER_ENTRY(i)) + TAGBITS) * ENTRIES_PER_TABLE(i));
+  table_size =  ((((dualcounter::size() + POSBITS) * INFO_PER_ENTRY(i)) + TAGBITS) * ENTRIES_PER_TABLE(i));
   #endif // SINGLE_TAG
   totsize += table_size;
   }
