@@ -66,6 +66,10 @@ dualcounter::dualcounter(int b1, int b2) {
 
 dualcounter::dualcounter() { reset(); }
 
+bool dualcounter::is_counter_reset ()
+{
+	return (  (n[0] == 0) && (n[1] == 0) );
+}
 void dualcounter::reset() { n[0] = n[1] = 0; }
 
 int dualcounter::pred() { return (n[1] > n[0]); }
@@ -373,7 +377,7 @@ hit.reserve(FETCHWIDTH);
 s.reserve(FETCHWIDTH);
 allocs.reserve(NUMG);
 
-#if defined (POS) || defined (MT_PLUS)
+#if (defined (POS) || defined (MT_PLUS))
 poses.reserve(FETCHWIDTH);
 #endif // POS
 
@@ -451,6 +455,7 @@ tagged_entry &batage::getge(int i, uint32_t offset_within_entry) {
 uint32_t batage::get_offset_within_entry (uint32_t offset_within_packet, int table)
 {
 	#ifdef MT_PLUS
+	fprintf (stderr, "This should not be happening\n");
 	return 0;
 	#elif defined XIANGSHAN
 		return ( offset_within_packet % INFO_PER_ENTRY(table)  );
@@ -496,7 +501,7 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
   {
   	hit[offset_within_packet].clear();
   	s[offset_within_packet].clear();
-#if defined (POS) || defined (MT_PLUS)
+#if (defined (POS) || defined (MT_PLUS))
   	poses[offset_within_packet].clear();
 #endif
   }
@@ -777,8 +782,13 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 #endif // DEBUG
 uint32_t offset_within_entry ;
 
+/*
+For update - for index i into the hit[offset_within_packet] vector
+table # = hit[offset_within_packet][i]
+offset_within_entry = poses[offset_within_packet][i]
+*/
   // update from 0 to bp-1
-  #if defined (POS) || defined (MT_PLUS)
+  #if (defined (POS) || defined (MT_PLUS))
 	for (int i = 0; i < bp[offset_within_packet]; i++) {
 
 		if (poses[offset_within_packet].size() == 0)
@@ -806,7 +816,7 @@ uint32_t offset_within_entry ;
 #endif
   
   // update at bp
-#if defined (POS) || defined (MT_PLUS)
+#if (defined (POS) || defined (MT_PLUS))
 if (poses[offset_within_packet].size() == 0)
 {
 	offset_within_entry = 0;
@@ -851,7 +861,7 @@ else
   #endif //POS
   
   // update at bp+1
-#if defined (POS) || defined (MT_PLUS)
+#if (defined (POS) || defined (MT_PLUS))
 
         #ifdef DEBUG_POS
       	std::cerr << "44444 \n";
@@ -892,9 +902,16 @@ else
     int i = (hit[offset_within_packet].size() > 0) ? hit[offset_within_packet][0] : NUMG;
     i -= rando() % (1 + s[offset_within_packet][0].diff() * SKIPMAX / dualcounter::nmax);
     int mhc = 0;
+/*
+If nothing hit, i = NUMG and then something less than that, but no bank hit
+If any bank had hit, i starts = hit[offset_within_packet][0], leftmost hitting table (smallest table number), then we subtract randomly a positive number to possibly move to left, so smaller i
+and then we decrement i in while loop, so inside the while loop, none of the tables ever hit.
+Hence, this will update ALL (but none of thenm hit) till it can ALLOCATE ON ONE,
+after allocation, it exits the loop with break, so no more updates/ allocations after first allocation
+*/
     while (--i >= 0) {
 
-#if defined (POS) || defined (MT_PLUS)
+#if (defined (POS) || defined (MT_PLUS))
 	int max_conf = -16000;
 	offset_within_entry = -1;
 	for (int j = 0; j < INFO_PER_ENTRY(i); j++)
