@@ -912,8 +912,8 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
     while (--i >= 0) {
 
 #if (defined (POS) || defined (MT_PLUS))
-	int max_conf = -16000;
-	offset_within_entry = -1;
+	int max_conf = -1;
+	offset_within_entry = 0;
 	for (int j = 0; j < INFO_PER_ENTRY(i); j++)
 	{
 #ifdef POS
