@@ -911,6 +911,9 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
 	offset_within_entry = 0;
 	bool free_subentry_avail = false;
 	
+/* TODO - If any subentry is free, allocate that, else allocate according to Xiangshan rather than conflevel
+ Also check decaying all subentries rather than just one if no subentry is free */
+	
 	for (int j = 0; j < INFO_PER_ENTRY(i); j++)
 	{
 	
