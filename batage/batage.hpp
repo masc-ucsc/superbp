@@ -34,7 +34,7 @@
 #define FETCHWIDTH (1 << LOG2FETCHWIDTH)
 #define NUM_TAKEN_BRANCHES (1)
 
-#define SINGLE_TAG
+//#define SINGLE_TAG
 #ifdef SINGLE_TAG
 #define POS
 #ifdef POS
@@ -46,19 +46,19 @@
 #define XIANGSHAN
 #ifdef XIANGSHAN
 //#define CONT_MAP
-//#define MT_PLUS
+#define MT_PLUS
 #endif // XIANGSHAN
 #endif //SINGLE_TAG
 
 
 #ifdef XIANGSHAN
 //#define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
-#define INFO_PER_ENTRY(i) (1)
+#define INFO_PER_ENTRY(i) (4)
 #else
 //#define INFO_PER_ENTRY(i) ( (i >= 9) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i >= 6) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ( (i >= 3) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>3) ) ) ) 
 //#define INFO_PER_ENTRY(i) ( (i > 6) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) ) 
 //#define INFO_PER_ENTRY(i) ( (i > 9) ? 2 : ( (i > 3) ? 1 : 1 ) ) 
-#define INFO_PER_ENTRY(i) (4)
+#define INFO_PER_ENTRY(i) (2)
 #endif // XIANGSHAN
 
 #define LOGE(i) ((int)log2(INFO_PER_ENTRY(i)))

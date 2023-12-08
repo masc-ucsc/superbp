@@ -909,23 +909,41 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
 #if (defined (POS) || defined (MT_PLUS))
 	int max_conf = -1;
 	offset_within_entry = 0;
+	bool free_subentry_avail = false;
+	
 	for (int j = 0; j < INFO_PER_ENTRY(i); j++)
 	{
-#ifdef POS
-		if (getge(i, j).pos == offset_within_packet)
+	
+	
+	
+#ifdef MT_PLUS
+		if (getge(i, j).dualc.is_counter_reset())
 		{
 			offset_within_entry = j;
+			free_subentry_avail = true;
 			break;
 		}
-#endif // POS
+#else //MT_PLUS
+		if (getge(i, j).pos == -1)
+		{
+			offset_within_entry = j;
+			free_subentry_avail = true;
+			break;
+		}
+#endif //MT_PLUS
+
 // TODO Check behavior of conflevel, may require <
 		if (getge(i, j).dualc.conflevel(meta) > max_conf)
 		{
+			max_conf = getge(i, j).dualc.conflevel(meta);
 			offset_within_entry = j;
 		}
 	}
 	
-  	 if (getge(i, offset_within_entry).dualc.highconf()) {
+	
+	if (free_subentry_avail == true)
+	goto JUST_ALLOCATE;
+  	 if  (getge(i, offset_within_entry).dualc.highconf())  {
 #ifdef USE_CD
         if ((int)(rando() % MINDP) >= ((cd * MINDP) / (CDMAX + 1)))
           getge(i, offset_within_entry).dualc.decay();
@@ -938,6 +956,7 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
       } else {
       
         // TODO Check what to do for these three - allocation should be same for SINGLE_TAG and MULTI_TAG
+JUST_ALLOCATE :
 	#ifdef POS
         getgb(i).tag = p.gtag(hash_fetch_pc, i);
 	getge(i, offset_within_entry).pos = offset_within_packet;
@@ -981,6 +1000,26 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
 #endif
         break;
       }
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
       
 #else // POS
 
