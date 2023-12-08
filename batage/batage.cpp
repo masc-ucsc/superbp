@@ -791,17 +791,11 @@ offset_within_entry = poses[offset_within_packet][i]
   #if (defined (POS) || defined (MT_PLUS))
 	for (int i = 0; i < bp[offset_within_packet]; i++) {
 
-		if (poses[offset_within_packet].size() == 0)
-		{
-			offset_within_entry = 0;
-		}
-		else
-		{
-			offset_within_entry = poses[offset_within_packet][i];    		
-		}
+
 
 		if ((meta >= 0) || s[offset_within_packet][i].lowconf() || 		(s[offset_within_packet][i].pred() != s[offset_within_packet][bp[offset_within_packet]].pred()) ||
         ((rando() % 8) == 0)) {
+        offset_within_entry = poses[offset_within_packet][i];  
       getge(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
     		}
  	 }
@@ -817,14 +811,7 @@ offset_within_entry = poses[offset_within_packet][i]
   
   // update at bp
 #if (defined (POS) || defined (MT_PLUS))
-if (poses[offset_within_packet].size() == 0)
-{
-	offset_within_entry = 0;
-}
-else
-{
-  offset_within_entry = poses[offset_within_packet][bp[offset_within_packet]];
-}
+
         #ifdef DEBUG_POS
       	std::cerr << "00000 \n";
         #endif // DEBUG_POS
@@ -835,6 +822,7 @@ else
          #ifdef DEBUG_POS
       	std::cerr << "11111 \n";
         #endif // DEBUG_POS
+        offset_within_entry = poses[offset_within_packet][bp[offset_within_packet]];
       getge(hit[offset_within_packet][bp[offset_within_packet]], offset_within_entry).dualc.decay();
     }
   } else {
@@ -842,6 +830,14 @@ else
       	std::cerr << "22222 \n";
         #endif // DEBUG_POS
 // TODO Check
+if  ((int)hit[offset_within_packet].size() > 0 ) 
+    {
+    offset_within_entry = poses[offset_within_packet][bp[offset_within_packet]];
+    }
+   else // no hit, bimodal, this is not used since bimodal uses offset_within_packet directly in update_entry_e
+   {
+   	offset_within_entry = offset_within_packet;
+   }
     update_entry_e(bp[offset_within_packet], offset_within_packet, offset_within_entry, taken);
                #ifdef DEBUG_POS
       	std::cerr << "33333 \n";
@@ -868,16 +864,15 @@ else
         #endif // DEBUG_POS
 
   if (!s[offset_within_packet][bp[offset_within_packet]].highconf() && (bp[offset_within_packet] < (int)hit[offset_within_packet].size())) {
-    	if (poses[offset_within_packet].size() == 0)
-{
-	offset_within_entry = 0;
-}
-else
-{
-  offset_within_entry = poses[offset_within_packet][bp[offset_within_packet]+1];
-}
-
-	update_entry_e(bp[offset_within_packet] + 1, offset_within_packet, offset_within_entry, taken);
+ if  ((int)hit[offset_within_packet].size() > (bp[offset_within_packet]+1) ) 
+    {
+    offset_within_entry = poses[offset_within_packet][bp[offset_within_packet]+1];
+    }
+   else // bimodal, this is not used since bimodal uses offset_within_packet directly in update_entry_e
+   {
+   	offset_within_entry = offset_within_packet;
+   }
+  	update_entry_e(bp[offset_within_packet] + 1, offset_within_packet, offset_within_entry, taken);
   }
 
         #ifdef DEBUG_POS
