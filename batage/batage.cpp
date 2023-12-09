@@ -379,6 +379,9 @@ allocs.reserve(NUMG);
 
 #if (defined (POS) || defined (MT_PLUS))
 poses.reserve(FETCHWIDTH);
+#ifdef RANDOM_ALLOCS
+random = 0x05af5a0f ^ 0x5f0aa05f;
+#endif
 #endif // POS
 
 }
@@ -916,6 +919,11 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
 /* TODO - If any subentry is free, allocate that, else allocate according to Xiangshan rather than conflevel
  Also check decaying all subentries rather than just one if no subentry is free 
  Also LRU and random */
+ 
+ #ifdef RANDOM_ALLOCS
+offset_within_entry = random % INFO_PER_ENTRY(i);
+random = (random ^ (random >> 5) ) ;
+#elif // RANDOM_ALLOCS
 	
 	for (int j = 0; j < INFO_PER_ENTRY(i); j++)
 	{
@@ -957,6 +965,8 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
 	{
 		offset_within_entry = get_offset_within_entry(offset_within_packet, i);
 	}	
+#endif // RANDOM_ALLOCS
+	
   	 if  (getge(i, offset_within_entry).dualc.highconf())  {
 #ifdef USE_CD
         if ((int)(rando() % MINDP) >= ((cd * MINDP) / (CDMAX + 1)))

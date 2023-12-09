@@ -47,6 +47,7 @@
 #ifdef XIANGSHAN
 //#define CONT_MAP
 #define MT_PLUS
+#define RANDOM_ALLOCS
 #endif // XIANGSHAN
 #endif //SINGLE_TAG
 
@@ -264,6 +265,9 @@ public:
   bool *check;
 #endif
 vector<uint32_t> allocs;
+#ifdef RANDOM_ALLOCS
+int random;
+#endif
 uint32_t get_allocs(int table);
   batage();
   tagged_entry &getgb(int i);
