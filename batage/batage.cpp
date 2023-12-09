@@ -454,10 +454,12 @@ tagged_entry &batage::getge(int i, uint32_t offset_within_entry) {
 
 uint32_t batage::get_offset_within_entry (uint32_t offset_within_packet, int table)
 {
-	#ifdef MT_PLUS
+	/*#ifdef MT_PLUS
 	fprintf (stderr, "This should not be happening\n");
 	return 0;
-	#elif defined XIANGSHAN
+	*/
+	// TODO Check if this should be used for POS also
+	#ifdef XIANGSHAN
 		return ( offset_within_packet % INFO_PER_ENTRY(table)  );
 	#else
 		return ( offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(table)) );
@@ -912,7 +914,8 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
 	bool free_subentry_avail = false;
 	
 /* TODO - If any subentry is free, allocate that, else allocate according to Xiangshan rather than conflevel
- Also check decaying all subentries rather than just one if no subentry is free */
+ Also check decaying all subentries rather than just one if no subentry is free 
+ Also LRU and random */
 	
 	for (int j = 0; j < INFO_PER_ENTRY(i); j++)
 	{
@@ -935,17 +938,25 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
 		}
 #endif //MT_PLUS
 
+#if 0
 // TODO Check behavior of conflevel, may require <
 		if (getge(i, j).dualc.conflevel(meta) > max_conf)
 		{
 			max_conf = getge(i, j).dualc.conflevel(meta);
 			offset_within_entry = j;
 		}
+#endif
 	}
 	
 	
 	if (free_subentry_avail == true)
-	goto JUST_ALLOCATE;
+	{
+		goto JUST_ALLOCATE;
+	}
+	else
+	{
+		offset_within_entry = get_offset_within_entry(offset_within_packet, i);
+	}	
   	 if  (getge(i, offset_within_entry).dualc.highconf())  {
 #ifdef USE_CD
         if ((int)(rando() % MINDP) >= ((cd * MINDP) / (CDMAX + 1)))
