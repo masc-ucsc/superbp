@@ -324,6 +324,9 @@ tagged_entry::tagged_entry() {
   #ifdef POS
   pos = -1;
   #endif // POS
+  #ifdef NOT_MRU
+  mru = -1;
+  #endif
   dualc.reset();
 }
 
@@ -379,9 +382,9 @@ allocs.reserve(NUMG);
 
 #if (defined (POS) || defined (MT_PLUS))
 poses.reserve(FETCHWIDTH);
-#ifdef RANDOM_ALLOCS
+#if ( defined (RANDOM_ALLOCS) || defined (NOT_MRU) )
 random = 0x05af5a0f ^ 0x5f0aa05f;
-#endif
+#endif // ( defined (RANDOM_ALLOCS) || defined (NOT_MRU) )
 #endif // POS
 
 }
@@ -713,6 +716,12 @@ void batage::update_entry_e(int i, uint32_t offset_within_packet, uint32_t offse
 
   if (i < (int)hit[offset_within_packet].size()) {
     getge(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
+#ifdef NOT_MRU
+if ( getge(hit[offset_within_packet][i], offset_within_entry).dualc.pred() == taken )
+{
+	getgb(hit[offset_within_packet][i]).mru = offset_within_entry;
+}
+#endif
   } else {
     update_bimodal(taken, offset_within_packet);
   }
@@ -796,13 +805,20 @@ offset_within_entry = poses[offset_within_packet][i]
   #if (defined (POS) || defined (MT_PLUS))
 	for (int i = 0; i < bp[offset_within_packet]; i++) {
 
-
-
 		if ((meta >= 0) || s[offset_within_packet][i].lowconf() || 		(s[offset_within_packet][i].pred() != s[offset_within_packet][bp[offset_within_packet]].pred()) ||
         ((rando() % 8) == 0)) {
         offset_within_entry = poses[offset_within_packet][i];  
       getge(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
     		}
+    		
+#ifdef NOT_MRU
+		//if (s[offset_within_packet][i].pred() == s[offset_within_packet][bp[offset_within_packet]].pred())
+		if (s[offset_within_packet][i].pred() == taken)
+		{
+			offset_within_entry = poses[offset_within_packet][i];  
+			getgb(hit[offset_within_packet][i]).mru = offset_within_entry;
+		}
+#endif // NOT_MRU
  	 }
 #else // POS
   for (int i = 0; i < bp[offset_within_packet]; i++) {
@@ -883,7 +899,7 @@ if  ((int)hit[offset_within_packet].size() > 0 )
         #ifdef DEBUG_POS
       	std::cerr << "55555 \n";
         #endif // DEBUG_POS
-#else
+#else // POS
   if (!s[offset_within_packet][bp[offset_within_packet]].highconf() && (bp[offset_within_packet] < (int)hit[offset_within_packet].size())) {
     update_entry_p(bp[offset_within_packet] + 1, offset_within_packet, taken);
   }
@@ -920,16 +936,19 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
  Also check decaying all subentries rather than just one if no subentry is free 
  Also LRU and random */
  
- #ifdef RANDOM_ALLOCS
+#if ( defined (RANDOM_ALLOCS) || defined (NOT_MRU) )
+#ifdef NOT_MRU
+do {
+#endif // NOT_MRU
 offset_within_entry = random % INFO_PER_ENTRY(i);
 random = (random ^ (random >> 5) ) ;
-#elif // RANDOM_ALLOCS
+#ifdef NOT_MRU
+} while(offset_within_entry == getgb(i).mru);
+#endif // NOT_MRU
+#else // RANDOM_ALLOCS_or_NOT_MRU
 	
 	for (int j = 0; j < INFO_PER_ENTRY(i); j++)
 	{
-	
-	
-	
 #ifdef MT_PLUS
 		if (getge(i, j).dualc.is_counter_reset())
 		{
@@ -946,25 +965,26 @@ random = (random ^ (random >> 5) ) ;
 		}
 #endif //MT_PLUS
 
-#if 0
+#ifdef CONFLEVEL
 // TODO Check behavior of conflevel, may require <
 		if (getge(i, j).dualc.conflevel(meta) > max_conf)
 		{
 			max_conf = getge(i, j).dualc.conflevel(meta);
 			offset_within_entry = j;
 		}
-#endif
+#endif // CONFLEVEL
 	}
-	
 	
 	if (free_subentry_avail == true)
 	{
 		goto JUST_ALLOCATE;
 	}
+#ifdef DEFAULT_MAP
 	else
 	{
 		offset_within_entry = get_offset_within_entry(offset_within_packet, i);
-	}	
+	}
+#endif // DEFAULT_MAP
 #endif // RANDOM_ALLOCS
 	
   	 if  (getge(i, offset_within_entry).dualc.highconf())  {
@@ -990,6 +1010,9 @@ JUST_ALLOCATE :
         getge(i, offset_within_entry).tag = p.gtag(hash_pc , i);
 	allocs[i]++;
 	#endif
+#ifdef NOT_MRU
+        getgb(i).mru = offset_within_entry;
+#endif //NOT_MRU
 
   #ifdef DEBUG_ALLOC
   fprintf (stderr, "pc = %llx Allocated entry in bank %d\n", pc, i);
@@ -1024,25 +1047,6 @@ JUST_ALLOCATE :
 #endif
         break;
       }
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
       
       
 #else // POS

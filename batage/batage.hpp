@@ -47,10 +47,16 @@
 #ifdef XIANGSHAN
 //#define CONT_MAP
 #define MT_PLUS
-#define RANDOM_ALLOCS
 #endif // XIANGSHAN
 #endif //SINGLE_TAG
 
+#if (defined (POS) || defined (MT_PLUS))
+// Exactly one of these must be defined
+//#define CONFLEVEL
+//#define DEFAULT_MAP
+//#define RANDOM_ALLOCS
+#define NOT_MRU
+#endif //  (defined (POS) || defined (MT_PLUS))
 
 #ifdef XIANGSHAN
 //#define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
@@ -231,6 +237,9 @@ public:
   #ifdef POS
   int pos;
   #endif // POS
+  #ifdef NOT_MRU
+  int mru;
+  #endif
   dualcounter dualc;
   tagged_entry();
 };
@@ -265,7 +274,7 @@ public:
   bool *check;
 #endif
 vector<uint32_t> allocs;
-#ifdef RANDOM_ALLOCS
+#if ( defined (RANDOM_ALLOCS) || defined (NOT_MRU) )
 int random;
 #endif
 uint32_t get_allocs(int table);
