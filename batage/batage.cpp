@@ -382,9 +382,7 @@ allocs.reserve(NUMG);
 
 #if (defined (POS) || defined (MT_PLUS))
 poses.reserve(FETCHWIDTH);
-#if ( defined (RANDOM_ALLOCS) || defined (NOT_MRU) )
 random = 0x05af5a0f ^ 0x5f0aa05f;
-#endif // ( defined (RANDOM_ALLOCS) || defined (NOT_MRU) )
 #endif // POS
 
 }
@@ -946,18 +944,20 @@ random = (random ^ (random >> 5) ) ;
 } while(offset_within_entry == getgb(i).mru);
 #endif // NOT_MRU
 #else // RANDOM_ALLOCS_or_NOT_MRU
-	
-	for (int j = 0; j < INFO_PER_ENTRY(i); j++)
+
+	random = (random ^ (random >> 5) ) ;
+	int r = random %2;
+	for (int j = r ? 0 : INFO_PER_ENTRY(i)-1; r ?  (j < INFO_PER_ENTRY(i)) : (j >= 0); r ? (j++) : (j--) )
 	{
 #ifdef MT_PLUS
-		if (getge(i, j).dualc.is_counter_reset())
+		if ( (getge(i, j).dualc.is_counter_reset()) && (getge(i, j).tag == 0) )
 		{
 			offset_within_entry = j;
 			free_subentry_avail = true;
 			break;
 		}
 #else //MT_PLUS
-		if (getge(i, j).pos == -1)
+		if  ((getge(i, j).pos == -1) && (getge(i, j).tag == 0) )
 		{
 			offset_within_entry = j;
 			free_subentry_avail = true;

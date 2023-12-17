@@ -52,15 +52,15 @@
 
 #if (defined (POS) || defined (MT_PLUS))
 // Exactly one of these must be defined
-//#define CONFLEVEL
+#define CONFLEVEL
 //#define DEFAULT_MAP
 //#define RANDOM_ALLOCS
-#define NOT_MRU
+//#define NOT_MRU
 #endif //  (defined (POS) || defined (MT_PLUS))
 
 #ifdef XIANGSHAN
 //#define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
-#define INFO_PER_ENTRY(i) (4)
+#define INFO_PER_ENTRY(i) (2)
 #else
 //#define INFO_PER_ENTRY(i) ( (i >= 9) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i >= 6) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ( (i >= 3) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>3) ) ) ) 
 //#define INFO_PER_ENTRY(i) ( (i > 6) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) ) 
@@ -274,7 +274,7 @@ public:
   bool *check;
 #endif
 vector<uint32_t> allocs;
-#if ( defined (RANDOM_ALLOCS) || defined (NOT_MRU) )
+#if (defined (POS) || defined (MT_PLUS))
 int random;
 #endif
 uint32_t get_allocs(int table);
