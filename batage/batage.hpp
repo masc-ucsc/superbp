@@ -9,25 +9,25 @@
 #include <math.h>
 
 // ARM instructions are 4-byte aligned ==> shift PC by 2 bits
-// TODO - Check if the PC_SHIFT should be based on alignment or on instruction size, since we use RV32I
-#define PC_SHIFT 1 // 1 for RISCV
+// TODO - Check if the SBP_PC_SHIFT should be based on alignment or on instruction size, since we use RV32I
+#define SBP_PC_SHIFT 1 // 1 for RISCV
 
-// NUMG: number of tagged banks (also, number of non-null global history
-// lengths) MAXHIST: greatest global history length MINHIST: smallest non-null
-// global history length MAXPATH: path history length PATHBITS: number of target
-// bits pushed into the path history per branch LOGB: log2 of the number of
-// bimodal prediction bits LOGB2: log2 of the number of bimodal hysteresis
-// entries LOGG: log2 of the number of entries in one tagged bank TAGBITS: tag
-// size BHYSTBITS: number of bimodal hysteresis bits
-#define NUMG 12
-#define MAXHIST 700
-#define MINHIST 4
-#define MAXPATH 30
-#define PATHBITS 6
-#define LOGB 12
-#define LOGB2 10
-#define TAGBITS 12
-#define BHYSTBITS 2
+// SBP_NUMG: number of tagged banks (also, number of non-null global history
+// lengths) SBP_MAXHIST: greatest global history length SBP_MINHIST: smallest non-null
+// global history length SBP_MAXPATH: path history length SBP_PATHBITS: number of target
+// bits pushed into the path history per branch SBP_LOGB: log2 of the number of
+// bimodal prediction bits SBP_LOGB2: log2 of the number of bimodal hysteresis
+// entries SBP_LOGG: log2 of the number of entries in one tagged bank SBP_TAGBITS: tag
+// size SBP_BHYSTBITS: number of bimodal hysteresis bits
+#define SBP_NUMG 12
+#define SBP_MAXHIST 700
+#define SBP_MINHIST 4
+#define SBP_MAXPATH 30
+#define SBP_PATHBITS 6
+#define SBP_LOGB 12
+#define SBP_LOGB2 10
+#define SBP_TAGBITS 12
+#define SBP_BHYSTBITS 2
 
 // Check - change it to use FETCH_WIDTH
 #define LOG2FETCHWIDTH (4)
@@ -68,16 +68,16 @@
 #define INFO_PER_ENTRY(i) (2)
 #endif // XIANGSHAN
 
-#define LOGE(i) ((int)log2(INFO_PER_ENTRY(i)))
+#define SBP_LOGE(i) ((int)log2(INFO_PER_ENTRY(i)))
 
 #define LOGFE  ((int)log2(FETCHWIDTH))
-#define LOGBE (LOGB - LOGFE)
-#define LOGB2E (LOGB2 - LOGFE)
+#define SBP_LOGBE (SBP_LOGB - LOGFE)
+#define SBP_LOGB2E (SBP_LOGB2 - LOGFE)
 
 #define NUM_ENTRIES (14016) // (14016)
 
-//#define LOGG (11)
-//#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/NUMG)/INFO_PER_ENTRY(i)) 
+//#define SBP_LOGG (11)
+//#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/SBP_NUMG)/INFO_PER_ENTRY(i)) 
 #ifndef POS
 #define NUM_ENTRIES (14016) // (14016)
 
@@ -88,34 +88,34 @@
 #define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 9) ? (312*12) : ( (i > 3) ? (48 * 12) : (16 * 12) ) ) 
 #endif // POS
 //#define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 6) ? 1488 : 848 ) 
-#define LOGG(i)  (int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)))
+#define SBP_LOGG(i)  (int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)))
 
 #define SS_ENTRIES_PER_TABLE(i) (ORIG_ENTRIES_PER_TABLE(i) / INFO_PER_ENTRY(i))
-#define LOGGE_ORIG(i)  (LOGG(i) - LOGE(i))
+#define LOGGE_ORIG(i)  (SBP_LOGG(i) - SBP_LOGE(i))
 
 #ifdef SINGLE_TAG
-#define NEW_BITS_PER_TABLE(i) (TAGBITS * (INFO_PER_ENTRY(i)-1) * (SS_ENTRIES_PER_TABLE(i)))
-#define NEW_ENTRY_SIZE(i) (TAGBITS + (INFO_PER_ENTRY(i) * (POSBITS + dualcounter::size()) ) )
+#define NEW_BITS_PER_TABLE(i) (SBP_TAGBITS * (INFO_PER_ENTRY(i)-1) * (SS_ENTRIES_PER_TABLE(i)))
+#define NEW_ENTRY_SIZE(i) (SBP_TAGBITS + (INFO_PER_ENTRY(i) * (POSBITS + dualcounter::size()) ) )
 #define NEW_ENTRIES_PER_TABLE(i) (NEW_BITS_PER_TABLE(i)/NEW_ENTRY_SIZE(i))
 //#define LOG2_NEW_ENTRIES_PER_TABLE ((int)log2(NEW_ENTRIES_PER_TABLE))
 
-//#define LOGGE  ((int)ceil(log2(ORIG_ENTRIES_PER_TABLE + NEW_ENTRIES_PER_TABLE)))
-#define LOGGE(i)  ((int)ceil(log2(SS_ENTRIES_PER_TABLE(i)+ NEW_ENTRIES_PER_TABLE(i))))
+//#define SBP_LOGGE  ((int)ceil(log2(ORIG_ENTRIES_PER_TABLE + NEW_ENTRIES_PER_TABLE)))
+#define SBP_LOGGE(i)  ((int)ceil(log2(SS_ENTRIES_PER_TABLE(i)+ NEW_ENTRIES_PER_TABLE(i))))
 
 /*
-#define LOST_ENTRIES_PER_TABLE ((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE - (1 << LOGGE))
-#define LOST_ENTRIES_TOTAL LOST_ENTRIES_PER_TABLE * NUMG
+#define LOST_ENTRIES_PER_TABLE ((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE - (1 << SBP_LOGGE))
+#define LOST_ENTRIES_TOTAL LOST_ENTRIES_PER_TABLE * SBP_NUMG
 */
 
 #else // SINGLE_TAG
 #define NEW_ENTRIES_PER_TABLE(i) (0)
-#define LOGGE(i)  (LOGGE_ORIG(i)) 
+#define SBP_LOGGE(i)  (LOGGE_ORIG(i)) 
 #endif // SINGLE_TAG
 
 #define ENTRIES_PER_TABLE(i) (SS_ENTRIES_PER_TABLE(i) + NEW_ENTRIES_PER_TABLE(i))
 
 // SKIPMAX: maximum number of banks skipped on allocation
-// if you change NUMG, you must re-tune SKIPMAX
+// if you change SBP_NUMG, you must re-tune SKIPMAX
 #define SKIPMAX 2
 
 // meta predictor, for a small accuracy boost (not in the BATAGE paper)
@@ -124,8 +124,8 @@
 
 // controlled allocation throttling (CAT)
 // CATR = CATR_NUM / CATR_DEN
-// CATR, CATMAX and MINAP must be re-tuned if you change NUMG or LOGG
-// for NUMG<~20, a smaller NUMG needs a smaller CATR
+// CATR, CATMAX and MINAP must be re-tuned if you change SBP_NUMG or SBP_LOGG
+// for SBP_NUMG<~20, a smaller SBP_NUMG needs a smaller CATR
 // a larger predictor may need a larger CATMAX
 #define CATR_NUM 3
 #define CATR_DEN 4
@@ -135,7 +135,7 @@
 // controlled decay, for a tiny accuracy boost (not in the BATAGE paper)
 // CDR = CDR_NUM / CDR_DEN
 // CDR must be greater than CATR
-// CDR, CDMAX and MINDP must be re-tuned if you change NUMG or LOGG
+// CDR, CDMAX and MINDP must be re-tuned if you change SBP_NUMG or SBP_LOGG
 // in particular, if you decrease CATR, you should probably decrease CDR too
 #define USE_CD
 #ifdef USE_CD
@@ -148,14 +148,16 @@
 // bank interleaving, inspired from Seznec's TAGE-SC-L (CBP 2016)
 //#define BANK_INTERLEAVING
 #ifdef BANK_INTERLEAVING
-// taking MIDBANK=(NUMG-1)*0.4 is probably close to optimal
-// take GHGBITS=1 for NUMG<~10
+// taking MIDBANK=(SBP_NUMG-1)*0.4 is probably close to optimal
+// take GHGBITS=1 for SBP_NUMG<~10
 #define MIDBANK 5
 #define GHGBITS 1
 #endif
 
 //#define DEBUG
 //#define DEBUG_GINDEX
+
+
 
 using namespace std;
 
@@ -214,10 +216,10 @@ class histories {
 public:
   path_history bh;      // global history of branch directions
   path_history ph;      // path history (target address bits)
-  folded_history *chg;  // compressed length = LOGGE
-  folded_history *chgg; // compressed length = LOGGE-hashparam
-  folded_history *cht;  // compressed length = TAGBITS
-  folded_history *chtt; // compressed length = TAGBITS-1
+  folded_history *chg;  // compressed length = SBP_LOGGE
+  folded_history *chgg; // compressed length = SBP_LOGGE-hashparam
+  folded_history *cht;  // compressed length = SBP_TAGBITS
+  folded_history *chtt; // compressed length = SBP_TAGBITS-1
   histories();
   void update(uint32_t targetpc, bool taken);
   int gindex(uint32_t pc, int i) const;
@@ -246,8 +248,8 @@ public:
 
 class batage {
 public:
-  int b[1 << LOGBE][FETCHWIDTH];   // bimodal predictions
-  int b2[1 << LOGB2E][FETCHWIDTH]; // bimodal hystereses
+  int b[1 << SBP_LOGBE][FETCHWIDTH];   // bimodal predictions
+  int b2[1 << SBP_LOGB2E][FETCHWIDTH]; // bimodal hystereses
   tagged_entry ***g;                   // tagged entries
   int bi;                              // hash for the bimodal prediction
   int bi2;                             // hash for the bimodal hysteresis

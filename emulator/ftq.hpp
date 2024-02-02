@@ -62,7 +62,7 @@ b_bi, b2_bi2 - Must return a vector - one element for each subentry/ offset ???
 
   vector<vector<int32_t>> hit;
 
-  vector<vector<dualcounter>> s; // size = NUMG - 1 per instruction
+  vector<vector<dualcounter>> s; // size = SBP_NUMG - 1 per instruction
   vector<vector<int>> poses; 
   int meta;
   vector<int> bp;
@@ -71,8 +71,8 @@ b_bi, b2_bi2 - Must return a vector - one element for each subentry/ offset ???
 
   int bi;				// 1 per fetch packet
   int bi2;				// 1 per fetch packet
-  // int b[1<<LOGB];
-  // int b2[1<<LOGB2];
+  // int b[1<<SBP_LOGB];
+  // int b2[1<<SBP_LOGB2];
   vector<int> b_bi;				// 1 per instruction
   vector<int> b2_bi2;			// 1 per instruction
   std::vector<int> gi;	// 1 per fetch packet
@@ -104,7 +104,7 @@ public:
         meta{predictor.pred.meta}, bp{predictor.pred.bp},
         bi{predictor.pred.bi}, bi2{predictor.pred.bi2},
         b_bi{predictor.pred.b_bi}, b2_bi2{predictor.pred.b2_bi2},
-        gi{ptr2vec(predictor.pred.gi, NUMG)} {}
+        gi{ptr2vec(predictor.pred.gi, SBP_NUMG)} {}
 
   // Move assignment since queue must contain entire ftq_entry (not just
   // pointer), since allocated entry will get "destructed"

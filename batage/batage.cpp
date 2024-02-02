@@ -59,9 +59,9 @@ uint32_t reverse(uint32_t x, int nbits) {
 }
 
 dualcounter::dualcounter(int b1, int b2) {
-  ASSERT(BHYSTBITS >= 1);
-  n[b1 ^ 1] = (1 << (BHYSTBITS - 1)) - 1;
-  n[b1] = n[b1 ^ 1] + (1 << BHYSTBITS) - b2;
+  ASSERT(SBP_BHYSTBITS >= 1);
+  n[b1 ^ 1] = (1 << (SBP_BHYSTBITS - 1)) - 1;
+  n[b1] = n[b1 ^ 1] + (1 << SBP_BHYSTBITS) - b2;
 }
 
 dualcounter::dualcounter() { reset(); }
@@ -192,49 +192,49 @@ void folded_history::update(path_history &ph) {
 }
 
 histories::histories() {
-  int *hist = new int[NUMG];
+  int *hist = new int[SBP_NUMG];
   int prevh = 0;
-  for (int i = 0; i < NUMG; i++) {
+  for (int i = 0; i < SBP_NUMG; i++) {
     // geometric history lengths
-    int h = MINHIST * pow((double)MAXHIST / MINHIST, (double)i / (NUMG - 1));
+    int h = SBP_MINHIST * pow((double)SBP_MAXHIST / SBP_MINHIST, (double)i / (SBP_NUMG - 1));
     h = max(prevh + 1, h);
-    hist[NUMG - 1 - i] = h; // hist[0] = longest history
+    hist[SBP_NUMG - 1 - i] = h; // hist[0] = longest history
     prevh = h;
   }
-  bh.init(MAXHIST + 1);
-  ph.init(MAXPATH + 1);
-  chg = new folded_history[NUMG];
-  chgg = new folded_history[NUMG];
-  cht = new folded_history[NUMG];
-  chtt = new folded_history[NUMG];
-  for (int i = 0; i < NUMG; i++) {
-    chg[i].init(hist[i], LOGGE(i), 1);
-    cht[i].init(hist[i], TAGBITS, 1);
+  bh.init(SBP_MAXHIST + 1);
+  ph.init(SBP_MAXPATH + 1);
+  chg = new folded_history[SBP_NUMG];
+  chgg = new folded_history[SBP_NUMG];
+  cht = new folded_history[SBP_NUMG];
+  chtt = new folded_history[SBP_NUMG];
+  for (int i = 0; i < SBP_NUMG; i++) {
+    chg[i].init(hist[i], SBP_LOGGE(i), 1);
+    cht[i].init(hist[i], SBP_TAGBITS, 1);
     int hashparam = 1;
-    if (LOGGE(i) == TAGBITS) {
-      hashparam = (lcm(LOGGE(i), LOGGE(i) - 3) > lcm(LOGGE(i), LOGGE(i) - 2)) ? 3 : 2;
+    if (SBP_LOGGE(i) == SBP_TAGBITS) {
+      hashparam = (lcm(SBP_LOGGE(i), SBP_LOGGE(i) - 3) > lcm(SBP_LOGGE(i), SBP_LOGGE(i) - 2)) ? 3 : 2;
     }
-    if (hist[i] <= MAXPATH) {
-      chgg[i].init(hist[i], LOGGE(i) - hashparam, PATHBITS);
-      chtt[i].init(hist[i], TAGBITS - 1, PATHBITS);
+    if (hist[i] <= SBP_MAXPATH) {
+      chgg[i].init(hist[i], SBP_LOGGE(i) - hashparam, SBP_PATHBITS);
+      chtt[i].init(hist[i], SBP_TAGBITS - 1, SBP_PATHBITS);
     } else {
-      chgg[i].init(hist[i], LOGGE(i) - hashparam, 1);
-      chtt[i].init(hist[i], TAGBITS - 1, 1);
+      chgg[i].init(hist[i], SBP_LOGGE(i) - hashparam, 1);
+      chtt[i].init(hist[i], SBP_TAGBITS - 1, 1);
     }
   }
 }
 
 void histories::update(uint32_t targetpc, bool taken) {
-#ifdef PC_SHIFT
+#ifdef SBP_PC_SHIFT
   // targetpc ^= targetpc << 5;
-  targetpc ^= targetpc >> PC_SHIFT;
+  targetpc ^= targetpc >> SBP_PC_SHIFT;
 #endif
   bh.insert(taken);
   ph.insert(targetpc);
-  for (int i = 0; i < NUMG; i++) {
+  for (int i = 0; i < SBP_NUMG; i++) {
     chg[i].update(bh);
     cht[i].update(bh);
-    if (chgg[i].olength <= MAXPATH) {
+    if (chgg[i].olength <= SBP_MAXPATH) {
       chgg[i].update(ph);
       chtt[i].update(ph);
     } else {
@@ -248,13 +248,13 @@ void histories::update(uint32_t targetpc, bool taken) {
 // implemented in real processors
 
 int histories::gindex(uint32_t pc, int i) const {
-  ASSERT((i >= 0) && (i < NUMG));
+  ASSERT((i >= 0) && (i < SBP_NUMG));
 #ifdef DEBUG_GINDEX
 //fprintf (stderr, "gindex, %lx, %d \n", pc, i);
 #endif
   uint32_t hash = pc ^ i ^ chg[i].fold ^
                   (chgg[i].fold << (chg[i].clength - chgg[i].clength));
-   int raw_index = hash & ((1 << LOGGE(i)) - 1);
+   int raw_index = hash & ((1 << SBP_LOGGE(i)) - 1);
    int rolled_index = (raw_index % ENTRIES_PER_TABLE(i));
 #ifdef DEBUG_GINDEX
 fprintf (stderr, "ENTRIES_PER_TABLE = %d, rolled_index = %d \n", ENTRIES_PER_TABLE(i), rolled_index);
@@ -268,51 +268,51 @@ int histories::gtag(uint32_t pc, int i) const {
 //fprintf (stderr, "gtag, %d, %d \n", pc, i);
 #endif
 
-  ASSERT((i >= 0) && (i < NUMG));
+  ASSERT((i >= 0) && (i < SBP_NUMG));
   uint32_t hash = (pc + i) ^ reverse(cht[i].fold, cht[i].clength) ^
                   (chtt[i].fold << (cht[i].clength - chtt[i].clength));
 #ifdef GHGBITS
   // when bank interleaving is enabled, introducing 1 or 2 bits in the tag
-  // for identifying the path length generally reduces tag aliasing when NUMG is
+  // for identifying the path length generally reduces tag aliasing when SBP_NUMG is
   // large
   hash = (hash << GHGBITS) | ghg(i);
 #endif
-  return hash & ((1 << TAGBITS) - 1);
+  return hash & ((1 << SBP_TAGBITS) - 1);
 }
 
 #ifdef BANK_INTERLEAVING
 // inspired from Seznec's TAGE-SC-L (CBP 2016), but different:
 // interleaving is global, unlike in TAGE-SC-L ==> unique tag size
 int histories::phybank(int i) const {
-  ASSERT((i >= 0) && (i < NUMG));
+  ASSERT((i >= 0) && (i < SBP_NUMG));
   unsigned pos;
-  if (i >= (NUMG - MIDBANK)) {
+  if (i >= (SBP_NUMG - MIDBANK)) {
     pos = i;
   } else {
     // on some workloads, the shortest non-null global history length does not
     // generate enough entropy, which may lead to uneven utilization of banks,
     // hence MIDBANK
-    pos = (chgg[NUMG - MIDBANK - 1].fold + i) % (NUMG - MIDBANK);
+    pos = (chgg[SBP_NUMG - MIDBANK - 1].fold + i) % (SBP_NUMG - MIDBANK);
   }
-  return (chgg[NUMG - 1].fold + pos) % NUMG;
+  return (chgg[SBP_NUMG - 1].fold + pos) % SBP_NUMG;
 }
 
 #ifdef GHGBITS
-int histories::ghg(int i) const { return ((NUMG - 1 - i) << GHGBITS) / NUMG; }
+int histories::ghg(int i) const { return ((SBP_NUMG - 1 - i) << GHGBITS) / SBP_NUMG; }
 #endif
 
 #endif // BANK_INTERLEAVING
 
 void histories::printconfig() {
   printf("history lengths: ");
-  for (int i = NUMG - 1; i >= 0; i--) {
+  for (int i = SBP_NUMG - 1; i >= 0; i--) {
     printf("%d ", chg[i].olength);
   }
   printf("\n");
 }
 
 int histories::size() {
-  return MAXHIST + MAXPATH * PATHBITS; // number of bits
+  return SBP_MAXHIST + SBP_MAXPATH * SBP_PATHBITS; // number of bits
   // The storage for folded histories is ignored here
   // If folded histories are implemented in hardware, they must be checkpointed
   // (cf. Schlais & Lipasti, ICCD 2016) An implementation without folded
@@ -332,9 +332,9 @@ tagged_entry::tagged_entry() {
 
 batage::batage() {
 
-  g = new tagged_entry **[NUMG];
+  g = new tagged_entry **[SBP_NUMG];
   
-  for (int i = 0; i < NUMG; i++) {
+  for (int i = 0; i < SBP_NUMG; i++) {
 #ifdef DEBUG_BATAGE
 fprintf (stderr, "ENTRIES_PER_TABLE(%d) = %d and INFO_PER_ENTRY(%d) = %d \n", i, ENTRIES_PER_TABLE(i), i, INFO_PER_ENTRY(i));
 #endif // DEBUG_BATAGE
@@ -344,17 +344,17 @@ fprintf (stderr, "ENTRIES_PER_TABLE(%d) = %d and INFO_PER_ENTRY(%d) = %d \n", i,
     }
   }
   
-  gi = new int[NUMG];
+  gi = new int[SBP_NUMG];
 
-  for (int i = 0; i < (1 << LOGBE); i++) {
+  for (int i = 0; i < (1 << SBP_LOGBE); i++) {
     for (int j = 0; j < FETCHWIDTH; j++) {
       b[i][j] = 0; // not-taken prediction
     }
   }
   
-  for (int i = 0; i < (1 << LOGB2E); i++) {
+  for (int i = 0; i < (1 << SBP_LOGB2E); i++) {
     for (int j = 0; j < FETCHWIDTH; j++) {
-      b2[i][j] = (1 << BHYSTBITS) - 1; // weak state
+      b2[i][j] = (1 << SBP_BHYSTBITS) - 1; // weak state
     }
   }
   
@@ -367,8 +367,8 @@ fprintf (stderr, "ENTRIES_PER_TABLE(%d) = %d and INFO_PER_ENTRY(%d) = %d \n", i,
   cd = 0;
 #endif
 #ifdef BANK_INTERLEAVING
-  bank = new int[NUMG];
-  check = new bool[NUMG];
+  bank = new int[SBP_NUMG];
+  check = new bool[SBP_NUMG];
 #endif
 
 #ifdef DEBUG
@@ -378,7 +378,7 @@ fprintf (stderr, "ENTRIES_PER_TABLE(%d) = %d and INFO_PER_ENTRY(%d) = %d \n", i,
 
 hit.reserve(FETCHWIDTH);
 s.reserve(FETCHWIDTH);
-allocs.reserve(NUMG);
+allocs.reserve(SBP_NUMG);
 
 #if (defined (POS) || defined (MT_PLUS))
 poses.reserve(FETCHWIDTH);
@@ -389,10 +389,10 @@ random = 0x05af5a0f ^ 0x5f0aa05f;
 
 #ifdef BANK_INTERLEAVING
 void batage::check_bank_conflicts() {
-  for (int i = 0; i < NUMG; i++) {
+  for (int i = 0; i < SBP_NUMG; i++) {
     check[i] = false;
   }
-  for (int i = 0; i < NUMG; i++) {
+  for (int i = 0; i < SBP_NUMG; i++) {
     if (check[bank[i]]) {
       fprintf(stderr, "BANK CONFLICT\n");
       ASSERT(0);
@@ -405,9 +405,9 @@ void batage::check_bank_conflicts() {
 // i is the bank number - not the index within bank
 // Index is taken from gi, must be saved from prediction to update
 tagged_entry &batage::getgb(int i) {
-  ASSERT((i >= 0) && (i < NUMG));
+  ASSERT((i >= 0) && (i < SBP_NUMG));
 #ifdef BANK_INTERLEAVING
-  ASSERT((bank[i] >= 0) && (bank[i] < NUMG));
+  ASSERT((bank[i] >= 0) && (bank[i] < SBP_NUMG));
   return g[bank[i]][gi[bank[i] ]][0];
 #else
   return g[i][gi[i]][0];
@@ -422,9 +422,9 @@ tagged_entry &batage::getgp(int i, uint32_t offset_within_packet) {
 //fprintf (stderr, "getgo, %d, %d \n", i, offset_within_entry);
 #endif
 
-  ASSERT((i >= 0) && (i < NUMG));
+  ASSERT((i >= 0) && (i < SBP_NUMG));
 #ifdef BANK_INTERLEAVING
-  ASSERT((bank[i] >= 0) && (bank[i] < NUMG));
+  ASSERT((bank[i] >= 0) && (bank[i] < SBP_NUMG));
 uint32_t offset_within_entry = get_offset_within_entry (offset_within_packet, bank[i]);
 assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(bank[i]))));
   return g[bank[i]][gi[bank[i]]][offset_within_entry];
@@ -443,9 +443,9 @@ tagged_entry &batage::getge(int i, uint32_t offset_within_entry) {
 //fprintf (stderr, "getgo, %d, %d \n", i, offset_within_entry);
 #endif
 
-  ASSERT((i >= 0) && (i < NUMG));
+  ASSERT((i >= 0) && (i < SBP_NUMG));
 /*#ifdef BANK_INTERLEAVING
-  ASSERT((bank[i] >= 0) && (bank[i] < NUMG));
+  ASSERT((bank[i] >= 0) && (bank[i] < SBP_NUMG));
   assert( ((offset_within_entry_banki >= 0) && (offset_within_entry_banki< INFO_PER_ENTRY(bank[i]))));
   return g[bank[i]][gi[bank[i] ]][offset_within_entry_banki];
 #else
@@ -482,20 +482,20 @@ std::vector<bool>& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
   fprintf (stderr, "predict for fetch_pc = %llx\n", fetch_pc);
 #endif // DEBUG
 
-#ifdef PC_SHIFT
-uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
+#ifdef SBP_PC_SHIFT
+uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> SBP_PC_SHIFT);
 #ifndef SINGLE_TAG
     vector <uint32_t> hash_pc;
   uint32_t pc;
   for ( int i = 0;  i < FETCHWIDTH;  i++)
   {
   	pc = fetch_pc + (i<<1);
-  	hash_pc.push_back(pc ^ (pc >> PC_SHIFT));
+  	hash_pc.push_back(pc ^ (pc >> SBP_PC_SHIFT));
   }
 #else
-  uint32_t hash_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
+  uint32_t hash_pc = fetch_pc ^ (fetch_pc >> SBP_PC_SHIFT);
 #endif // SINGLE_TAG
-#endif // PC_SHIFT
+#endif // SBP_PC_SHIFT
 
   uint32_t offset_within_entry, offset_within_packet; // = hash_pc % INFO_PER_ENTRY;
   
@@ -514,7 +514,7 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
   
 for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
    {
-     	for (int i = 0; i < NUMG; i++) {
+     	for (int i = 0; i < SBP_NUMG; i++) {
      	  	
 		#ifdef BANK_INTERLEAVING
     		bank[i] = p.phybank(i);
@@ -620,8 +620,8 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 std::cerr << "33333" << "\n";
 #endif // DEBUG
 
-  bi = hash_fetch_pc & ((1 << LOGBE) - 1);
-  bi2 = bi & ((1 << LOGB2E) - 1);
+  bi = hash_fetch_pc & ((1 << SBP_LOGBE) - 1);
+  bi2 = bi & ((1 << SBP_LOGB2E) - 1);
   b_bi.clear();
   b2_bi2.clear();
 
@@ -687,7 +687,7 @@ void batage::update_bimodal(bool taken, uint32_t offset_within_packet) {
     if (b2[bi2][offset_within_packet] > 0)
       b2[bi2][offset_within_packet]--;
   } else {
-    if (b2[bi2][offset_within_packet] < ((1 << BHYSTBITS) - 1)) {
+    if (b2[bi2][offset_within_packet] < ((1 << SBP_BHYSTBITS) - 1)) {
       b2[bi2][offset_within_packet]++;
     } else {
       b[bi][offset_within_packet] = taken;
@@ -754,9 +754,9 @@ void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packe
       	std::cerr << "\n";
 #endif // DEBUG_POS
 
-#ifdef PC_SHIFT
-  uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> PC_SHIFT);
-  uint32_t hash_pc = pc ^ (pc >> PC_SHIFT);
+#ifdef SBP_PC_SHIFT
+  uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> SBP_PC_SHIFT);
+  uint32_t hash_pc = pc ^ (pc >> SBP_PC_SHIFT);
 #endif
 
   #ifdef DEBUG
@@ -782,13 +782,13 @@ void batage::update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packe
 
 #ifdef BANK_INTERLEAVING
 #ifdef DEBUG
-  /*for (int i = 0; i < NUMG; i++) {
+  /*for (int i = 0; i < SBP_NUMG; i++) {
 fprintf (stderr, "For update, bank[%d] = %d \n ", i, bank[i]);
 }*/
 #endif // DEBUG
 #endif
 #ifdef DEBUG
-/*  for (int i = 0; i < NUMG; i++) {
+/*  for (int i = 0; i < SBP_NUMG; i++) {
 fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 }*/
 #endif // DEBUG
@@ -913,11 +913,11 @@ if  ((int)hit[offset_within_packet].size() > 0 )
   #endif // DEBUG
 
   if (allocate && ((int)(rando() % MINAP) >= ((cat * MINAP) / (CATMAX + 1)))) {
-    int i = (hit[offset_within_packet].size() > 0) ? hit[offset_within_packet][0] : NUMG;
+    int i = (hit[offset_within_packet].size() > 0) ? hit[offset_within_packet][0] : SBP_NUMG;
     i -= rando() % (1 + s[offset_within_packet][0].diff() * SKIPMAX / dualcounter::nmax);
     int mhc = 0;
 /*
-If nothing hit, i = NUMG and then something less than that, but no bank hit
+If nothing hit, i = SBP_NUMG and then something less than that, but no bank hit
 If any bank had hit, i starts = hit[offset_within_packet][0], leftmost hitting table (smallest table number), then we subtract randomly a positive number to possibly move to left, so smaller i
 and then we decrement i in while loop, so inside the while loop, none of the tables ever hit.
 Hence, this will update ALL (but none of thenm hit) till it can ALLOCATE ON ONE,
@@ -1127,18 +1127,18 @@ JUST_ALLOCATE :
 int batage::size() {
   int bimodal_size = 0, table_size = 0, totsize = 0;
   
-  bimodal_size = (1 << LOGB) + (BHYSTBITS << LOGB2);
+  bimodal_size = (1 << SBP_LOGB) + (SBP_BHYSTBITS << SBP_LOGB2);
   fprintf (stderr, "Bimodal size = %u bits\n", bimodal_size);
   
-  for (int i = 0; i < NUMG; i++)
+  for (int i = 0; i < SBP_NUMG; i++)
   {
   
-    fprintf (stderr, "table %d, ORIG_ENTRIES_PER_TABLE = %d, LOGG = %d, SS_ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, ENTRIES_PER_TABLE = %d, LOGGE = %d\n", i, ORIG_ENTRIES_PER_TABLE(i), LOGG(i), SS_ENTRIES_PER_TABLE(i), LOGGE_ORIG(i), ENTRIES_PER_TABLE(i), LOGGE(i));
+    fprintf (stderr, "table %d, ORIG_ENTRIES_PER_TABLE = %d, SBP_LOGG = %d, SS_ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, ENTRIES_PER_TABLE = %d, SBP_LOGGE = %d\n", i, ORIG_ENTRIES_PER_TABLE(i), SBP_LOGG(i), SS_ENTRIES_PER_TABLE(i), LOGGE_ORIG(i), ENTRIES_PER_TABLE(i), SBP_LOGGE(i));
     
   #ifndef SINGLE_TAG
-   table_size =  (((dualcounter::size()+ TAGBITS) *INFO_PER_ENTRY(i)) * ENTRIES_PER_TABLE(i));
+   table_size =  (((dualcounter::size()+ SBP_TAGBITS) *INFO_PER_ENTRY(i)) * ENTRIES_PER_TABLE(i));
   #else // SINGLE_TAG
-  table_size =  ((((dualcounter::size() + POSBITS) * INFO_PER_ENTRY(i)) + TAGBITS) * ENTRIES_PER_TABLE(i));
+  table_size =  ((((dualcounter::size() + POSBITS) * INFO_PER_ENTRY(i)) + SBP_TAGBITS) * ENTRIES_PER_TABLE(i));
   #endif // SINGLE_TAG
   totsize += table_size;
   }
