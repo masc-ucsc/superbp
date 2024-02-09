@@ -11,16 +11,7 @@
 #define CTR_THRESHOLD 5
 #define CTR_ALLOC_VAL 4
 
-class gshare_prediction {
-public :
-	bool hit;
-	// TODO - update - we do not want to return "everything" including tag, bad design, but ok for now
-	gshare_entry info;
-	uint16_t index;
 
-	// Default constructor for uninitialized instance
-	gshare_prediction() = default; 
-}
 
 class gshare_entry {
 public :
@@ -33,7 +24,7 @@ vector <uint8_t> poses;
 public :
 
 // constructor
-void gshare_entry ()
+gshare_entry ()
 {
 	ctr 		= 3;
 	tag		= 0;
@@ -47,23 +38,47 @@ void gshare_entry ()
 gshare_entry& operator=(const gshare_entry& rhs)
 {
 	ctr = rhs.ctr;
-	tag - rhs.tag;
+	tag = rhs.tag;
 	hist_patch = rhs.hist_patch;
 	PCs = rhs.PCs;
 	poses = rhs.poses;
 	return *this;
 }
-} 
+} ;
+
+class gshare_prediction {
+public :
+	bool hit;
+	// TODO - update - we do not want to return "everything" including tag, bad design, but ok for now
+	gshare_entry info;
+	uint16_t index;
+
+	// Default constructor for uninitialized instance
+	gshare_prediction() = default;
+/*	gshare_prediction() 
+	{
+		hit = false;
+		index = 0;
+	}
+	
+gshare_prediction& operator=(const gshare_prediction& rhs)
+{
+	hit = (rhs.hit);
+	info = (rhs.info);
+	return *this;
+}*/
+};
 
 class gshare {
 public :
 
 vector <gshare_entry> table;
+gshare_prediction prediction;
 
 public :
 
 // constructor
-void gshare ()
+gshare ()
 {
 	table.reserve(NUM_GSHARE_ENTRIES);
 }
@@ -83,23 +98,23 @@ uint16_t calc_index (uint64_t PC)
 bool is_hit (uint64_t PC)
 {
 	uint16_t index = calc_index(PC);
-	uint16_t tag = calc_tag(PC)
+	uint16_t tag = calc_tag(PC);
 	return ( ( tag == table[index].tag) && (table[index].ctr > CTR_THRESHOLD) );
 } 
 
 // TODO Check - Ques - When is gshare predict called - is it once for a SS packet - then how do we get pos ?
 // Is it once per PC in packet ?
 // Also how to infer the prediction - does it return taken, not taken ?
-gshare_prediction predict (uint64_t PC)
-{
-	gshare_prediction prediction;
-	
+gshare_prediction& predict (uint64_t PC)
+{	
 	if (is_hit (PC))
 	{
+		uint16_t index = calc_index(PC);
 		prediction.hit = true;
 		prediction.index = index;
 		prediction.info = table[index];
 	}
+	return prediction;
 }
 
 // TODO Check - Ques - Who calls this ? batage has conf info but not insn info  - for it all except taken branches are nt
@@ -116,7 +131,7 @@ void allocate (vector <uint64_t>& PCs, vector <uint64_t>& poses)
 	}
 	else
 	{
-		table[index].tag = calc_tag(PC[0]);
+		table[index].tag = calc_tag(PCs[0]);
 		table[index].ctr = CTR_ALLOC_VAL;
 		// TODO - Update
 		for (int i = 0; i < 2; i++) // NUM_TAKEN_BRANCHES

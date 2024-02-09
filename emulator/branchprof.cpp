@@ -567,11 +567,16 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   	prediction batage_prediction;
   	std::vector<bool> vec_predDir(FETCH_WIDTH, false);
   	std::vector<bool> vec_highconf(FETCH_WIDTH, false);
+  	
+  	gshare_prediction gshare_pred_inst;
   	#ifdef DEBUG
     {
       std::cerr << "getting predictions" << "\n";
     }
     #endif // DEBUG
+    
+    	gshare_pred_inst = bp.GetFastPrediction(temp_pc);
+    
 	//vec_predDir = std::move(bp.GetPrediction(temp_pc));
 	batage_prediction = bp.GetPrediction(temp_pc);
 	vec_predDir =  batage_prediction.prediction_vector;
