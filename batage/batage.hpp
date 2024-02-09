@@ -246,7 +246,17 @@ public:
   tagged_entry();
 };
 
+class prediction
+{
+	public :
+	std::vector<bool> prediction_vector;
+	std::vector<bool> highconf; // i = high, 0 = low
+	
+	prediction() = default;
+};
+
 class batage {
+
 public:
   int b[1 << SBP_LOGBE][FETCHWIDTH];   // bimodal predictions
   int b2[1 << SBP_LOGB2E][FETCHWIDTH]; // bimodal hystereses
@@ -257,7 +267,6 @@ public:
   vector<int> b2_bi2;
   int *gi;               // Hashes for/Indices into the tagged banks
   
-
   vector<vector<int>> hit;       // tell which banks have a hit - stays same for single tag SS - a vector each for multitag SS
   
   vector<vector<dualcounter>> s; // dual-counters for the hitting banks - vector of vectors for SS
@@ -265,7 +274,7 @@ public:
   vector<vector<int>> poses;  // contains the offset within entry for the hitting subentry
   
   vector<int> bp; // dual-counter providing the final BATAGE prediction - index within s - vector for SS
-  vector<bool> predict; // (INFO_PER_ENTRY);
+  prediction pred_out; // (INFO_PER_ENTRY);
   int cat;  // CAT counter
   int meta; // for a small accuracy boost
 #ifdef USE_CD
@@ -285,7 +294,7 @@ uint32_t get_allocs(int table);
   tagged_entry &getgp(int i, uint32_t offset_within_packet);
   tagged_entry &getge(int i, uint32_t offset_within_entry) ;
   uint32_t get_offset_within_entry (uint32_t offset_within_packet, int table);
-  std::vector<bool>& predict_vec(uint32_t fetch_pc, const histories &p);
+  prediction& predict_vec(uint32_t fetch_pc, const histories &p);
   void update_bimodal(bool taken, uint32_t offset_within_packet);
   void update_entry_p(int i, uint32_t offset_within_packet, bool taken);
   void update_entry_e(int i, uint32_t offset_within_packet, uint32_t offset_within_entry, bool taken);

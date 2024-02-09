@@ -564,14 +564,18 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   	set_ftq_index (inst_index_in_fetch);
   	
   	// temp_predDir = bp.GetPrediction(temp_pc);
+  	prediction batage_prediction;
   	std::vector<bool> vec_predDir(FETCH_WIDTH, false);
+  	std::vector<bool> vec_highconf(FETCH_WIDTH, false);
   	#ifdef DEBUG
     {
       std::cerr << "getting predictions" << "\n";
     }
     #endif // DEBUG
 	//vec_predDir = std::move(bp.GetPrediction(temp_pc));
-	vec_predDir = bp.GetPrediction(temp_pc);	
+	batage_prediction = bp.GetPrediction(temp_pc);
+	vec_predDir =  batage_prediction.prediction_vector;
+	vec_highconf = batage_prediction.highconf;	
 	#ifdef DEBUG
     {
       std::cerr << "got predictions" << "\n";
@@ -580,13 +584,12 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 	
   	for (int i = 0; i < FETCH_WIDTH; i++)
   	{
- 
   		// Allocate
   		if (is_ftq_full() == false) {
   			// Always allocate with default info - i.e. a non_cti 
   			// At this point if 1st instruction for which correct info is avail is non-cti it is already updated
   			// If it is cti - then branchtarget is avail in next CC and hence should only be updated condirionally then
-    		allocate_ftq_entry(vec_predDir[i], false, temp_pc, insn_t::non_cti, temp_pc+2, fetch_pc, bp);
+    		allocate_ftq_entry(vec_predDir[i], vec_highconf[i], false, temp_pc, insn_t::non_cti, temp_pc+2, fetch_pc, bp);
     	} else {
       fprintf(stderr, "%s\n", "FTQ full");
     	}

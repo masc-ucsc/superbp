@@ -330,8 +330,15 @@ tagged_entry::tagged_entry() {
   dualc.reset();
 }
 
-batage::batage() {
+/*
+prediction::prediction()
+{
+	prediction_vector.reserve();
+	highconf.reserve();
+}
+*/
 
+batage::batage() {
   g = new tagged_entry **[SBP_NUMG];
   
   for (int i = 0; i < SBP_NUMG; i++) {
@@ -475,7 +482,7 @@ To add POS - with single tag - pos to offset_within_entry mapping is not constan
 for prediction, match pos in addition to tag, if matched, then consider it a match and proceed as usual
 TODO - Check storing POS in FTQ is a good design choice - else rematch pos everytime
 */
-std::vector<bool>& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
+prediction& batage::predict_vec(uint32_t fetch_pc, const histories &p) {
 
 #ifdef DEBUG
   //fprintf(predict_pcs, "%lu \n", fetch_pc);
@@ -665,19 +672,22 @@ std::cerr << "33333" << "\n";
 #endif // DEBUG
 	
   // For superscalar - save s, p, hit
-  predict.clear();
+  pred_out.prediction_vector.clear();
+  pred_out.highconf.clear();
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
    	//predict[offset_within_entry] = s[offset_within_entry][bp].pred();
-   	predict.push_back(s[offset_within_packet][bp[offset_within_packet]].pred());
+   	pred_out.prediction_vector.push_back(s[offset_within_packet][bp[offset_within_packet]].pred());
+   	// TODO -Check if we want to use veryhighconf();
+   	pred_out.highconf.push_back(s[offset_within_packet][bp[offset_within_packet]].highconf()); 
   }
   #ifdef DEBUG
 	std::cerr << "66666" << "\n";
 	#endif // DEBUG
 	// TODO Temporarily Diabled
-  //fprintf(stderr, "ba.predict pc=%llx predict:%d\n", pc, predict);
+  	//fprintf(stderr, "ba.predict pc=%llx predict:%d\n", pc, predict);
 
-  return predict;
+  return pred_out;
 }
 
 void batage::update_bimodal(bool taken, uint32_t offset_within_packet) {

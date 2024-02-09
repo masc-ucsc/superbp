@@ -25,7 +25,8 @@ public:
   histories hist;
 
   PREDICTOR(void);
-  std::vector<bool>& GetPrediction(uint64_t PC);
+
+  prediction& GetPrediction(uint64_t PC) ;
   void Updatetables(uint64_t PC, uint64_t fetch_pc, uint32_t offset_within_entry, bool resolveDir);
   void Updatehistory(bool resolveDir, uint64_t branchTarget);
   void TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget);

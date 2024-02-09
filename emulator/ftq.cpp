@@ -27,7 +27,7 @@ uint16_t get_num_free_ftq_entries (void) {return ( NUM_FTQ_ENTRIES - filled_ftq_
 void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target,
                         IMLI &IMLI_inst)
 #elif defined BATAGE
-void allocate_ftq_entry(const bool &predDir, const bool &resolveDir,
+void allocate_ftq_entry(const bool &predDir, const bool &highconf, const bool &resolveDir,
                         const uint64_t &pc, const insn_t &insn,
                         const uint64_t &branchTarget,
                         const uint64_t &fetch_pc,
@@ -66,7 +66,7 @@ void allocate_ftq_entry(void)
 #elif defined BATAGE
   // ftq_entry f {predDir, resolveDir, pc, branchTarget, predictor.pred.hit,
   // predictor.pred.s, predictor.pred.meta};
-  ftq_entry f{predDir, resolveDir, pc, insn, branchTarget, fetch_pc, predictor};
+  ftq_entry f{predDir, highconf, resolveDir, pc, insn, branchTarget, fetch_pc, predictor};
   // Move assignment
   ftq[next_allocate_index] = std::move(f);
 #endif

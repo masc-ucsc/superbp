@@ -45,11 +45,12 @@ public:
 #elif defined BATAGE
 public:
   bool predDir;			// 1 per instruction
+  bool highconf;		// 1 per instruction
   bool resolveDir;		// 1 per instruction
   uint64_t pc;			/* 1 per instruction (option is to do 1 per fetch_pc + index for each instruction, will save space) */
   uint64_t fetch_pc;
   insn_t insn;			// 1 per instruction
-  uint64_t branchTarget;// 1 per instruction - TODO Check if required
+  uint64_t branchTarget;	// 1 per instruction - TODO Check if required
 
 /* Changes for SS predictor
 hit - vector of banks that hit, stays the same for single tag; for multi tag - one vector per pc
@@ -86,7 +87,7 @@ public:
   ftq_entry() = default;
 
   // Constructor - to allocate entry
-  ftq_entry(const bool &predDir1, const bool &resolveDir1, const uint64_t &pc1,
+  ftq_entry(const bool &predDir1, const bool& highconf1, const bool &resolveDir1, const uint64_t &pc1,
             const insn_t &insn1, const uint64_t &branchTarget1, const uint64_t &fetch_pc, 
             const PREDICTOR &predictor)
       /*: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget
@@ -97,7 +98,7 @@ public:
          std::end(predictor.pred.b))}, b2
          {std::vector<int>(std::begin(predictor.pred.b2),
          std::end(predictor.pred.b2))}*/
-      : predDir{predDir1}, resolveDir{resolveDir1}, pc{pc1}, insn{insn1},
+      : predDir{predDir1}, highconf{highconf1}, resolveDir{resolveDir1}, pc{pc1}, insn{insn1},
         branchTarget{branchTarget1}, fetch_pc{fetch_pc},
         hit{predictor.pred.hit},
         s{predictor.pred.s}, poses{predictor.pred.poses}, 
@@ -110,6 +111,7 @@ public:
   // pointer), since allocated entry will get "destructed"
   ftq_entry &operator=(ftq_entry &&src) {
     predDir = std::move(src.predDir);
+    highconf = std::move(src.highconf);
     resolveDir = std::move(src.resolveDir);
     pc = std::move(src.pc);
     insn = std::move(src.insn);
@@ -151,11 +153,10 @@ bool is_ftq_empty(void);
 uint16_t get_num_free_ftq_entries (void);
 
 #ifdef SUPERBP
-void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target,
-                        IMLI &IMLI_inst);
-void get_ftq_data(IMLI &IMLI_inst);
+void allocate_ftq_entry (AddrType branch_PC, AddrType branch_target, IMLI &IMLI_inst);
+void get_ftq_data (IMLI &IMLI_inst);
 #elif defined BATAGE
-void allocate_ftq_entry(const bool &predDir, const bool &resolveDir,
+void allocate_ftq_entry (const bool &predDir, const bool& highconf, const bool &resolveDir,
                         const uint64_t &pc, const insn_t &insn,
                         const uint64_t &branchTarget,
                         const uint64_t &fetch_pc,
