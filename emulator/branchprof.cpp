@@ -8,6 +8,12 @@ PREDICTOR bp;
 bool predDir, last_predDir, resolveDir, last_resolveDir;
 uint64_t branchTarget;
 
+// gshare allocate
+uint8_t highconf_ctr = 0;
+bool gshare_tracking = false, highconfT_in_packet = false;
+vector <uint64_t> gshare_PCs;
+vector <uint8_t> gshare_poses;
+
 FILE *pc_trace;
 
 #ifdef EN_BB_FB_COUNT
@@ -171,13 +177,27 @@ static inline void update_counters_pc_minus_1_branch() {
   }
 }
 
+/*
+gshare allocation -
+if no gshare_tracking is in progress - start gshare_tracking - push to PCs[0]
+If gshare_tracking is in progress - 
+	1. if found a highconf taken branch - 
+	push to gshare PCs and poses
+	if the ctr reaches desired value - allocate on gshare and then clear the local buffer
+	if the ctr is not at desired value - do nothing
+	2. If not a high conf taken - deallocate and clear local gshare_tracking buffer
+*/
+
 #ifdef FTQ
 static inline void read_ftq_update_predictor() {
   uint64_t update_pc, update_fetch_pc, update_branchTarget;
   insn_t update_insn;
   bool update_predDir, update_resolveDir;
+  bool update_highconf;
 
   uint8_t partial_pop = (last_misprediction || last_resolveDir);
+
+	highconfT_in_packet = false;
 
 	// For multiple taken predictions, changed from FETCH_WIDTH to INFO_PER_ENTRY 
   if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) {
@@ -203,7 +223,38 @@ static inline void read_ftq_update_predictor() {
         update_predDir = ftq_data.predDir;
         update_branchTarget = ftq_data.branchTarget;
         update_fetch_pc = ftq_data.fetch_pc;
+        
+        // allocate_gshare
+        update_highconf = ftq_data.highconf;
 
+	if (update_resolveDir && update_highconf)
+	{
+		highconfT_in_packet = true;
+		if (!gshare_tracking)
+		{
+			gshare_PCs.push_back(update_fetch_pc);
+			gshare_poses.push_back( (update_pc - update_fetch_pc) >> 1);
+			gshare_PCs.push_back(update_branchTarget);
+			gshare_tracking = true;
+		}
+		else
+		{
+			gshare_poses.push_back( (gshare_poses[0] + (update_pc - update_fetch_pc) >> 1));
+			gshare_PCs.push_back(update_branchTarget);
+		}
+		
+		// TODO Change to NUM_TAKEN_BRANCHES
+		if (gshare_poses.size() == 2) 
+		{
+			bp.fast_pred.allocate(gshare_PCs, gshare_poses);
+			// TODO - do we handle if there are 3 high conf T in 3 consecutive packets 
+			gshare_tracking = false;
+			gshare_PCs.clear();
+			gshare_poses.clear();
+		}
+	}
+	// allocate gshare done
+	
         // Store the read predictor fields into the predictor
         copy_ftq_data_to_predictor(&ftq_data);
 		  #ifdef DEBUG_FTQ
@@ -235,6 +286,14 @@ static inline void read_ftq_update_predictor() {
                 inst_index_in_fetch, misprediction, resolveDir);
       }
     }
+    
+    if (!highconfT_in_packet && gshare_tracking)
+    {
+    	gshare_tracking = false;
+    	gshare_PCs.clear();
+	gshare_poses.clear();
+    }
+    
     inst_index_in_fetch = 0;
     #ifdef DEBUG
   	fprintf (stderr, "||||||||||||||||||||||||||| NUKING FTQ |||||||||||||||||||||||||| \n");
