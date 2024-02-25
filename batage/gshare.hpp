@@ -10,13 +10,16 @@
 #define GSHARE_T_HIGHCONF 5
 
 //TODO - Confirm these values
-#define CTR_THRESHOLD 5
+#define CTR_THRESHOLD 4
 #define CTR_ALLOC_VAL 4
 
 //#define DEBUG_ALLOC
 
 class gshare_entry {
 public :
+#ifdef DEBUG_PC
+uint64_t PC;
+#endif
 uint8_t ctr;
 uint16_t tag;
 vector <uint8_t> hist_patch;
@@ -101,7 +104,7 @@ bool is_hit (uint64_t PC)
 {
 	uint16_t index = calc_index(PC);
 	uint16_t tag = calc_tag(PC);
-	return ( ( tag == table[index].tag) && (table[index].ctr > CTR_THRESHOLD) );
+	return ( ( tag == table[index].tag) && (table[index].ctr >= CTR_THRESHOLD) );
 } 
 
 // TODO Check - Ques - When is gshare predict called - is it once for a SS packet - then how do we get pos ?
@@ -109,12 +112,32 @@ bool is_hit (uint64_t PC)
 // Also how to infer the prediction - does it return taken, not taken ?
 gshare_prediction& predict (uint64_t PC)
 {	
+	prediction.hit = false;
+		#ifdef DEBUG_PREDICT
+			//fprintf(stderr, "Predict called for fetch pc = %llx\n", PC);
+		#endif
+		#ifdef DEBUG_PC
+		if ( (PC == 0xffffffff8010a4f2) || (PC == 0xffffffff8010a130) )
+		{
+			for (int i = 0; i < NUM_GSHARE_ENTRIES; i++)
+			{
+				if (PC == table[i].PC)
+				{
+					printf ("PC present at index = %d, ctr = %d\n", i, table[i].ctr);
+					break;
+				}
+			}
+		}
+		#endif
 	if (is_hit (PC))
 	{
 		uint16_t index = calc_index(PC);
 		prediction.hit = true;
 		prediction.index = index;
 		prediction.info = table[index];
+		#ifdef DEBUG_PREDICT
+			fprintf(stderr, "*********************************** gshare hit index = %u ****************************************** \n", index);
+		#endif
 	}
 	return prediction;
 }
@@ -146,18 +169,23 @@ void allocate (vector <uint64_t>& PCs, vector <uint8_t>& poses)
 		// TODO - Update
 		for (int i = 0; i < 2; i++) // NUM_TAKEN_BRANCHES
 		{
-			table[index].tag == tag;
+			table[index].tag = tag;
 			table[index].PCs[i] = PCs[i+1];
 			table[index].poses[i] = poses[i];
+			#ifdef DEBUG_PC
+			table[index].PC = PCs[0];
+			if (table[index].PC == 0xffffffff8010a4f2)
+			printf ("check tag \n");
+			#endif
 		}
 		#ifdef DEBUG_ALLOC
-		printf ("Alloc done at index= %u, for fetch_pc = %llu, saved branch to %llx at pos = %u and  branch to %llx at pos = %u\n", index, PCs[0], PCs[1], poses[0],  PCs[2], poses[1]);
+		printf ("Alloc done at index = %u, for fetch_pc = %llx, saved branch to %llx at pos = %u and  branch to %llx at pos = %u\n", index, PCs[0], PCs[1], poses[0],  PCs[2], poses[1]);
 		#endif // DEBUG_ALLOC
 	}
 }
 
 
-void update (bool prediction_correct, gshare_prediction& prediction)
+void update (gshare_prediction& prediction, bool prediction_correct)
 {
 	uint16_t index = prediction.index;
 	uint8_t ctr = table[index].ctr;
