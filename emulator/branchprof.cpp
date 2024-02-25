@@ -115,9 +115,9 @@ void branchprof_exit() {
           branch_count, jump_count, cti_count, benchmark_instruction_count,
           instruction_count, correct_prediction_count, misprediction_count,
           branch_mispredict_count, misscontrol_count,
-          (double)misprediction_count /
-              (double)(correct_prediction_count + misprediction_count) * 100,
-          (double)misprediction_count / (double)benchmark_instruction_count *
+          (double)(branch_mispredict_count + misscontrol_count) /
+              (double)(correct_prediction_count + misprediction_count - jump_count) * 100,
+          (double)(branch_mispredict_count + misscontrol_count) / (double)(benchmark_instruction_count - jump_count) *
               1000);
 
               for (int i = 0; i < SBP_NUMG; i++)
@@ -260,7 +260,10 @@ static inline void read_ftq_update_predictor() {
 		  #ifdef DEBUG_FTQ
   fprintf (stderr, "Updating predictor tables for pc = %llx with resolvdir = %d, i = %d \n", update_pc, update_resolveDir, i);
   #endif
+  if (update_insn != insn_t::jump) 
+  {
         bp.Updatetables(update_pc, update_fetch_pc, i, update_resolveDir);
+  }
   #ifdef DEBUG_FTQ
   fprintf (stderr, "Update predictor tables done for pc = %llx \n", update_pc);
   #endif
