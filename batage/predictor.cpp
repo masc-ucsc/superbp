@@ -13,7 +13,8 @@ PREDICTOR::PREDICTOR(void) {
 #endif
 }
 
-gshare_prediction& PREDICTOR::GetFastPrediction(uint64_t PC)  {return (fast_pred.predict(PC));}
+gshare_prediction& PREDICTOR::GetFastPrediction(uint64_t PC, int index, int tag) 
+  {return (fast_pred.predict(PC, index, tag));}
 
 prediction& PREDICTOR::GetPrediction(uint64_t PC) { return pred.predict_vec(PC, hist); }
 

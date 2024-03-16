@@ -251,6 +251,8 @@ class prediction
 	public :
 	std::vector<bool> prediction_vector;
 	std::vector<bool> highconf; // i = high, 0 = low
+	int gshare_index;
+	int gshare_tag;
 	
 	prediction() = default;
 };

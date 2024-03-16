@@ -531,6 +531,11 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 		#endif
     		gi[i] = p.gindex(hash_fetch_pc, i);
     		
+		//TODO - Try different i for gshare index
+    		if ( (offset_within_packet == 0) && (i == 2) )
+    		{
+    			pred_out.gshare_index = gi[5]; 
+    		}
 		#ifdef DEBUG
 		std::cerr << "11111" << "\n";
 		//fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
@@ -674,13 +679,25 @@ std::cerr << "33333" << "\n";
   // For superscalar - save s, p, hit
   pred_out.prediction_vector.clear();
   pred_out.highconf.clear();
+  bool gshare_tag_saved = false;
+  bool i_pred = false;
+  bool i_highconf = false;
+  
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++)
   {
-   	//predict[offset_within_entry] = s[offset_within_entry][bp].pred();
-   	pred_out.prediction_vector.push_back(s[offset_within_packet][bp[offset_within_packet]].pred());
+     	//predict[offset_within_entry] = s[offset_within_entry][bp].pred();
+   	i_pred = s[offset_within_packet][bp[offset_within_packet]].pred();
    	// TODO -Check if we want to use veryhighconf();
-   	pred_out.highconf.push_back(s[offset_within_packet][bp[offset_within_packet]].highconf()); 
-  }
+   	i_highconf = s[offset_within_packet][bp[offset_within_packet]].highconf();
+   	pred_out.prediction_vector.push_back(i_pred);
+   	pred_out.highconf.push_back(i_highconf);   
+   	if ( (i_pred) && (i_highconf) && !gshare_tag_saved )
+   	{
+   		pred_out.gshare_tag = gi[bp[offset_within_packet]];
+   		gshare_tag_saved = true;
+   	}
+}
+
   #ifdef DEBUG
 	std::cerr << "66666" << "\n";
 	#endif // DEBUG

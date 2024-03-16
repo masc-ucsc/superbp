@@ -4,6 +4,8 @@
 #include "predictor.hpp"
 #include <iostream>
 
+#define DEBUG_GSHARE
+
 PREDICTOR bp;
 bool predDir, last_predDir, resolveDir, last_resolveDir;
 uint64_t branchTarget;
@@ -16,6 +18,8 @@ bool gshare_tracking = false, highconfT_in_packet = false;
 vector <uint64_t> gshare_PCs;
 vector <uint8_t> gshare_poses;
 uint64_t num_gshare_predicitons, num_gshare_correct_predicitons; 
+	int gshare_index;
+	int gshare_tag;
 
 FILE *pc_trace;
 
@@ -123,7 +127,7 @@ void branchprof_exit() {
           (double)(branch_mispredict_count + misscontrol_count) / (double)(benchmark_instruction_count - jump_count) *
               1000);
 		#ifdef GSHARE
-              fprintf (pc_trace, "gshare local rates - \nnum_predictions = %llu\nnum_correct_predictions = %llu\nmisprediction_rate = %lf%\n", num_gshare_predicitons, num_gshare_correct_predicitons, ((double)(num_gshare_predicitons-num_gshare_correct_predicitons)*100/num_gshare_predicitons) );
+              fprintf (pc_trace, "gshare local rates - \ngshare_num_predictions = %llu\ngshare_num_correct_predictions = %llu\ngshare_misprediction_rate = %lf%\n", num_gshare_predicitons, num_gshare_correct_predicitons, ((double)(num_gshare_predicitons-num_gshare_correct_predicitons)*100/num_gshare_predicitons) );
 		#endif // GSHARE              
 for (int i = 0; i < SBP_NUMG; i++)
               {
@@ -192,25 +196,20 @@ If gshare_tracking is in progress -
 	if the ctr is not at desired value - do nothing
 	2. If not a high conf taken - deallocate and clear local gshare_tracking buffer
 */
-        /*
-        bool gshare_pos1_correct, gshare_pos0_correct;
-        */
-void update_gshare(int i)
+
+void update_gshare(int i, uint64_t target)
 {
-        if (gshare_pred_inst.hit)
+        if (gshare_pred_inst.tag_match)
         {
-        	if (i == gshare_pred_inst.info.poses[0])
+        	if (i == gshare_pred_inst.info.poses[0]) 
         	{
-        		gshare_pos0_correct = true;
+        		//if  ( gshare_pred_inst.info.PCs[0] == target)
+        		{gshare_pos0_correct = true;}
         	}
-        	else if ((gshare_pred_inst.info.poses[0] + i) == gshare_pred_inst.info.poses[1])
+        	else if ( (gshare_pred_inst.info.poses[0] + i) == gshare_pred_inst.info.poses[1]) 
         	{
-        		gshare_pos1_correct = true;
-        	}
-        	gshare_prediction_correct = gshare_pos1_correct && gshare_pos0_correct;
-        	if (gshare_prediction_correct)
-        	{
-        		num_gshare_correct_predicitons++;
+        		//if ( gshare_pred_inst.info.PCs[1] == target)
+        		{gshare_pos1_correct = true;}
         	}
         }
 }
@@ -218,6 +217,7 @@ void update_gshare(int i)
 #ifdef FTQ
 static inline void read_ftq_update_predictor() {
   uint64_t update_pc, update_fetch_pc, update_branchTarget;
+  uint16_t update_gshare_index, update_gshare_tag;
   insn_t update_insn;
   bool update_predDir, update_resolveDir;
   bool update_highconf;
@@ -233,10 +233,11 @@ static inline void read_ftq_update_predictor() {
   fprintf (stderr, "\nread_ftq_update_predictor : inst_index_in_fetch = %u, partial_pop = %d\n", inst_index_in_fetch, partial_pop);
   #endif
 
-#ifdef DEBUG_FTQ
-    /*std::cerr << "Deallocating - inst_index_in_fetch = " << inst_index_in_fetch
-              << " last_misprediction = " << last_misprediction
-              << " last_resolveDir = " << last_resolveDir << "\n";*/
+#ifdef DEBUG_GSHARE
+if (gshare_pred_inst.hit)
+{
+printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] = %llx\n", gshare_pred_inst.info.poses[0], gshare_pred_inst.info.PCs[0], gshare_pred_inst.info.poses[1], gshare_pred_inst.info.PCs[1]);
+}
 #endif
 
     for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH);
@@ -253,21 +254,41 @@ static inline void read_ftq_update_predictor() {
 
 	#ifdef GSHARE
 	// update gshare
-       	update_gshare(i);
+	#ifdef DEBUG_GSHARE
+	if (gshare_pred_inst.hit)
+        {
+        	if (i == gshare_pred_inst.info.poses[0]) 
+        	{
+        		printf ("gshare resolution for i = %u, resolveDir = %u, target = %#llx \n", i, update_resolveDir, update_branchTarget);
+        	}
+        	else if ( (gshare_pred_inst.info.poses[0] + i) == gshare_pred_inst.info.poses[1]) 
+        	{
+        		printf ("gshare resolution for i = %u, resolveDir = %u, target = %#llx \n", gshare_pred_inst.info.poses[0] + i, update_resolveDir, update_branchTarget);
+        	}
+        }
+		
+	#endif // DEBUG_GSHARE
+       	update_gshare(i, update_branchTarget);
 	#endif
         
         // allocate_gshare
         update_highconf = ftq_data.highconf;
+        update_gshare_index = gshare_pred_inst.index; // ftq_data.gi[1];
 
-	if (!gshare_pred_inst.hit && update_resolveDir && update_highconf && (update_insn != insn_t::ret))
+	// allocate on a branch or if second is a jump
+	if (!gshare_pred_inst.hit && update_resolveDir && (((update_insn == insn_t::branch) && update_highconf) || (update_insn == insn_t::jump)) )
 	{
 		highconfT_in_packet = true;
-		if (!gshare_tracking)
+		if (!gshare_tracking) // The first must be a branch
 		{
-			gshare_PCs.push_back(update_fetch_pc);
-			gshare_poses.push_back( i ); // (update_pc - update_fetch_pc) >> 1
-			gshare_PCs.push_back(update_branchTarget);
-			gshare_tracking = true;
+			if (update_insn == insn_t::branch)
+			{
+				gshare_PCs.push_back(update_fetch_pc);
+				gshare_poses.push_back( i ); // (update_pc - update_fetch_pc) >> 1
+				gshare_PCs.push_back(update_branchTarget);
+				gshare_tracking = true;
+				update_gshare_tag = ftq_data.gi[ftq_data.bp[i]];
+			}
 		}
 		else
 		{
@@ -278,7 +299,7 @@ static inline void read_ftq_update_predictor() {
 		// TODO Change to NUM_TAKEN_BRANCHES
 		if (gshare_poses.size() == 2) 
 		{
-			bp.fast_pred.allocate(gshare_PCs, gshare_poses);
+			bp.fast_pred.allocate(gshare_PCs, gshare_poses, update_gshare_index, update_gshare_tag);
 			// TODO - do we handle if there are 3 high conf T in 3 consecutive packets 
 			gshare_tracking = false;
 			gshare_PCs.clear();
@@ -295,6 +316,7 @@ static inline void read_ftq_update_predictor() {
   if ((update_insn != insn_t::jump)  || (update_insn != insn_t::ret) )
   {
 	#ifdef GSHARE
+	// TODO Check if number of updates is correct
 	if (!gshare_prediction_correct)
 	#endif
         {
@@ -335,7 +357,19 @@ static inline void read_ftq_update_predictor() {
     }
 
 	#ifdef GSHARE
-    bp.fast_pred.update(gshare_pred_inst, gshare_prediction_correct);
+	gshare_prediction_correct = gshare_pos1_correct && gshare_pos0_correct;
+	
+        if (gshare_pred_inst.hit)
+        {
+        	if (gshare_prediction_correct)
+        	{
+        		num_gshare_correct_predicitons++;
+        	}
+        }
+	//if (gshare_pred_inst.hit)
+	{
+    		bp.fast_pred.update(gshare_pred_inst, gshare_prediction_correct);
+    	}
 	#endif
     
     inst_index_in_fetch = 0;
@@ -612,9 +646,9 @@ void check_gshare (void)
 }
 */
 
-void get_gshare_prediction(uint64_t temp_pc)
+void get_gshare_prediction(uint64_t temp_pc, int index, int tag)
 {
-   	gshare_pred_inst = bp.GetFastPrediction(temp_pc);
+   	gshare_pred_inst = bp.GetFastPrediction(temp_pc, index, tag);
     	gshare_pos0_correct = false;
     	gshare_pos1_correct = false;
     	gshare_prediction_correct = false;
@@ -622,6 +656,8 @@ void get_gshare_prediction(uint64_t temp_pc)
     	{
     		num_gshare_predicitons++;
     	}
+    	
+    	
 }
 
 void handle_branch(uint64_t pc, uint32_t insn_raw) {
@@ -729,19 +765,27 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
     }
     #endif // DEBUG
     
-	#ifdef GSHARE
- 	get_gshare_prediction(temp_pc);
-	#endif
+
     
 	//vec_predDir = std::move(bp.GetPrediction(temp_pc));
 	batage_prediction = bp.GetPrediction(temp_pc);
 	vec_predDir =  batage_prediction.prediction_vector;
 	vec_highconf = batage_prediction.highconf;	
+
+	gshare_index = batage_prediction.gshare_index;
+	gshare_tag = batage_prediction.gshare_tag;
+	#ifdef GSHARE
+	#ifdef DEBUG_GSHARE
+	//printf ("gshare_index = %u and gshare_tag = %x\n", gshare_index, gshare_tag);
+	#endif // DEBUG_GSHARE
+ 	get_gshare_prediction(temp_pc, gshare_index, gshare_tag);
+	#endif  // GSHARE
+
 	#ifdef DEBUG
-    {
-      std::cerr << "got predictions" << "\n";
-    }
-#endif // DEBUG
+    	{
+      		std::cerr << "got predictions" << "\n";
+    	}
+	#endif // DEBUG
 	
   	for (int i = 0; i < FETCH_WIDTH; i++)
   	{
@@ -767,19 +811,17 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   		// Repeat for next sequential instruction
   		temp_pc+=2;
   	}
-  	
 #ifdef DEBUG
     {
       std::cerr << "FTQ allocarions done" << "\n";
     }
 #endif // DEBUG  	
-  	
   }
   	
+  	predDir = false;
 #ifdef GSHARE 	
   if (gshare_pred_inst.hit)
   	{
-  		predDir = false;
   		if (inst_index_in_fetch == gshare_pred_inst.info.poses[0])
   			{predDir = true;}
   		else if (inst_index_in_fetch == gshare_pred_inst.info.poses[1])
