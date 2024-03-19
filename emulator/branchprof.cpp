@@ -313,7 +313,7 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 		  #ifdef DEBUG_FTQ
   fprintf (stderr, "Updating predictor tables for pc = %llx with resolvdir = %d, i = %d \n", update_pc, update_resolveDir, i);
   #endif
-  if ((update_insn != insn_t::jump)  || (update_insn != insn_t::ret) )
+  if ((update_insn != insn_t::jump)  && (update_insn != insn_t::ret) )
   {
 	#ifdef GSHARE
 	// TODO Check if number of updates is correct
