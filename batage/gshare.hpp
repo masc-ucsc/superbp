@@ -9,15 +9,15 @@
 #define NUM_GSHARE_TAGBITS 12
 #define NUM_GSHARE_CTRBITS 3
 #define GSHARE_CTRMAX ((1 << NUM_GSHARE_CTRBITS) -1)
-#define GSHARE_T_HIGHCONF 5
+#define GSHARE_T_HIGHCONF 4
 
 //TODO - Confirm these values
 #define CTR_THRESHOLD 4
 #define CTR_ALLOC_VAL 4
 
-#define DEBUG_PREDICT
+//#define DEBUG_PREDICT
 //#define DEBUG_ALLOC
-#define DEBUG_UPDATE
+//#define DEBUG_UPDATE
 
 
 class gshare_entry {
@@ -122,9 +122,10 @@ bool is_hit (uint64_t PC,uint16_t index, uint16_t tag)
 	if ((tag == table[index].tag))
 	{ 
 		prediction.tag_match = true;
-	if  (ctr < CTR_THRESHOLD)
+	
 	#ifdef DEBUG_PREDICT
-	fprintf( gshare_log, "gshare tag matched miss for fetchPC = %#llx at index = %u, with tag = %#x, since ctr = %u < CTR_THRESHOLD = %u\n", PC, index, tag, ctr, CTR_THRESHOLD); 
+	if  (ctr < CTR_THRESHOLD)
+	{fprintf( gshare_log, "gshare tag matched miss for fetchPC = %#llx at index = %u, with tag = %#x, since ctr = %u < CTR_THRESHOLD = %u\n", PC, index, tag, ctr, CTR_THRESHOLD); }
 	#endif
 	}
 	

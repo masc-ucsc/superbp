@@ -532,9 +532,9 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
     		gi[i] = p.gindex(hash_fetch_pc, i);
     		
 		//TODO - Try different i for gshare index
-    		if ( (offset_within_packet == 0) && (i == 2) )
+    		if ( (offset_within_packet == 0) && (i == 3) )
     		{
-    			pred_out.gshare_index = gi[5]; 
+    			pred_out.gshare_index = gi[i]; 
     		}
 		#ifdef DEBUG
 		std::cerr << "11111" << "\n";
@@ -687,16 +687,20 @@ std::cerr << "33333" << "\n";
   {
      	//predict[offset_within_entry] = s[offset_within_entry][bp].pred();
    	i_pred = s[offset_within_packet][bp[offset_within_packet]].pred();
-   	// TODO -Check if we want to use veryhighconf();
-   	i_highconf = s[offset_within_packet][bp[offset_within_packet]].highconf();
+   	i_highconf = (s[offset_within_packet][bp[offset_within_packet]].veryhighconf()) || (s[offset_within_packet][bp[offset_within_packet]].highconf());
    	pred_out.prediction_vector.push_back(i_pred);
    	pred_out.highconf.push_back(i_highconf);   
    	if ( (i_pred) && (i_highconf) && !gshare_tag_saved )
    	{
-   		pred_out.gshare_tag = gi[bp[offset_within_packet]];
+   		// TODO - MUst be accounting for Bimodal, but that hits number of gshare predictions
+   		/*if (hit.empty()) // Bimodal
+   		{pred_out.gshare_tag = hash_fetch_pc;}
+   		else*/
+   		{pred_out.gshare_tag = gi[bp[offset_within_packet]];}
    		gshare_tag_saved = true;
    	}
 }
+pred_out.gshare_index = pred_out.gshare_tag;
 
   #ifdef DEBUG
 	std::cerr << "66666" << "\n";

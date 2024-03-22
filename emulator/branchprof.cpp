@@ -4,14 +4,14 @@
 #include "predictor.hpp"
 #include <iostream>
 
-#define DEBUG_GSHARE
+//#define DEBUG_GSHARE
 
 PREDICTOR bp;
 bool predDir, last_predDir, resolveDir, last_resolveDir;
 uint64_t branchTarget;
 
 // gshare allocate
-gshare_prediction gshare_pred_inst;
+gshare_prediction gshare_pred_inst, last_gshare_pred_inst;
 bool gshare_pos1_correct, gshare_pos0_correct, gshare_prediction_correct;
 uint8_t highconf_ctr = 0;
 bool gshare_tracking = false, highconfT_in_packet = false;
@@ -118,13 +118,12 @@ void branchprof_exit() {
           "%lu\nbenchmark_instruction_count = %lu\nInstruction Count = "
           "%lu\nCorrect prediciton Count = %lu\nmispredction count = "
           "%lu\nbranch_mispredict_count=%lu\nmisscontrol_count=%"
-          "lu\nmisprediction rate = %lf\nMPKI = %lf\n",
+          "lu\nbranch misprediction rate = %lf\nMPKI = %lf\n",
           branch_count, jump_count, cti_count, benchmark_instruction_count,
           instruction_count, correct_prediction_count, misprediction_count,
           branch_mispredict_count, misscontrol_count,
-          (double)(branch_mispredict_count + misscontrol_count) /
-              (double)(correct_prediction_count + misprediction_count - jump_count) * 100,
-          (double)(branch_mispredict_count + misscontrol_count) / (double)(benchmark_instruction_count - jump_count) *
+          (double)(branch_mispredict_count) /(double)(branch_count) * 100,
+          (double)(branch_mispredict_count) / (double)(benchmark_instruction_count) *
               1000);
 		#ifdef GSHARE
               fprintf (pc_trace, "gshare local rates - \ngshare_num_predictions = %llu\ngshare_num_correct_predictions = %llu\ngshare_misprediction_rate = %lf%\n", num_gshare_predicitons, num_gshare_correct_predicitons, ((double)(num_gshare_predicitons-num_gshare_correct_predicitons)*100/num_gshare_predicitons) );
@@ -203,12 +202,16 @@ void update_gshare(int i, uint64_t target)
         {
         	if (i == gshare_pred_inst.info.poses[0]) 
         	{
-        		//if  ( gshare_pred_inst.info.PCs[0] == target)
+        		if  ( gshare_pred_inst.info.PCs[0] == target)
         		{gshare_pos0_correct = true;}
         	}
-        	else if ( (gshare_pred_inst.info.poses[0] + i) == gshare_pred_inst.info.poses[1]) 
+        }
+        
+        if (last_gshare_pred_inst.tag_match)
+        {
+                if ( (last_gshare_pred_inst.info.poses[0] + i) == last_gshare_pred_inst.info.poses[1]) 
         	{
-        		//if ( gshare_pred_inst.info.PCs[1] == target)
+        		if ( last_gshare_pred_inst.info.PCs[1] == target)
         		{gshare_pos1_correct = true;}
         	}
         }
@@ -359,17 +362,27 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 	#ifdef GSHARE
 	gshare_prediction_correct = gshare_pos1_correct && gshare_pos0_correct;
 	
-        if (gshare_pred_inst.hit)
+	//if (gshare_pred_inst.hit)
+	{
+		// TODO - Must be last_gshare_pred_inst but that hits performance
+    		bp.fast_pred.update(last_gshare_pred_inst, gshare_prediction_correct);
+    	}
+    	
+    	if (last_gshare_pred_inst.hit)
         {
         	if (gshare_prediction_correct)
         	{
         		num_gshare_correct_predicitons++;
         	}
         }
-	//if (gshare_pred_inst.hit)
-	{
-    		bp.fast_pred.update(gshare_pred_inst, gshare_prediction_correct);
-    	}
+        // TODO Check if consecutive tag_matches are handled correctly 
+        if (last_gshare_pred_inst.tag_match)
+        {
+		if (gshare_pred_inst.tag_match)
+        	{gshare_pos0_correct = false;}
+    		gshare_pos1_correct = false;
+    		gshare_prediction_correct = false;
+        }
 	#endif
     
     inst_index_in_fetch = 0;
@@ -425,7 +438,7 @@ static inline void resolve_pc_minus_1_branch(uint64_t pc) {
 #endif
   }
 
-	// TODO - Temporarily disabled print
+
   //fprintf(stderr, "target pc=%llx last_pc (branch pc) =%llx diff=%d pred:%d resolv:%d\n", pc, last_pc, pc - last_pc, last_predDir, last_resolveDir);
           
   update_counters_pc_minus_1_branch();
@@ -587,7 +600,6 @@ in hardware.
 */
 
 /*
-TODO
 Changes to return multiple predictions per FetchPC
 1. Dromajo will still send actual instruction PCs. 
 2. Calculate FetchPC and index in packet from PC.
@@ -598,17 +610,20 @@ Changes to return multiple predictions per FetchPC
 */
 
 /*
-Changes to "get" multiple predictions per FetchPC
-The predictor will still return 1 prediction per PC, but branchprof will call get_prediction multiple times for each FetchPC using different indices.
-get_prediction must be called together for each PC
-Hence allocate must also be done at this time immediately after get_prediction, so allocate to last_insn must be removed, Predict + Allocate to insn and then Resolve + update later at resolution time.
+TODO Check
+Handling multiple Taken
+1. 1st taken is in fetchpacket0 and 2nd taken is in fetchpacket1
+pos[0] = index in fetchpacket0, pos[1] = pos[0] + index in fetchpacket1
+Must check over 2 packets for both allocate and resolve/ update   !!!!!!!!!!!!!!!!!!!!
 
-TODO - Check all cases
-In order to allocate_ftq_entry
-If PC == FetchPC aligned, then call get_prediction multiple times to get all the predictions, save each in FTQ.
-If PC != FetchPC - 
-	1. If 
- 	2.
+Resolve - 
+If prediction is a hit - resolving = true
+else 
+	if resolving = 
+	
+	
+	
+Update - 
 */
 /*
 gshare update - 
@@ -621,43 +636,14 @@ when the packet is over and update for the entire packet needs to be done, gshar
 2. update prediciton selection and global rates
 3. add target to update check
 */
-/*
-void check_gshare (void)
-{
-	if ( (gshare_pred_inst.hit) && (gshare_pred_inst.info.PCs[0] == fetch_pc) )
-	{
-		// TODO Change to NUM_TAKEN_BRANCHES
-		if (((last_pc - fetch_pc) >> 1) == gshare_pred_inst.info.poses[0])
-		{
-			if (last_resolveDir) // direction taken
-			{
-				gshare_pos0_correct = true;
-			}
-		}
-		// TODO - Check
-		if (((last_pc - fetch_pc) >> 1) == (gshare_pred_inst.info.poses[1] - gshare_pred_inst.info.poses[0] ))
-		{
-			if (last_resolveDir) // direction taken
-			{
-				gshare_pos1_correct = true;
-			}
-		}
-	}
-}
-*/
 
 void get_gshare_prediction(uint64_t temp_pc, int index, int tag)
 {
    	gshare_pred_inst = bp.GetFastPrediction(temp_pc, index, tag);
-    	gshare_pos0_correct = false;
-    	gshare_pos1_correct = false;
-    	gshare_prediction_correct = false;
     	if (gshare_pred_inst.hit)
     	{
     		num_gshare_predicitons++;
     	}
-    	
-    	
 }
 
 void handle_branch(uint64_t pc, uint32_t insn_raw) {
@@ -747,9 +733,21 @@ Two options -
 bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2 
 */
 
-  // Get predDir - TODO new code - so Check
+
   if (inst_index_in_fetch == 0)      // (pc == aligned_fetch_pc)
   {
+  
+  	last_gshare_pred_inst = gshare_pred_inst;
+    	
+    	// Debug code - not relevant nor guaranteed functionally correct - do not enable
+    	#ifdef DEBUG_GSHARE_DELETE
+    	if (gshare_pred_inst.hit)
+    	{
+    		printf ("Check last_gshare_pred_inst \n");
+    		gshare_pred_inst.hit = false;
+    	}
+    	#endif
+    	
   	fetch_pc = pc;
   	uint64_t temp_pc = pc;
   	set_ftq_index (inst_index_in_fetch);
@@ -820,12 +818,10 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   	
   	predDir = false;
 #ifdef GSHARE 	
-  if (gshare_pred_inst.hit)
-  	{
-  		if (inst_index_in_fetch == gshare_pred_inst.info.poses[0])
-  			{predDir = true;}
-  		else if (inst_index_in_fetch == gshare_pred_inst.info.poses[1])
-  			{predDir = true;}
+  if ( (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) || (  last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1])
+  			) )
+  {
+  	{predDir = true;}
   }
 else
 #endif
@@ -856,7 +852,7 @@ else
   	last_predDir = predDir;
   	last_aligned_fetch_pc = aligned_fetch_pc;
 	last_index_from_aligned_fetch_pc = index_from_aligned_fetch_pc;
-  
+    	
   if (insn != insn_t::branch) {
     last_resolveDir = resolveDir;
     last_misprediction = misprediction;
