@@ -360,7 +360,7 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
     }
 
 	#ifdef GSHARE
-	gshare_prediction_correct = gshare_pos1_correct && gshare_pos0_correct;
+	gshare_prediction_correct = gshare_pos1_correct /*&& gshare_pos0_correct*/;
 	
 	//if (gshare_pred_inst.hit)
 	{
@@ -818,7 +818,7 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   	
   	predDir = false;
 #ifdef GSHARE 	
-  if ( (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) || (  last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1])
+  if ( /*(gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) ||*/ (  last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1])
   			) )
   {
   	{predDir = true;}

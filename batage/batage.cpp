@@ -692,7 +692,7 @@ std::cerr << "33333" << "\n";
    	pred_out.highconf.push_back(i_highconf);   
    	if ( (i_pred) && (i_highconf) && !gshare_tag_saved )
    	{
-   		// TODO - MUst be accounting for Bimodal, but that hits number of gshare predictions
+   		// TODO - Must be accounting for Bimodal, but that hits number of gshare predictions
    		/*if (hit.empty()) // Bimodal
    		{pred_out.gshare_tag = hash_fetch_pc;}
    		else*/
