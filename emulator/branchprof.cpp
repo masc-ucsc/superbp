@@ -256,7 +256,6 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
         update_fetch_pc = ftq_data.fetch_pc;
 
 	#ifdef GSHARE
-	// update gshare
 	#ifdef DEBUG_GSHARE
 	if (gshare_pred_inst.hit)
         {
@@ -300,17 +299,13 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 		{
 			gshare_poses.push_back( (gshare_poses[0] + i )); // (update_pc - update_fetch_pc) >> 1)
 			gshare_PCs.push_back(update_branchTarget);
-		}
-		
-		// TODO Change to NUM_TAKEN_BRANCHES
-		if (gshare_poses.size() == 2) 
-		{
+			
 			bp.fast_pred.allocate(gshare_PCs, gshare_poses, update_gshare_index, update_gshare_tag);
+			num_gshare_allocations++;
 			// TODO - do we handle if there are 3 high conf T in 3 consecutive packets 
 			gshare_tracking = false;
 			gshare_PCs.clear();
 			gshare_poses.clear();
-			num_gshare_allocations++;
 		}
 	}
 	// allocate gshare done
@@ -356,7 +351,7 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
       }
     }
     
-    if (!highconfT_in_packet && gshare_tracking)
+    if (!highconfT_in_packet)
     {
     	gshare_tracking = false;
     	gshare_PCs.clear();
@@ -368,27 +363,24 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 	
 	//if (gshare_pred_inst.hit)
 	{
-		// TODO - Must be last_gshare_pred_inst but that hits performance
     		bp.fast_pred.update(last_gshare_pred_inst, gshare_prediction_correct);
     	}
     	
-    	if (last_gshare_pred_inst.hit)
+    	if (last_gshare_pred_inst.hit && gshare_prediction_correct)
         {
-        	if (gshare_prediction_correct)
-        	{
-        		num_gshare_correct_predictions++;
-        	}
+        	num_gshare_correct_predictions++;
         }
+
         // TODO Check if consecutive tag_matches are handled correctly 
         if (last_gshare_pred_inst.tag_match)
         {
-		if (!gshare_pred_inst.tag_match)
-        	{
-			gshare_pos0_correct = false;
-		}
     		gshare_pos1_correct = false;
     		gshare_prediction_correct = false;
         }
+        if (!gshare_pred_inst.tag_match)
+        {
+		gshare_pos0_correct = false;
+	}
 	#endif
     
     inst_index_in_fetch = 0;

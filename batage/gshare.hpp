@@ -129,7 +129,7 @@ bool is_hit (uint64_t PC,uint16_t index, uint16_t tag)
 	#endif
 	}
 	
-	return ( ( tag == table[index].tag) && (ctr >= CTR_THRESHOLD) );
+	return ( prediction.tag_match && (ctr >= CTR_THRESHOLD) );
 } 
 
 // TODO Check - Ques - When is gshare predict called - is it once for a SS packet - then how do we get pos ?
