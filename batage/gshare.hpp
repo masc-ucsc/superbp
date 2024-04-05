@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <vector>
 
-#define NUM_GSHARE_ENTRIES (1 << 20)
+#define NUM_GSHARE_ENTRIES (1 << 12)
 #define NUM_GSHARE_TAGBITS 12
 #define NUM_GSHARE_CTRBITS 3
 #define GSHARE_CTRMAX ((1 << NUM_GSHARE_CTRBITS) -1)
@@ -15,9 +15,9 @@
 #define CTR_THRESHOLD 4
 #define CTR_ALLOC_VAL 4
 
-#define DEBUG_PREDICT
-#define DEBUG_ALLOC
-#define DEBUG_UPDATE
+//#define DEBUG_PREDICT
+//#define DEBUG_ALLOC
+//#define DEBUG_UPDATE
 
 
 class gshare_entry {
@@ -85,7 +85,7 @@ public :
 
 vector <gshare_entry> table;
 gshare_prediction prediction;
-FILE *gshare_log;
+//FILE *gshare_log;
 
 public :
 
@@ -93,12 +93,12 @@ public :
 gshare ()
 {
 	table.resize(NUM_GSHARE_ENTRIES);
-	start_log();
+	//start_log();
 }
 
 void start_log()
 {
-	gshare_log = fopen("gshare_trace.txt", "w");
+	//gshare_log = fopen("gshare_trace.txt", "w");
 }
 
 uint16_t calc_tag (uint64_t PC)
