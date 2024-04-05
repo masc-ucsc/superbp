@@ -15,9 +15,9 @@
 #define CTR_THRESHOLD 4
 #define CTR_ALLOC_VAL 4
 
-//#define DEBUG_PREDICT
-//#define DEBUG_ALLOC
-//#define DEBUG_UPDATE
+#define DEBUG_PREDICT
+#define DEBUG_ALLOC
+#define DEBUG_UPDATE
 
 
 class gshare_entry {

@@ -17,7 +17,7 @@ uint8_t highconf_ctr = 0;
 bool gshare_tracking = false, highconfT_in_packet = false;
 vector <uint64_t> gshare_PCs;
 vector <uint8_t> gshare_poses;
-uint64_t num_gshare_predicitons, num_gshare_correct_predicitons; 
+uint64_t num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions; 
 	int gshare_index;
 	int gshare_tag;
 
@@ -126,7 +126,7 @@ void branchprof_exit() {
           (double)(branch_mispredict_count) / (double)(benchmark_instruction_count) *
               1000);
 		#ifdef GSHARE
-              fprintf (pc_trace, "gshare local rates - \ngshare_num_predictions = %llu\ngshare_num_correct_predictions = %llu\ngshare_misprediction_rate = %lf%\n", num_gshare_predicitons, num_gshare_correct_predicitons, ((double)(num_gshare_predicitons-num_gshare_correct_predicitons)*100/num_gshare_predicitons) );
+              fprintf (pc_trace, "gshare local rates - \ngshare_num_allocations = %llu\ngshare_num_predictions = %llu\ngshare_num_correct_predictions = %llu\ngshare_misprediction_rate = %lf%\n",num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions, ((double)(num_gshare_predictions-num_gshare_correct_predictions)*100/num_gshare_predictions) );
 		#endif // GSHARE              
 for (int i = 0; i < SBP_NUMG; i++)
               {
@@ -276,9 +276,11 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
         
         // allocate_gshare
         update_highconf = ftq_data.highconf;
-        update_gshare_index = gshare_pred_inst.index; // ftq_data.gi[1];
+        // TODO Check
+        //update_gshare_index = last_gshare_pred_inst.index; // ftq_data.gi[1];
 
 	// allocate on a branch or if second is a jump
+	// TODO Check
 	if (!gshare_pred_inst.hit && update_resolveDir && (((update_insn == insn_t::branch) && update_highconf) || (update_insn == insn_t::jump)) )
 	{
 		highconfT_in_packet = true;
@@ -291,6 +293,7 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 				gshare_PCs.push_back(update_branchTarget);
 				gshare_tracking = true;
 				update_gshare_tag = ftq_data.gi[ftq_data.bp[i]];
+				update_gshare_index = ftq_data.gi[ftq_data.bp[i]];
 			}
 		}
 		else
@@ -307,6 +310,7 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 			gshare_tracking = false;
 			gshare_PCs.clear();
 			gshare_poses.clear();
+			num_gshare_allocations++;
 		}
 	}
 	// allocate gshare done
@@ -372,14 +376,16 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
         {
         	if (gshare_prediction_correct)
         	{
-        		num_gshare_correct_predicitons++;
+        		num_gshare_correct_predictions++;
         	}
         }
         // TODO Check if consecutive tag_matches are handled correctly 
         if (last_gshare_pred_inst.tag_match)
         {
-		if (gshare_pred_inst.tag_match)
-        	{gshare_pos0_correct = false;}
+		if (!gshare_pred_inst.tag_match)
+        	{
+			gshare_pos0_correct = false;
+		}
     		gshare_pos1_correct = false;
     		gshare_prediction_correct = false;
         }
@@ -642,7 +648,7 @@ void get_gshare_prediction(uint64_t temp_pc, int index, int tag)
    	gshare_pred_inst = bp.GetFastPrediction(temp_pc, index, tag);
     	if (gshare_pred_inst.hit)
     	{
-    		num_gshare_predicitons++;
+    		num_gshare_predictions++;
     	}
 }
 
