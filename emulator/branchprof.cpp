@@ -17,7 +17,7 @@ uint8_t highconf_ctr = 0;
 bool gshare_tracking = false, highconfT_in_packet = false;
 vector <uint64_t> gshare_PCs;
 vector <uint8_t> gshare_poses;
-uint64_t num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions; 
+uint64_t num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions, gshare_batage_1st_pred_mismatch, gshare_batage_2nd_pred_mismatch; 
 	int gshare_index;
 	int gshare_tag;
 
@@ -126,7 +126,7 @@ void branchprof_exit() {
           (double)(branch_mispredict_count) / (double)(benchmark_instruction_count) *
               1000);
 		#ifdef GSHARE
-              fprintf (pc_trace, "gshare local rates - \ngshare_num_allocations = %llu\ngshare_num_predictions = %llu\ngshare_num_correct_predictions = %llu\ngshare_misprediction_rate = %lf%\n",num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions, ((double)(num_gshare_predictions-num_gshare_correct_predictions)*100/num_gshare_predictions) );
+              fprintf (pc_trace, "gshare local rates - \ngshare_num_allocations = %llu\ngshare_num_predictions = %llu\ngshare_num_correct_predictions = %llu\ngshare_misprediction_rate = %lf%\ngshare_batage_1st_pred_mismatch = %llu\ngshare_batage_2nd_pred_mismatch = %llu\n",num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions, ((double)(num_gshare_predictions-num_gshare_correct_predictions)*100/num_gshare_predictions), gshare_batage_1st_pred_mismatch, gshare_batage_2nd_pred_mismatch );
 		#endif // GSHARE              
 for (int i = 0; i < SBP_NUMG; i++)
               {
@@ -819,7 +819,19 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   if ( /*(gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) ||*/ (  last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1])
   			) )
   {
-  	{predDir = true;}
+  	predDir = true;
+  	if (!get_predDir_from_ftq (inst_index_in_fetch))
+  	{
+  		gshare_batage_2nd_pred_mismatch++;
+  	}
+  }
+  
+  if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
+  {
+  	if (!get_predDir_from_ftq (inst_index_in_fetch))
+  	{
+  		gshare_batage_1st_pred_mismatch++;
+  	}
   }
 else
 #endif
