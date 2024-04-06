@@ -119,7 +119,7 @@ bool is_hit (uint64_t PC,uint16_t index, uint16_t tag)
 	//uint16_t tag = calc_tag(PC);
 	uint8_t ctr = table[index].ctr;
 	
-	if ((tag == table[index].tag))
+	if ((tag == table[index].tag) && (tag != 0 ) )
 	{ 
 		prediction.tag_match = true;
 	
@@ -215,14 +215,14 @@ void update (gshare_prediction& prediction, bool prediction_correct)
 		if (prediction_correct)
 		{
 			table[index].ctr = (ctr < GSHARE_CTRMAX) ? (ctr +1) : GSHARE_CTRMAX;
-			#ifdef DEBUG_ALLOC
+			#ifdef DEBUG_UPDATE
 				fprintf( gshare_log, "Update on correct prediction for PC = %#llx, updated index = %d's counter to %u\n", prediction.info.PCs[0], index, table[index].ctr);
 			#endif
 		}
 		else
 		{
 			table[index].ctr = (ctr > 0) ? (ctr - 1) : 0;
-			#ifdef DEBUG_ALLOC
+			#ifdef DEBUG_UPDATE
 				fprintf( gshare_log, "Update on misprediction for PC = %#llx, updated index = %d's counter to %u\n", prediction.info.PCs[0], index, table[index].ctr);
 			#endif
 		}

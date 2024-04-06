@@ -10,8 +10,9 @@
 std::map<uint64_t, uint64_t> fetchPC_Map;
 uint64_t temp;
 
-//#define DEBUG_GSHARE
-
+//#define GSHARE_TRACE
+//#define DEBUG_DETAIL
+//#define T_TRACE
 PREDICTOR bp;
 bool predDir, last_predDir, resolveDir, last_resolveDir;
 uint64_t branchTarget;
@@ -23,15 +24,26 @@ uint8_t highconf_ctr = 0;
 bool gshare_tracking = false, highconfT_in_packet = false;
 vector <uint64_t> gshare_PCs;
 vector <uint8_t> gshare_poses;
-uint64_t num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions, gshare_batage_1st_pred_mismatch, gshare_batage_2nd_pred_mismatch; 
+uint64_t num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions, gshare_batage_1st_pred_mismatch, gshare_batage_2nd_pred_mismatch, num_gshare_tag_match; 
 	int gshare_index;
 	int gshare_tag;
 
 FILE *pc_trace;
 
+#ifdef T_TRACE
+FILE *t_trace;
+#endif
+#ifdef GSHARE_TRACE
 FILE *gshare_trace;
+#endif
 #ifdef DEBUG_DETAIL
 FILE *details;
+#endif
+
+#ifdef T_TRACE
+uint32_t i_count;
+uint64_t PC1 = 0, PC2 = 0;
+bool PC1_branch = false, PC2_branch = false; // true means PC1 is a branch and PC2 may be a jump
 #endif
 
 #ifdef EN_BB_FB_COUNT
@@ -103,7 +115,12 @@ extern uint64_t maxinsns, skip_insns;
 void branchprof_init(char* bp_logfile) {
   // PREDICTOR bp;
   pc_trace = fopen(bp_logfile, "w");
+  #ifdef T_TRACE
+  t_trace = fopen("t_trace.txt", "w");
+  #endif
+  #ifdef GSHARE_TRACE
   gshare_trace = fopen("gshare_logfile.txt", "w");
+  #endif
   #ifdef DEBUG_DETAIL
 details = fopen("details.txt", "w");
 #endif
@@ -141,7 +158,7 @@ void branchprof_exit() {
           (double)(branch_mispredict_count) / (double)(benchmark_instruction_count) *
               1000);
 		#ifdef GSHARE
-              fprintf (pc_trace, "gshare local rates - \ngshare_num_allocations = %llu\ngshare_num_predictions = %llu\ngshare_num_correct_predictions = %llu\ngshare_misprediction_rate = %lf%\ngshare_batage_1st_pred_mismatch = %llu\ngshare_batage_2nd_pred_mismatch = %llu\n",num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions, ((double)(num_gshare_predictions-num_gshare_correct_predictions)*100/num_gshare_predictions), gshare_batage_1st_pred_mismatch, gshare_batage_2nd_pred_mismatch );
+              fprintf (pc_trace, "gshare local rates - \ngshare_num_allocations = %llu\nnum_gshare_tag_match = %llu\ngshare_num_predictions = %llu\ngshare_num_correct_predictions = %llu\ngshare_misprediction_rate = %lf%\ngshare_batage_1st_pred_mismatch = %llu\ngshare_batage_2nd_pred_mismatch = %llu\n",num_gshare_allocations, num_gshare_tag_match, num_gshare_predictions, num_gshare_correct_predictions, ((double)(num_gshare_predictions-num_gshare_correct_predictions)*100/num_gshare_predictions), gshare_batage_1st_pred_mismatch, gshare_batage_2nd_pred_mismatch );
               
               auto firstEntry = *fetchPC_Map.begin();
               fprintf (pc_trace, "max mispredictions for fetchpc = %#llx are %llu\n", firstEntry.first, firstEntry.second);
@@ -167,7 +184,12 @@ for (int i = 0; i < SBP_NUMG; i++)
 #endif // EN_BB_FB_COUNT
 
   fclose(pc_trace);
+  #ifdef T_TRACE
+  fclose (t_trace);
+  #endif
+  #ifdef GSHARE_TRACE
   fclose(gshare_trace);
+  #endif
     #ifdef DEBUG_DETAIL
 fclose(details);
 #endif
@@ -327,7 +349,7 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 			gshare_PCs.push_back(update_branchTarget);
 			
 			bp.fast_pred.allocate(gshare_PCs, gshare_poses, update_gshare_index, update_gshare_tag);
-			#ifdef DEBUG_GSHARE
+			#ifdef GSHARE_TRACE
 			fprintf (gshare_trace, "fetchPC = %llx allocated at index = %u with tag = %x \n", gshare_PCs[0], update_gshare_index, update_gshare_tag);
 			#endif 
 			num_gshare_allocations++;
@@ -389,7 +411,7 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 
 	gshare_prediction_correct = gshare_pos1_correct /*&& gshare_pos0_correct*/;
 	
-	//if (gshare_pred_inst.hit)
+	if (last_gshare_pred_inst.tag_match)
 	{
     		bp.fast_pred.update(last_gshare_pred_inst, gshare_prediction_correct);
     	}
@@ -475,6 +497,14 @@ static inline void resolve_pc_minus_1_branch(uint64_t pc) {
 #ifdef EN_BB_FB_COUNT
     fb_over = 1;
 #endif // EN_BB_FB_COUNT
+#ifdef T_TRACE
+PC2 = last_pc;
+PC2_branch = true;
+fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
+ i_count = 0;
+ PC1 = PC2;
+ PC1_branch = PC2_branch;
+#endif
 #ifdef DEBUG
     fprintf(pc_trace, "%32s\n", "Taken Branch");
     fprintf(stderr, "%llx is %32s\n", last_pc, "Taken Branch");
@@ -683,6 +713,10 @@ when the packet is over and update for the entire packet needs to be done, gshar
 void get_gshare_prediction(uint64_t temp_pc, int index, int tag)
 {
    	gshare_pred_inst = bp.GetFastPrediction(temp_pc, index, tag);
+   	if (gshare_pred_inst.tag_match)
+   	{
+   		num_gshare_tag_match++;
+   	}
     	if (gshare_pred_inst.hit)
     	{
     		num_gshare_predictions++;
@@ -768,6 +802,17 @@ fprintf (stderr, "\n");
   update_bb_fb();
 #endif // EN_BB_FB_COUNT
 
+ #ifdef T_TRACE
+ if ( (PC1_branch == true) && (insn == insn_t::jump) ) 
+ {
+ 	PC2 = pc;
+	PC2_branch = false;
+	fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
+ 	i_count = 0;
+ 	PC1 = PC2;
+ 	PC1_branch = PC2_branch;
+}
+#endif
 /*
 Present - For PC with index = 0, get fetch_width predictions using expected/ sequential pcs.
 Two options - 
@@ -782,14 +827,7 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   
   	last_gshare_pred_inst = gshare_pred_inst;
     	last_fetch_pc = fetch_pc;
-    	// Debug code - not relevant nor guaranteed functionally correct - do not enable
-    	#ifdef DEBUG_GSHARE_DELETE
-    	if (gshare_pred_inst.hit)
-    	{
-    		printf ("Check last_gshare_pred_inst \n");
-    		gshare_pred_inst.hit = false;
-    	}
-    	#endif
+
     	
   	fetch_pc = pc;
   	uint64_t temp_pc = fetch_pc;
@@ -813,6 +851,15 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 	vec_predDir =  batage_prediction.prediction_vector;
 	vec_highconf = batage_prediction.highconf;	
 
+    	#ifdef DEBUG_DETAIL
+    	for (int i =0; i < FETCH_WIDTH; i++)
+    	{
+		if ( vec_predDir[i] && vec_highconf[i]) 
+		{
+			//fprintf (details, "fetchpc = %llx has a high conf branch at pos = %u \n", fetch_pc, i);
+		}
+	}
+    	#endif
 	gshare_index = batage_prediction.gshare_index;
 	gshare_tag = batage_prediction.gshare_tag;
 	#ifdef GSHARE
@@ -820,7 +867,7 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 	//printf ("gshare_index = %u and gshare_tag = %x\n", gshare_index, gshare_tag);
 	#endif // DEBUG_GSHARE
  	get_gshare_prediction(fetch_pc, gshare_index, gshare_tag);
- 			#ifdef DEBUG_GSHARE
+ 			#ifdef GSHARE_TRACE
 			fprintf (gshare_trace, "fetchPC = %llx predicted from index = %u with tag = %x and hit = %u\n", fetch_pc, gshare_index, gshare_tag, gshare_pred_inst.hit);
 			#endif
  	
@@ -908,6 +955,9 @@ else
   	benchmark_instruction_count++;
   	last_inst_index_in_fetch = inst_index_in_fetch;
 	inst_index_in_fetch++;
+	#ifdef T_TRACE
+	i_count++;
+	#endif
 
   	last_pc = pc;
   	last_insn_raw = insn_raw;
