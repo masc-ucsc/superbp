@@ -23,7 +23,7 @@
   }
 #endif
 
-
+/*
 // static std::vector<uint8_t> SBP_LOGGE; 
 std::vector<uint8_t> SBP_LOGGE;
 
@@ -43,6 +43,7 @@ std::vector<uint8_t>  LOGGE_ORIG;
 
 std::vector<uint32_t> NEW_ENTRIES_PER_TABLE;
 std::vector<uint32_t> ENTRIES_PER_TABLE;
+*/
 
 uint32_t rando() {
   // Marsaglia's xorshift
@@ -213,7 +214,11 @@ void folded_history::update(path_history &ph) {
   fold ^= inbits ^ outbits;
 }
 
-histories::histories() {
+histories(batage& bp) {
+
+	int SBP_NUM = bp.SBP_NUMG;
+	vector <int> SBP_LOGGE = bp.SBP_LOGGE;
+
   int *hist = new int[SBP_NUMG];
   int prevh = 0;
   for (int i = 0; i < SBP_NUMG; i++) {

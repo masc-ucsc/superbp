@@ -195,7 +195,7 @@ public:
   folded_history *chgg; // compressed length = SBP_LOGGE-hashparam
   folded_history *cht;  // compressed length = SBP_TAGBITS
   folded_history *chtt; // compressed length = SBP_TAGBITS-1
-  histories();
+  histories(batage& bp);
   void update(uint32_t targetpc, bool taken);
   int gindex(uint32_t pc, int i) const;
   int gtag(uint32_t pc, int i) const;
@@ -236,7 +236,8 @@ class batage {
 
 public:
 
-/*
+friend class histories;
+
 // static std::vector<uint8_t> SBP_LOGGE; 
 std::vector<uint8_t> SBP_LOGGE;
 
@@ -256,7 +257,6 @@ std::vector<uint8_t>  LOGGE_ORIG;
 
 std::vector<uint32_t> NEW_ENTRIES_PER_TABLE;
 std::vector<uint32_t> ENTRIES_PER_TABLE;
-*/
 
   //int b[1 << SBP_LOGBE][FETCHWIDTH];   // bimodal predictions
   vector<vector<int>> b;
