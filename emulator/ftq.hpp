@@ -105,7 +105,7 @@ public:
         meta{predictor.pred.meta}, bp{predictor.pred.bp},
         bi{predictor.pred.bi}, bi2{predictor.pred.bi2},
         b_bi{predictor.pred.b_bi}, b2_bi2{predictor.pred.b2_bi2},
-        gi{ptr2vec(predictor.pred.gi, SBP_NUMG)} {}
+        gi{ptr2vec(predictor.pred.gi, predictor.pred.SBP_NUMG)} {}
 
   // Move assignment since queue must contain entire ftq_entry (not just
   // pointer), since allocated entry will get "destructed"

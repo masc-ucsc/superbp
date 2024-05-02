@@ -214,10 +214,11 @@ void folded_history::update(path_history &ph) {
   fold ^= inbits ^ outbits;
 }
 
-histories(batage& bp) {
+histories::histories(const batage* bp) : SBP_NUMG{ bp->SBP_NUMG }, SBP_LOGGE{ bp->SBP_LOGGE }
+{
 
-	int SBP_NUM = bp.SBP_NUMG;
-	vector <int> SBP_LOGGE = bp.SBP_LOGGE;
+	/*int SBP_NUMG = bp->SBP_NUMG;
+	const auto &SBP_LOGGE = bp->SBP_LOGGE;*/
 
   int *hist = new int[SBP_NUMG];
   int prevh = 0;
@@ -251,7 +252,10 @@ histories(batage& bp) {
   }
 }
 
+//void histories::update(uint32_t targetpc, bool taken, const batage* bp) {
 void histories::update(uint32_t targetpc, bool taken) {
+//int SBP_NUMG = bp->SBP_NUMG;
+
 #ifdef SBP_PC_SHIFT
   // targetpc ^= targetpc << 5;
   targetpc ^= targetpc >> SBP_PC_SHIFT;
@@ -274,7 +278,12 @@ void histories::update(uint32_t targetpc, bool taken) {
 // the hash functions below are somewhat more complex than what would be
 // implemented in real processors
 
-int histories::gindex(uint32_t pc, int i) const {
+int histories::gindex(uint32_t pc, int i, const batage* bp) const {
+
+	//int SBP_NUMG = bp->SBP_NUMG;
+	//const auto &SBP_LOGGE = bp->SBP_LOGGE;
+	const auto &ENTRIES_PER_TABLE = bp->ENTRIES_PER_TABLE;
+	
   ASSERT((i >= 0) && (i < SBP_NUMG));
   ASSERT (SBP_LOGGE.size());
 #ifdef DEBUG_GINDEX
@@ -289,8 +298,11 @@ fprintf (stderr, "ENTRIES_PER_TABLE = %d, rolled_index = %d \n", ENTRIES_PER_TAB
    return rolled_index;
 }
 
+//int histories::gtag(uint32_t pc, int i, const batage* bp) const {
 int histories::gtag(uint32_t pc, int i) const {
 
+	//int SBP_NUMG = bp->SBP_NUMG;
+	
 #ifdef DEBUG 
 //fprintf (stderr, "gtag, %d, %d \n", pc, i);
 #endif
@@ -310,7 +322,11 @@ int histories::gtag(uint32_t pc, int i) const {
 #ifdef BANK_INTERLEAVING
 // inspired from Seznec's TAGE-SC-L (CBP 2016), but different:
 // interleaving is global, unlike in TAGE-SC-L ==> unique tag size
+//int histories::phybank(int i, const batage* bp) const {
 int histories::phybank(int i) const {
+
+	//int SBP_NUMG = bp->SBP_NUMG;
+	
   ASSERT((i >= 0) && (i < SBP_NUMG));
   unsigned pos;
   if (i >= (SBP_NUMG - MIDBANK)) {
@@ -325,12 +341,19 @@ int histories::phybank(int i) const {
 }
 
 #ifdef GHGBITS
-int histories::ghg(int i) const { return ((SBP_NUMG - 1 - i) << GHGBITS) / SBP_NUMG; }
+//int histories::ghg(int i, const batage* bp) const 
+int histories::ghg(int i) const 
+{ 	//int SBP_NUMG = bp->SBP_NUMG; 
+return ((SBP_NUMG - 1 - i) << GHGBITS) / SBP_NUMG; }
 #endif
 
 #endif // BANK_INTERLEAVING
 
+//void histories::printconfig(const batage* bp) {
 void histories::printconfig() {
+
+	//int SBP_NUMG = bp->SBP_NUMG; 
+	
   printf("history lengths: ");
   for (int i = SBP_NUMG - 1; i >= 0; i--) {
     printf("%d ", chg[i].olength);
@@ -368,7 +391,7 @@ prediction::prediction()
 //uint32_t abcd, xyz;
 
 
-void read_env_variables()
+void batage::read_env_variables()
 {
 	char *temp; // [32]; 
 	
@@ -446,7 +469,7 @@ void read_env_variables()
 
 
 
-void populate_dependent_globals()
+void batage::populate_dependent_globals()
 {
 	FETCHWIDTH = (1 << LOG2FETCHWIDTH);
 	
@@ -674,7 +697,7 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 		//fprintf (stderr, "For predict, bank[%d] = %d \n ", i, bank[i]);
 		#endif // DEBUG
 		#endif
-    		gi[i] = p.gindex(hash_fetch_pc, i);
+    		gi[i] = p.gindex(hash_fetch_pc, i, this);
     		
 		//TODO - Try different i for gshare index
     		if ( (offset_within_packet == 0) && (i == 3) )

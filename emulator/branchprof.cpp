@@ -163,7 +163,7 @@ void branchprof_exit() {
               auto firstEntry = *fetchPC_Map.begin();
               fprintf (pc_trace, "max mispredictions for fetchpc = %#llx are %llu\n", firstEntry.first, firstEntry.second);
 		#endif // GSHARE              
-for (int i = 0; i < SBP_NUMG; i++)
+for (int i = 0; i < bp.pred.SBP_NUMG; i++)
               {
               	fprintf(pc_trace, "Allocations on Table %d = %u\n", i, bp.get_allocs(i));
               }
@@ -207,7 +207,7 @@ static inline void copy_ftq_data_to_predictor(ftq_entry *ftq_data_ptr) {
   bp.pred.bi2 = ftq_data_ptr->bi2;
   bp.pred.b_bi = ftq_data_ptr->b_bi;
   bp.pred.b2_bi2 = ftq_data_ptr->b2_bi2;
-  memcpy(bp.pred.gi, &((ftq_data_ptr->gi)[0]), sizeof(int) * SBP_NUMG);
+  memcpy(bp.pred.gi, &((ftq_data_ptr->gi)[0]), sizeof(int) * bp.pred.SBP_NUMG);
 }
 #endif // FTQ
 

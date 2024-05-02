@@ -187,17 +187,26 @@ public:
   void update(path_history &ph);
 };
 
+class batage;
+
 class histories {
 public:
+
+std::vector<uint8_t> SBP_LOGGE;
+uint32_t SBP_NUMG;
+
   path_history bh;      // global history of branch directions
   path_history ph;      // path history (target address bits)
   folded_history *chg;  // compressed length = SBP_LOGGE
   folded_history *chgg; // compressed length = SBP_LOGGE-hashparam
   folded_history *cht;  // compressed length = SBP_TAGBITS
   folded_history *chtt; // compressed length = SBP_TAGBITS-1
-  histories(batage& bp);
+  
+  histories() = default;
+  
+  histories(const batage * bp);
   void update(uint32_t targetpc, bool taken);
-  int gindex(uint32_t pc, int i) const;
+  int gindex(uint32_t pc, int i, const batage* bp) const;
   int gtag(uint32_t pc, int i) const;
 #ifdef BANK_INTERLEAVING
   int phybank(int i) const;
@@ -293,6 +302,8 @@ vector<uint32_t> allocs;
 int random;
 #endif
 uint32_t get_allocs(int table);
+void read_env_variables();
+void populate_dependent_globals();
   batage();
   tagged_entry &getgb(int i);
   tagged_entry &getgp(int i, uint32_t offset_within_packet);

@@ -6,7 +6,7 @@
 
 #define VERBOSE
 
-PREDICTOR::PREDICTOR(void) {
+PREDICTOR::PREDICTOR(void)  : pred(), hist(&pred){
 #ifdef VERBOSE
   hist.printconfig();
   fmt::print("total bits = {}\n", pred.size() + hist.size());
