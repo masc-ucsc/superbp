@@ -19,7 +19,6 @@
 // bimodal prediction bits SBP_LOGB2: log2 of the number of bimodal hysteresis
 // entries SBP_LOGG: log2 of the number of entries in one tagged bank SBP_TAGBITS: tag
 // size SBP_BHYSTBITS: number of bimodal hysteresis bits
-#define SBP_NUMG 12
 #define SBP_MAXHIST 700
 #define SBP_MINHIST 4
 #define SBP_MAXPATH 30
@@ -29,10 +28,8 @@
 #define SBP_TAGBITS 12
 #define SBP_BHYSTBITS 2
 
-// Check - change it to use FETCH_WIDTH
-#define LOG2FETCHWIDTH (4)
-#define FETCHWIDTH (1 << LOG2FETCHWIDTH)
-#define NUM_TAKEN_BRANCHES (1)
+extern uint32_t SBP_NUMG;
+
 
 //#define SINGLE_TAG
 #ifdef SINGLE_TAG
@@ -58,41 +55,22 @@
 //#define NOT_MRU
 #endif //  (defined (POS) || defined (MT_PLUS))
 
-#if (defined XIANGSHAN) || (defined SINGLE_TAG)
-//#define INFO_PER_ENTRY(i)  ( (FETCHWIDTH >= 2) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) :  (FETCHWIDTH * NUM_TAKEN_BRANCHES) )
-#define INFO_PER_ENTRY(i) (2)
-#else
-//#define INFO_PER_ENTRY(i) ( (i >= 9) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ( (i >= 6) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) : ( (i >= 3) ? ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>2) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>3) ) ) ) 
-//#define INFO_PER_ENTRY(i) ( (i > 6) ? (FETCHWIDTH * NUM_TAKEN_BRANCHES) : ((FETCHWIDTH * NUM_TAKEN_BRANCHES)>>1) ) 
-//#define INFO_PER_ENTRY(i) ( (i > 9) ? 2 : ( (i > 3) ? 1 : 1 ) ) 
-#define INFO_PER_ENTRY(i) (FETCHWIDTH)
-#endif // XIANGSHAN
-
-#define SBP_LOGE(i) ((int)log2(INFO_PER_ENTRY(i)))
-
-#define LOGFE  ((int)log2(FETCHWIDTH))
-#define SBP_LOGBE (SBP_LOGB - LOGFE)
-#define SBP_LOGB2E (SBP_LOGB2 - LOGFE)
-
 #define NUM_ENTRIES (14016) // (14016)
 
 //#define SBP_LOGG (11)
 //#define ORIG_ENTRIES_PER_TABLE(i)  ((NUM_ENTRIES/SBP_NUMG)/INFO_PER_ENTRY(i)) 
 #ifndef POS
 #define NUM_ENTRIES (14016) // (14016)
-
-//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i < 4) ? 1168 : ( (i < 8) ? 1168 : 1168 ) ) 
-#define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 9) ? 3488 : ( (i > 3) ? 960 : 320 ) ) 
+//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 9) ? 3488 : ( (i > 3) ? 960 : 320 ) ) 
 #else // POS
 #define NUM_ENTRIES (11712)
-#define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 9) ? (312*12) : ( (i > 3) ? (48 * 12) : (16 * 12) ) ) 
+//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 9) ? (312*12) : ( (i > 3) ? (48 * 12) : (16 * 12) ) ) 
 #endif // POS
-//#define ORIG_ENTRIES_PER_TABLE(i)  ( (i > 6) ? 1488 : 848 ) 
-#define SBP_LOGG(i)  (int)ceil(log2(ORIG_ENTRIES_PER_TABLE(i)))
 
-#define SS_ENTRIES_PER_TABLE(i) (ORIG_ENTRIES_PER_TABLE(i) / INFO_PER_ENTRY(i))
-#define LOGGE_ORIG(i)  (SBP_LOGG(i) - SBP_LOGE(i))
 
+
+
+/*
 #ifdef SINGLE_TAG
 #define NEW_BITS_PER_TABLE(i) (SBP_TAGBITS * (INFO_PER_ENTRY(i)-1) * (SS_ENTRIES_PER_TABLE(i)))
 #define NEW_ENTRY_SIZE(i) (SBP_TAGBITS + (INFO_PER_ENTRY(i) * (POSBITS + dualcounter::size()) ) )
@@ -102,17 +80,14 @@
 //#define SBP_LOGGE  ((int)ceil(log2(ORIG_ENTRIES_PER_TABLE + NEW_ENTRIES_PER_TABLE)))
 #define SBP_LOGGE(i)  ((int)ceil(log2(SS_ENTRIES_PER_TABLE(i)+ NEW_ENTRIES_PER_TABLE(i))))
 
-/*
-#define LOST_ENTRIES_PER_TABLE ((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE - (1 << SBP_LOGGE))
-#define LOST_ENTRIES_TOTAL LOST_ENTRIES_PER_TABLE * SBP_NUMG
-*/
+
+//#define LOST_ENTRIES_PER_TABLE ((1<< LOGGE_ORIG) + NEW_ENTRIES_PER_TABLE - (1 << SBP_LOGGE))
+//#define LOST_ENTRIES_TOTAL LOST_ENTRIES_PER_TABLE * SBP_NUMG
+
 
 #else // SINGLE_TAG
-#define NEW_ENTRIES_PER_TABLE(i) (0)
-#define SBP_LOGGE(i)  (LOGGE_ORIG(i)) 
 #endif // SINGLE_TAG
-
-#define ENTRIES_PER_TABLE(i) (SS_ENTRIES_PER_TABLE(i) + NEW_ENTRIES_PER_TABLE(i))
+*/
 
 // SKIPMAX: maximum number of banks skipped on allocation
 // if you change SBP_NUMG, you must re-tune SKIPMAX
@@ -260,8 +235,35 @@ class prediction
 class batage {
 
 public:
-  int b[1 << SBP_LOGBE][FETCHWIDTH];   // bimodal predictions
-  int b2[1 << SBP_LOGB2E][FETCHWIDTH]; // bimodal hystereses
+
+/*
+// static std::vector<uint8_t> SBP_LOGGE; 
+std::vector<uint8_t> SBP_LOGGE;
+
+uint32_t SBP_NUMG;
+uint8_t LOG2FETCHWIDTH;
+uint8_t NUM_TAKEN_BRANCHES;
+std::vector<uint32_t> ORIG_ENTRIES_PER_TABLE;
+std::vector<uint32_t> INFO_PER_ENTRY;
+uint8_t FETCHWIDTH;
+std::vector<uint8_t> SBP_LOGE;
+uint8_t LOGFE;  
+uint8_t SBP_LOGBE; 
+uint8_t SBP_LOGB2E; 
+std::vector<uint8_t>  SBP_LOGG;
+std::vector<uint32_t> SS_ENTRIES_PER_TABLE; 
+std::vector<uint8_t>  LOGGE_ORIG;
+
+std::vector<uint32_t> NEW_ENTRIES_PER_TABLE;
+std::vector<uint32_t> ENTRIES_PER_TABLE;
+*/
+
+  //int b[1 << SBP_LOGBE][FETCHWIDTH];   // bimodal predictions
+  vector<vector<int>> b;
+  //int b2[1 << SBP_LOGB2E][FETCHWIDTH]; // bimodal hystereses
+  vector<vector<int>> b2;
+  
+  
   tagged_entry ***g;                   // tagged entries
   int bi;                              // hash for the bimodal prediction
   int bi2;                             // hash for the bimodal hysteresis

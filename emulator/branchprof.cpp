@@ -582,9 +582,9 @@ static inline void close_pc_non_cti() {
   fprintf(pc_trace, "%32s\n", "Non - CTI");
   fprintf(stderr, "%32s\n", "Non - CTI");
 #endif
-}
+																																																																																																																																																																																																									}
 
-void print_pc_insn(uint64_t pc, uint32_t insn_raw) {
+																																																																																																																																																																																																									void print_pc_insn(uint64_t pc, uint32_t insn_raw) {
   fprintf(pc_trace, "%20lx\t|%20x\t", pc, insn_raw);
   fprintf(stderr, "Fetched %d|\t%20lx\t|%20x\t", inst_index_in_fetch, pc, insn_raw);
   if (insn_raw < 0x100) {

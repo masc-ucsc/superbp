@@ -14,7 +14,7 @@
 
 //#define DEBUG_HUQ
 
-#define NUM_HUQ_ENTRIES (FETCH_WIDTH * NUM_TAKEN_BRANCHES)
+#define NUM_HUQ_ENTRIES (FETCH_WIDTH * 2)
 
 class huq_entry {
 

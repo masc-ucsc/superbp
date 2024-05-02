@@ -7,10 +7,11 @@
 #include <iostream>
 #include <stdlib.h>
 #include <cassert>
+#include "string.h"
 
 #include "batage.hpp"
 
-#define SIMFASTER
+//#define SIMFASTER
 
 #ifdef SIMFASTER
 #define ASSERT(cond)
@@ -21,6 +22,27 @@
     abort();                                                                   \
   }
 #endif
+
+
+// static std::vector<uint8_t> SBP_LOGGE; 
+std::vector<uint8_t> SBP_LOGGE;
+
+uint32_t SBP_NUMG;
+uint8_t LOG2FETCHWIDTH;
+uint8_t NUM_TAKEN_BRANCHES;
+std::vector<uint32_t> ORIG_ENTRIES_PER_TABLE;
+std::vector<uint32_t> INFO_PER_ENTRY;
+uint8_t FETCHWIDTH;
+std::vector<uint8_t> SBP_LOGE;
+uint8_t LOGFE;  
+uint8_t SBP_LOGBE; 
+uint8_t SBP_LOGB2E; 
+std::vector<uint8_t>  SBP_LOGG;
+std::vector<uint32_t> SS_ENTRIES_PER_TABLE; 
+std::vector<uint8_t>  LOGGE_ORIG;
+
+std::vector<uint32_t> NEW_ENTRIES_PER_TABLE;
+std::vector<uint32_t> ENTRIES_PER_TABLE;
 
 uint32_t rando() {
   // Marsaglia's xorshift
@@ -208,17 +230,17 @@ histories::histories() {
   cht = new folded_history[SBP_NUMG];
   chtt = new folded_history[SBP_NUMG];
   for (int i = 0; i < SBP_NUMG; i++) {
-    chg[i].init(hist[i], SBP_LOGGE(i), 1);
+    chg[i].init(hist[i], SBP_LOGGE[i], 1);
     cht[i].init(hist[i], SBP_TAGBITS, 1);
     int hashparam = 1;
-    if (SBP_LOGGE(i) == SBP_TAGBITS) {
-      hashparam = (lcm(SBP_LOGGE(i), SBP_LOGGE(i) - 3) > lcm(SBP_LOGGE(i), SBP_LOGGE(i) - 2)) ? 3 : 2;
+    if (SBP_LOGGE[i] == SBP_TAGBITS) {
+      hashparam = (lcm(SBP_LOGGE[i], SBP_LOGGE[i] - 3) > lcm(SBP_LOGGE[i], SBP_LOGGE[i] - 2)) ? 3 : 2;
     }
     if (hist[i] <= SBP_MAXPATH) {
-      chgg[i].init(hist[i], SBP_LOGGE(i) - hashparam, SBP_PATHBITS);
+      chgg[i].init(hist[i], SBP_LOGGE[i] - hashparam, SBP_PATHBITS);
       chtt[i].init(hist[i], SBP_TAGBITS - 1, SBP_PATHBITS);
     } else {
-      chgg[i].init(hist[i], SBP_LOGGE(i) - hashparam, 1);
+      chgg[i].init(hist[i], SBP_LOGGE[i] - hashparam, 1);
       chtt[i].init(hist[i], SBP_TAGBITS - 1, 1);
     }
   }
@@ -249,15 +271,15 @@ void histories::update(uint32_t targetpc, bool taken) {
 
 int histories::gindex(uint32_t pc, int i) const {
   ASSERT((i >= 0) && (i < SBP_NUMG));
+  ASSERT (SBP_LOGGE.size());
 #ifdef DEBUG_GINDEX
 //fprintf (stderr, "gindex, %lx, %d \n", pc, i);
 #endif
-  uint32_t hash = pc ^ i ^ chg[i].fold ^
-                  (chgg[i].fold << (chg[i].clength - chgg[i].clength));
-   int raw_index = hash & ((1 << SBP_LOGGE(i)) - 1);
-   int rolled_index = (raw_index % ENTRIES_PER_TABLE(i));
+  uint32_t hash = pc ^ i ^ chg[i].fold ^ (chgg[i].fold << (chg[i].clength - chgg[i].clength));
+   int raw_index = hash & ((1 << (SBP_LOGGE[i])) - 1);
+   int rolled_index = (raw_index % ENTRIES_PER_TABLE[i]);
 #ifdef DEBUG_GINDEX
-fprintf (stderr, "ENTRIES_PER_TABLE = %d, rolled_index = %d \n", ENTRIES_PER_TABLE(i), rolled_index);
+fprintf (stderr, "ENTRIES_PER_TABLE = %d, rolled_index = %d \n", ENTRIES_PER_TABLE[i], rolled_index);
 #endif
    return rolled_index;
 }
@@ -338,28 +360,146 @@ prediction::prediction()
 }
 */
 
+//uint32_t abcd, xyz;
+
+
+void read_env_variables()
+{
+	char *temp; // [32]; 
+	
+	/*temp = getenv("temp");
+	//strcpy(temp, getenv("temp"));
+	abcd = atoi(temp);
+	fprintf(stderr, "abcd = %u\n", abcd);
+	temp = getenv("temp1");
+	//strcpy(temp, getenv("temp"));
+	xyz = atoi(temp);
+	fprintf(stderr, "xyz = %u\n", xyz);*/
+	
+	temp = getenv("SBP_NUMG");
+	SBP_NUMG = atoi(temp);
+	
+	temp = getenv("LOG2FETCHWIDTH");
+	LOG2FETCHWIDTH = atoi(temp);
+	
+	temp = getenv("NUM_TAKEN_BRANCHES");
+	NUM_TAKEN_BRANCHES = atoi(temp);
+	
+	ORIG_ENTRIES_PER_TABLE.resize(SBP_NUMG);
+	INFO_PER_ENTRY.resize(SBP_NUMG);
+	
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_00");
+	ORIG_ENTRIES_PER_TABLE[0] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_01");
+	ORIG_ENTRIES_PER_TABLE[1] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_02");
+	ORIG_ENTRIES_PER_TABLE[2] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_03");
+	ORIG_ENTRIES_PER_TABLE[3] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_04");
+	ORIG_ENTRIES_PER_TABLE[4] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_05");
+	ORIG_ENTRIES_PER_TABLE[5] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_06");
+	ORIG_ENTRIES_PER_TABLE[6] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_07");
+	ORIG_ENTRIES_PER_TABLE[7] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_08");
+	ORIG_ENTRIES_PER_TABLE[8] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_09");
+	ORIG_ENTRIES_PER_TABLE[9] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_10");
+	ORIG_ENTRIES_PER_TABLE[10] = atoi(temp);
+	temp = getenv("ORIG_ENTRIES_PER_TABLE_11");
+	ORIG_ENTRIES_PER_TABLE[11] = atoi(temp);
+		
+	temp = getenv("INFO_PER_ENTRY_00");
+	INFO_PER_ENTRY[0] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_01");
+	INFO_PER_ENTRY[1] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_02");
+	INFO_PER_ENTRY[2] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_03");
+	INFO_PER_ENTRY[3] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_04");
+	INFO_PER_ENTRY[4] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_05");
+	INFO_PER_ENTRY[5] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_06");
+	INFO_PER_ENTRY[6] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_07");
+	INFO_PER_ENTRY[7] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_08");
+	INFO_PER_ENTRY[8] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_09");
+	INFO_PER_ENTRY[9] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_10");
+	INFO_PER_ENTRY[10] = atoi(temp);
+	temp = getenv("INFO_PER_ENTRY_11");
+	INFO_PER_ENTRY[11] = atoi(temp);
+}
+
+
+
+void populate_dependent_globals()
+{
+	FETCHWIDTH = (1 << LOG2FETCHWIDTH);
+	
+	SBP_LOGE.resize(SBP_NUMG);
+	SBP_LOGG.resize(SBP_NUMG);
+	LOGGE_ORIG.resize(SBP_NUMG);
+	SS_ENTRIES_PER_TABLE.resize(SBP_NUMG);
+	NEW_ENTRIES_PER_TABLE.resize(SBP_NUMG);
+	SBP_LOGGE.resize(SBP_NUMG);
+	ENTRIES_PER_TABLE.resize(SBP_NUMG);
+	for (int i = 0; i < SBP_NUMG; i++)
+	{
+		SBP_LOGE[i] = ((int)log2(INFO_PER_ENTRY[i]));
+		SBP_LOGG[i] = (int)ceil(log2(ORIG_ENTRIES_PER_TABLE[i]));
+		LOGGE_ORIG[i] = (SBP_LOGG[i] - SBP_LOGE[i]);
+		SS_ENTRIES_PER_TABLE[i] = (ORIG_ENTRIES_PER_TABLE[i] / INFO_PER_ENTRY[i]);
+		#ifndef SINGLE_TAG
+		NEW_ENTRIES_PER_TABLE[i] = 0;
+		SBP_LOGGE[i] =  (LOGGE_ORIG[i]) ;
+		ENTRIES_PER_TABLE[i] = (SS_ENTRIES_PER_TABLE[i] + NEW_ENTRIES_PER_TABLE[i]);
+		#endif // SINGLE_TAG
+	}
+	
+	LOGFE = ((int)log2(FETCHWIDTH));
+	SBP_LOGBE = (SBP_LOGB - LOGFE);
+	SBP_LOGB2E = (SBP_LOGB2 - LOGFE);
+}
+
 batage::batage() {
+
+	read_env_variables();
+	populate_dependent_globals();
+
   g = new tagged_entry **[SBP_NUMG];
   
   for (int i = 0; i < SBP_NUMG; i++) {
 #ifdef DEBUG_BATAGE
-fprintf (stderr, "ENTRIES_PER_TABLE(%d) = %d and INFO_PER_ENTRY(%d) = %d \n", i, ENTRIES_PER_TABLE(i), i, INFO_PER_ENTRY(i));
+fprintf (stderr, "ENTRIES_PER_TABLE(%d) = %d and INFO_PER_ENTRY(%d) = %d \n", i, ENTRIES_PER_TABLE[i], i, INFO_PER_ENTRY[i]);
 #endif // DEBUG_BATAGE
-    g[i] = new tagged_entry *[ENTRIES_PER_TABLE(i)];
-    for (int j = 0; j < (ENTRIES_PER_TABLE(i)); j++) {
-      g[i][j] = new tagged_entry[INFO_PER_ENTRY(i)];
+    g[i] = new tagged_entry *[ENTRIES_PER_TABLE[i]];
+    for (int j = 0; j < (ENTRIES_PER_TABLE[i]); j++) {
+      g[i][j] = new tagged_entry[INFO_PER_ENTRY[i]];
     }
   }
   
   gi = new int[SBP_NUMG];
 
+  b.resize(1 << SBP_LOGBE);
   for (int i = 0; i < (1 << SBP_LOGBE); i++) {
+  b[i].resize(FETCHWIDTH);
     for (int j = 0; j < FETCHWIDTH; j++) {
       b[i][j] = 0; // not-taken prediction
     }
   }
   
+    b2.resize(1 << SBP_LOGB2E);
   for (int i = 0; i < (1 << SBP_LOGB2E); i++) {
+  b2[i].resize(FETCHWIDTH);
     for (int j = 0; j < FETCHWIDTH; j++) {
       b2[i][j] = (1 << SBP_BHYSTBITS) - 1; // weak state
     }
@@ -437,7 +577,7 @@ assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(bank
   return g[bank[i]][gi[bank[i]]][offset_within_entry];
 #else
 uint32_t offset_within_entry = get_offset_within_entry (offset_within_packet, i);
- assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(i))));
+ assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY[i])));
   return g[i][gi[i]][offset_within_entry];
 #endif
 }
@@ -458,7 +598,7 @@ tagged_entry &batage::getge(int i, uint32_t offset_within_entry) {
 #else
 */
 // Works with BANK_INTERLEAVING, this particulaar function already sends both the bank and index based on bank interleaving, so no need to do bank[i]
- assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY(i))));
+ assert( ((offset_within_entry >= 0) && (offset_within_entry< INFO_PER_ENTRY[i])));
   return g[i][gi[i]][offset_within_entry];
 //#endif
 }
@@ -471,9 +611,9 @@ uint32_t batage::get_offset_within_entry (uint32_t offset_within_packet, int tab
 	*/
 	// TODO Check if this should be used for POS also
 	#ifdef XIANGSHAN
-		return ( offset_within_packet % INFO_PER_ENTRY(table)  );
+		return ( offset_within_packet % INFO_PER_ENTRY[table]  );
 	#else
-		return ( offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(table)) );
+		return ( offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY[table]) );
 	#endif
 }
 
@@ -543,7 +683,7 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
    
 #ifdef MT_PLUS
     		int j = 0;
-    		for (j = 0; j < INFO_PER_ENTRY(i); j++)
+    		for (j = 0; j < INFO_PER_ENTRY[i]; j++)
     		{
     			if (getge(i, j).tag == p.gtag ( hash_pc[offset_within_packet], i))
     			{
@@ -571,7 +711,7 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 			s[offset_within_packet].push_back(getgp(i, offset_within_packet).dualc);
 			#else // POS
 				int j;
-				for (j =0; j < INFO_PER_ENTRY(i); j++)
+				for (j =0; j < INFO_PER_ENTRY[i]; j++)
 				{
 					if (getge(i, j).pos == offset_within_packet)
 					{
@@ -969,7 +1109,7 @@ after allocation, it exits the loop with break, so no more updates/ allocations 
 #ifdef NOT_MRU
 do {
 #endif // NOT_MRU
-offset_within_entry = random % INFO_PER_ENTRY(i);
+offset_within_entry = random % INFO_PER_ENTRY[i];
 random = (random ^ (random >> 5) ) ;
 #ifdef NOT_MRU
 } while(offset_within_entry == getgb(i).mru);
@@ -978,7 +1118,7 @@ random = (random ^ (random >> 5) ) ;
 
 	random = (random ^ (random >> 5) ) ;
 	int r = random %2;
-	for (int j = r ? 0 : INFO_PER_ENTRY(i)-1; r ?  (j < INFO_PER_ENTRY(i)) : (j >= 0); r ? (j++) : (j--) )
+	for (int j = r ? 0 : INFO_PER_ENTRY[i]-1; r ?  (j < INFO_PER_ENTRY[i]) : (j >= 0); r ? (j++) : (j--) )
 	{
 #ifdef MT_PLUS
 		if ( (getge(i, j).dualc.is_counter_reset()) && (getge(i, j).tag == 0) )
@@ -1062,7 +1202,7 @@ JUST_ALLOCATE :
           }
         }
   #else
-  	for (uint32_t offset = 0; offset < INFO_PER_ENTRY(i); offset++) {
+  	for (uint32_t offset = 0; offset < INFO_PER_ENTRY[i]; offset++) {
   	  getge(i, offset).dualc.reset();
           if (offset == offset_within_entry) {
             getge(i, offset).dualc.update(taken);
@@ -1127,7 +1267,7 @@ JUST_ALLOCATE :
           }
         }
   #else
-  	for (uint32_t offset = 0; offset < INFO_PER_ENTRY(i); offset++) {
+  	for (uint32_t offset = 0; offset < INFO_PER_ENTRY[i]; offset++) {
   	  getge(i, offset).dualc.reset();
           if (offset == offset_within_entry) {
             getge(i, offset).dualc.update(taken);
@@ -1164,12 +1304,12 @@ int batage::size() {
   for (int i = 0; i < SBP_NUMG; i++)
   {
   
-    fprintf (stderr, "table %d, ORIG_ENTRIES_PER_TABLE = %d, SBP_LOGG = %d, SS_ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, ENTRIES_PER_TABLE = %d, SBP_LOGGE = %d\n", i, ORIG_ENTRIES_PER_TABLE(i), SBP_LOGG(i), SS_ENTRIES_PER_TABLE(i), LOGGE_ORIG(i), ENTRIES_PER_TABLE(i), SBP_LOGGE(i));
+    fprintf (stderr, "table %d, ORIG_ENTRIES_PER_TABLE = %d, SBP_LOGG = %d, SS_ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, ENTRIES_PER_TABLE = %d, SBP_LOGGE = %d\n", i, ORIG_ENTRIES_PER_TABLE[i], SBP_LOGG[i], SS_ENTRIES_PER_TABLE[i], LOGGE_ORIG[i], ENTRIES_PER_TABLE[i], SBP_LOGGE[i]);
     
   #ifndef SINGLE_TAG
-   table_size =  (((dualcounter::size()+ SBP_TAGBITS) *INFO_PER_ENTRY(i)) * ENTRIES_PER_TABLE(i));
+   table_size =  (((dualcounter::size()+ SBP_TAGBITS) *INFO_PER_ENTRY[i]) * ENTRIES_PER_TABLE[i]);
   #else // SINGLE_TAG
-  table_size =  ((((dualcounter::size() + POSBITS) * INFO_PER_ENTRY(i)) + SBP_TAGBITS) * ENTRIES_PER_TABLE(i));
+  table_size =  ((((dualcounter::size() + POSBITS) * INFO_PER_ENTRY[i]) + SBP_TAGBITS) * ENTRIES_PER_TABLE[i]);
   #endif // SINGLE_TAG
   totsize += table_size;
   }
@@ -1177,7 +1317,7 @@ int batage::size() {
   fprintf (stderr, "Total size = %u bits\n", totsize);
   
   #ifdef SINGLE_TAG
-    //fprintf (stderr, " NEW_ENTRIES_PER_TABLE = %u \n", NEW_ENTRIES_PER_TABLE(i));
+    //fprintf (stderr, " NEW_ENTRIES_PER_TABLE = %u \n", NEW_ENTRIES_PER_TABLE[i]);
         /*fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);*/
    #endif // SINGLE_TAG
    
