@@ -10,7 +10,7 @@
 std::map<uint64_t, uint64_t> fetchPC_Map;
 uint64_t temp;
 
-//#define GSHARE_TRACE
+//#define DEBUG_GSHARE
 //#define DEBUG_DETAIL
 //#define T_TRACE
 PREDICTOR bp;
@@ -30,6 +30,9 @@ uint64_t num_gshare_allocations, num_gshare_predictions, num_gshare_correct_pred
 
 FILE *pc_trace;
 
+#ifdef DEBUG_GSHARE
+FILE *debug_gshare;
+#endif
 #ifdef T_TRACE
 FILE *t_trace;
 #endif
@@ -115,6 +118,9 @@ extern uint64_t maxinsns, skip_insns;
 void branchprof_init(char* bp_logfile) {
   // PREDICTOR bp;
   pc_trace = fopen(bp_logfile, "w");
+  #ifdef DEBUG_GSHARE
+debug_gshare = fopen("debug_gshare.txt", "w");
+#endif
   #ifdef T_TRACE
   t_trace = fopen("t_trace.txt", "w");
   #endif
@@ -145,6 +151,8 @@ details = fopen("details.txt", "w");
 }
 
 void branchprof_exit() {
+//void branchprof_exit(char* bp_logfile) {
+ // pc_trace = fopen(bp_logfile, "w");
   fprintf(pc_trace,
           "branch_count = %lu\njump_count = %lu\ncti_count = "
           "%lu\nbenchmark_instruction_count = %lu\nInstruction Count = "
@@ -184,6 +192,9 @@ for (int i = 0; i < bp.pred.SBP_NUMG; i++)
 #endif // EN_BB_FB_COUNT
 
   fclose(pc_trace);
+    #ifdef DEBUG_GSHARE
+	fclose (debug_gshare);
+	#endif
   #ifdef T_TRACE
   fclose (t_trace);
   #endif
@@ -240,7 +251,7 @@ If gshare_tracking is in progress -
 	2. If not a high conf taken - deallocate and clear local gshare_tracking buffer
 */
 
-void update_gshare(int i, uint64_t target)
+void resolve_gshare(int i, uint64_t target)
 {
         if (gshare_pred_inst.tag_match)
         {
@@ -264,34 +275,25 @@ void update_gshare(int i, uint64_t target)
 #ifdef FTQ
 uint32_t update_gshare_index, update_gshare_tag;
 static inline void read_ftq_update_predictor() {
+
+  uint8_t partial_pop = (last_misprediction || last_resolveDir);
+
+	// For multiple taken predictions, changed from FETCH_WIDTH to INFO_PER_ENTRY 
+  if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) {
+  
   uint64_t update_pc, update_fetch_pc, update_branchTarget;
   insn_t update_insn;
   bool update_predDir, update_resolveDir;
   bool update_highconf;
-
-  uint8_t partial_pop = (last_misprediction || last_resolveDir);
-
-	highconfT_in_packet = false;
-
-	// For multiple taken predictions, changed from FETCH_WIDTH to INFO_PER_ENTRY 
-  if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) {
   
   #ifdef DEBUG_FTQ
   fprintf (stderr, "\nread_ftq_update_predictor : inst_index_in_fetch = %u, partial_pop = %d\n", inst_index_in_fetch, partial_pop);
   #endif
 
-#ifdef DEBUG_GSHARE2
-if (gshare_pred_inst.hit)
-{
-if (fetch_pc == 0x12dda)
-{
-printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] = %llx\n", gshare_pred_inst.info.poses[0], gshare_pred_inst.info.PCs[0], gshare_pred_inst.info.poses[1], gshare_pred_inst.info.PCs[1]);
-}
-}
-#endif
+	highconfT_in_packet = false;
 
-    for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH);
-         i++) {
+    for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH); i++) 
+    {
       if (!is_ftq_empty()) {
         get_ftq_data(&ftq_data);
 
@@ -316,10 +318,10 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
         		if (fetch_pc == 0x12dda)
         		{printf ("gshare resolution for i = %u, resolveDir = %u, target = %#llx \n", gshare_pred_inst.info.poses[0] + i, update_resolveDir, update_branchTarget);}
         	}
-        }
-		
+        }		
 	#endif // DEBUG_GSHARE
-       	update_gshare(i, update_branchTarget);
+	
+       	resolve_gshare(i, update_branchTarget);
         
         // allocate_gshare
         update_highconf = ftq_data.highconf;
@@ -328,7 +330,7 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 
 	// allocate on a branch or if second is a jump
 	// TODO Check
-	if ( update_resolveDir && (((update_insn == insn_t::branch) && update_highconf) || (update_insn == insn_t::jump)) )
+	if ( update_resolveDir && update_predDir && (((update_insn == insn_t::branch) && update_highconf) || (update_insn == insn_t::jump)) )
 	{
 		highconfT_in_packet = true;
 		if (!gshare_tracking) // The first must be a branch
@@ -375,7 +377,7 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 	#endif
         {
 		bp.Updatetables(update_pc, update_fetch_pc, i, update_resolveDir);
-	}
+		}
   }
   #ifdef DEBUG_FTQ
   fprintf (stderr, "Update predictor tables done for pc = %llx \n", update_pc);
@@ -414,26 +416,21 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
 	if (last_gshare_pred_inst.tag_match)
 	{
     		bp.fast_pred.update(last_gshare_pred_inst, gshare_prediction_correct);
-    	}
+    }
+    /*gshare_pos0_correct = gshare_pos1_correct;
+    gshare_pos1_correct = false;*/
     	
     	if (last_gshare_pred_inst.hit)
         {
         	if (gshare_prediction_correct)
         	{
         		num_gshare_correct_predictions++;
-        		#ifdef DEBUG_GSHARE
-			fprintf (gshare_trace, " ** gshare predicted correctly for fetchPC = %llx** \n", last_fetch_pc); 
-        		if (last_fetch_pc == 0x12dda)
-        		{ fprintf (stderr, " *************************** 12dda predicted correctly ******************** \n"); } 
-        		#endif // DEBUG_GSHARE
         	}
         	else
         	{
         		(fetchPC_Map[last_fetch_pc])++;
         		#ifdef DEBUG_GSHARE
-        		fprintf (gshare_trace, " *** gshare mispredicted for fetchPC = %llx *** \n", last_fetch_pc);
-			if (last_fetch_pc == 0x12dda)
-        		{ fprintf (stderr, " *********************** 12dda mispredicted ************************ \n"); } 
+        		fprintf (debug_gshare, " *** gshare mispredicted for fetchPC = %llx *** \n", last_fetch_pc);
         		#endif // DEBUG_GSHARE
         	}
         }
@@ -446,8 +443,8 @@ printf ("gshare hit prediction - pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] 
         }
         if (!gshare_pred_inst.tag_match)
         {
-		gshare_pos0_correct = false;
-	}
+			gshare_pos0_correct = false;
+		}
 	#endif
     
     inst_index_in_fetch = 0;
@@ -821,7 +818,6 @@ Two options -
 bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2 
 */
 
-
   if (inst_index_in_fetch == 0)      
   {
   
@@ -866,15 +862,10 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 	#ifdef DEBUG_GSHARE2
 	//printf ("gshare_index = %u and gshare_tag = %x\n", gshare_index, gshare_tag);
 	#endif // DEBUG_GSHARE
- 	get_gshare_prediction(fetch_pc, gshare_index, gshare_tag);
+ 	get_gshare_prediction (fetch_pc, gshare_index, gshare_tag);
  			#ifdef GSHARE_TRACE
 			fprintf (gshare_trace, "fetchPC = %llx predicted from index = %u with tag = %x and hit = %u\n", fetch_pc, gshare_index, gshare_tag, gshare_pred_inst.hit);
 			#endif
- 	
- 	        	#ifdef DEBUG_GSHARE2
-        		if  ( (temp_pc == 0x12dda) && (gshare_pred_inst.hit) )
-        		{ fprintf (stderr, " *********************** 12dda predicted ************************ \n"); } 
-        		#endif // DEBUG_GSHARE
 	#endif  // GSHARE
 
 	#ifdef DEBUG
@@ -916,23 +907,22 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   	
   	predDir = false;
 #ifdef GSHARE 	
-  if ( /*(gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) ||*/ (  last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1])
-  			) )
+  if ( /*(gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) ||*/ (  last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1])) )
   {
   	predDir = true;
   	if (!get_predDir_from_ftq (inst_index_in_fetch))
   	{
   		gshare_batage_2nd_pred_mismatch++;
   	}
-  }
-  
-  if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
-  {
-  	if (!get_predDir_from_ftq (inst_index_in_fetch))
+  	if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
   	{
-  		gshare_batage_1st_pred_mismatch++;
+  		if (!get_predDir_from_ftq (inst_index_in_fetch))
+  		{
+  			gshare_batage_1st_pred_mismatch++;
+  		}
   	}
   }
+  
 else
 #endif
   //Get predDir for the instruction

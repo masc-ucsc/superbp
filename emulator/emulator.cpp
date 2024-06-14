@@ -254,6 +254,7 @@ for (int i = 0; i < argc; ++i) {
 
 #ifdef BRANCHPROF
   branchprof_exit();
+//branchprof_exit(bp_logfile);
 #endif // BRANCHPROF
 
   return 0;
