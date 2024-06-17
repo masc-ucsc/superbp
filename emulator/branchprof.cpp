@@ -305,21 +305,7 @@ static inline void read_ftq_update_predictor() {
         update_fetch_pc = ftq_data.fetch_pc;
 
 	#ifdef GSHARE
-	#ifdef DEBUG_GSHARE2
-	if (gshare_pred_inst.hit)
-        {
-        	if (i == gshare_pred_inst.info.poses[0]) 
-        	{
-        	if (fetch_pc == 0x12dda)
-        		{printf ("gshare resolution for i = %u, resolveDir = %u, target = %#llx \n", i, update_resolveDir, update_branchTarget);}
-        	}
-        	else if ( (gshare_pred_inst.info.poses[0] + i) == gshare_pred_inst.info.poses[1]) 
-        	{
-        		if (fetch_pc == 0x12dda)
-        		{printf ("gshare resolution for i = %u, resolveDir = %u, target = %#llx \n", gshare_pred_inst.info.poses[0] + i, update_resolveDir, update_branchTarget);}
-        	}
-        }		
-	#endif // DEBUG_GSHARE
+	
 	
        	resolve_gshare(i, update_branchTarget);
         
@@ -413,12 +399,8 @@ static inline void read_ftq_update_predictor() {
 
 	gshare_prediction_correct = gshare_pos1_correct /*&& gshare_pos0_correct*/;
 	
-	if (last_gshare_pred_inst.tag_match)
-	{
-    		bp.fast_pred.update(last_gshare_pred_inst, gshare_prediction_correct);
-    }
-    /*gshare_pos0_correct = gshare_pos1_correct;
-    gshare_pos1_correct = false;*/
+
+
     	
     	if (last_gshare_pred_inst.hit)
         {
@@ -438,6 +420,7 @@ static inline void read_ftq_update_predictor() {
         // TODO Check if consecutive tag_matches are handled correctly 
         if (last_gshare_pred_inst.tag_match)
         {
+        	bp.fast_pred.update(last_gshare_pred_inst, gshare_prediction_correct);
     		gshare_pos1_correct = false;
     		gshare_prediction_correct = false;
         }
@@ -914,14 +897,14 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   	{
   		gshare_batage_2nd_pred_mismatch++;
   	}
-  	if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
+  }
+  	/*if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
   	{
   		if (!get_predDir_from_ftq (inst_index_in_fetch))
   		{
   			gshare_batage_1st_pred_mismatch++;
   		}
-  	}
-  }
+  	}*/
   
 else
 #endif
