@@ -835,11 +835,11 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
     	#ifdef DEBUG_DETAIL
     	for (int i =0; i < FETCH_WIDTH; i++)
     	{
-		if ( vec_predDir[i] && vec_highconf[i]) 
-		{
-			//fprintf (details, "fetchpc = %llx has a high conf branch at pos = %u \n", fetch_pc, i);
+			if ( vec_predDir[i] && vec_highconf[i]) 
+			{
+				//fprintf (details, "fetchpc = %llx has a high conf branch at pos = %u \n", fetch_pc, i);
+			}
 		}
-	}
     	#endif
 	gshare_index = batage_prediction.gshare_index;
 	gshare_tag = batage_prediction.gshare_tag;
@@ -848,6 +848,16 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 	//printf ("gshare_index = %u and gshare_tag = %x\n", gshare_index, gshare_tag);
 	#endif // DEBUG_GSHARE
  	get_gshare_prediction (fetch_pc, gshare_index, gshare_tag);
+ 	
+ 	/*if (gshare_pred_inst.hit)
+ 	{
+ 		int pos0 = gshare_pred_inst.info.poses[0];
+ 		if (!vec_predDir[pos0])
+ 		{
+ 			gshare_pred_inst.hit = false;
+ 			gshare_batage_1st_pred_mismatch++;
+ 		}
+ 	}*/
  			#ifdef GSHARE_TRACE
 			fprintf (gshare_trace, "fetchPC = %llx predicted from index = %u with tag = %x and hit = %u\n", fetch_pc, gshare_index, gshare_tag, gshare_pred_inst.hit);
 			#endif
@@ -892,6 +902,14 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   	
   	predDir = false;
 #ifdef GSHARE 	
+   	if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
+  	{
+  		if (!get_predDir_from_ftq (inst_index_in_fetch))
+  		{
+  			gshare_batage_1st_pred_mismatch++;
+  		}
+  	}
+ 
   if ( /*(gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) ||*/ (  last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1])) )
   {
   	predDir = true;
@@ -900,14 +918,6 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   		gshare_batage_2nd_pred_mismatch++;
   	}
   }
-  	/*if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
-  	{
-  		if (!get_predDir_from_ftq (inst_index_in_fetch))
-  		{
-  			gshare_batage_1st_pred_mismatch++;
-  		}
-  	}*/
-  
 else
 #endif
   //Get predDir for the instruction
