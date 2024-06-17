@@ -86,6 +86,7 @@ public :
 vector <gshare_entry> table;
 gshare_prediction prediction;
 //FILE *gshare_log;
+uint32_t decay_ctr;
 
 public :
 
@@ -93,6 +94,7 @@ public :
 gshare ()
 {
 	table.resize(NUM_GSHARE_ENTRIES);
+	decay_ctr = 0;
 	//start_log();
 }
 
@@ -111,6 +113,17 @@ uint16_t calc_index (uint64_t PC)
 {
 	// TODO Update  
 	return ( PC % NUM_GSHARE_ENTRIES); 
+}
+
+void decay ()
+{
+	int ctr;
+	for (int i = 0; i < NUM_GSHARE_ENTRIES; i++)
+	{
+		ctr = table[i].ctr;
+		if (ctr > 0)
+		table[i].ctr = ctr - 1;
+	}
 }
 
 bool is_hit (uint64_t PC,uint16_t index, uint16_t tag)
@@ -165,6 +178,12 @@ gshare_prediction& predict (uint64_t PC, uint16_t index, uint16_t tag)
 			{fprintf( gshare_log, "gshare hit index = %u for fetchPC = %#llx, sent tag = %#x, pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] = %#llx \n", index, PC, tag, prediction.info.poses[0], prediction.info.PCs[0], prediction.info.poses[1], prediction.info.PCs[1]);}
 		#endif
 	}
+	/*decay_ctr++;
+	if (decay_ctr == NUM_GSHARE_ENTRIES)
+	{
+		decay();
+		decay_ctr = 0;
+	}*/
 	return prediction;
 }
 
