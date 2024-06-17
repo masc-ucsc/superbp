@@ -105,6 +105,7 @@ static uint64_t last_pc;
 static uint32_t last_insn_raw;
 static insn_t last_insn, insn;
 static bool last_misprediction, misprediction;
+prediction batage_prediction;
 bool i0_done = false;
 #ifdef EN_BB_FB_COUNT
 static uint8_t bb_over = 0, fb_over = 0;
@@ -332,8 +333,8 @@ static inline void read_ftq_update_predictor() {
 				gshare_PCs.push_back(update_fetch_pc);
 				gshare_poses.push_back( i ); // (update_pc - update_fetch_pc) >> 1
 				gshare_PCs.push_back(update_branchTarget);
-				update_gshare_tag = ftq_data.gi[ftq_data.bp[i]];
-				update_gshare_index = ftq_data.gi[ftq_data.bp[i]];
+				update_gshare_tag = batage_prediction.gshare_tag; //ftq_data.tags[i][ftq_data.bp[i]];
+				update_gshare_index = batage_prediction.gshare_index;
 				gshare_tracking = true;
 			}
 		}
@@ -814,7 +815,6 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   	set_ftq_index (inst_index_in_fetch);
   	
   	// temp_predDir = bp.GetPrediction(temp_pc);
-  	prediction batage_prediction;
   	std::vector<bool> vec_predDir(FETCH_WIDTH, false);
   	std::vector<bool> vec_highconf(FETCH_WIDTH, false);
   	
