@@ -19,6 +19,6 @@
 #define EN_BB_FB_COUNT
 
 //#define PC_TRACE
-//#define GSHARE
+#define GSHARE
 
 enum class insn_t { non_cti, jump, branch, ret };
