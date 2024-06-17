@@ -255,18 +255,23 @@ void resolve_gshare(int i, uint64_t target)
 {
 	if (last_gshare_pred_inst.tag_match)
         {
-                if ( (last_gshare_pred_inst.info.poses[0] + i) == last_gshare_pred_inst.info.poses[1]) 
+                if (  i == last_gshare_pred_inst.info.poses[1]) 
         	{
-        		if ( last_gshare_pred_inst.info.PCs[1] == target)
+        		gshare_pos1_correct = false;
+			if ( last_gshare_pred_inst.info.PCs[1] == target)
         		{gshare_pos1_correct = true;}
-        	}
+        		//gshare_prediction_correct = gshare_pos0_correct && gshare_pos1_correct;
+        		gshare_prediction_correct = gshare_pos0_correct && gshare_pos1_correct;
+        	
+		}
         }
 
         if (gshare_pred_inst.tag_match)
         {
         	if (i == gshare_pred_inst.info.poses[0]) 
         	{
-        		if  ( gshare_pred_inst.info.PCs[0] == target)
+        		gshare_pos0_correct = false;
+			if  ( gshare_pred_inst.info.PCs[0] == target)
         		{gshare_pos0_correct = true;}
         	}
         }
@@ -334,7 +339,7 @@ static inline void read_ftq_update_predictor() {
 		}
 		else
 		{
-			gshare_poses.push_back( (gshare_poses[0] + i )); // (update_pc - update_fetch_pc) >> 1)
+			gshare_poses.push_back( ( i )); // (update_pc - update_fetch_pc) >> 1)
 			gshare_PCs.push_back(update_branchTarget);
 			
 			bp.fast_pred.allocate(gshare_PCs, gshare_poses, update_gshare_index, update_gshare_tag);
@@ -397,12 +402,7 @@ static inline void read_ftq_update_predictor() {
     	gshare_PCs.clear();
 	gshare_poses.clear();
     }
-
-	gshare_prediction_correct = gshare_pos1_correct /*&& gshare_pos0_correct*/;
-	
-
-
-    	
+	    	
     	if (last_gshare_pred_inst.hit)
         {
         	if (gshare_prediction_correct)
