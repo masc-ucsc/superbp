@@ -62,7 +62,7 @@ b_bi, b2_bi2 - Must return a vector - one element for each subentry/ offset ???
 */
 
   vector<vector<int32_t>> hit;
-
+vector<vector<int>> tags;
   vector<vector<dualcounter>> s; // size = SBP_NUMG - 1 per instruction
   vector<vector<int>> poses; 
   int meta;
@@ -100,7 +100,7 @@ public:
          std::end(predictor.pred.b2))}*/
       : predDir{predDir1}, highconf{highconf1}, resolveDir{resolveDir1}, pc{pc1}, insn{insn1},
         branchTarget{branchTarget1}, fetch_pc{fetch_pc},
-        hit{predictor.pred.hit},
+        hit{predictor.pred.hit}, tags{predictor.pred.tags},
         s{predictor.pred.s}, poses{predictor.pred.poses}, 
         meta{predictor.pred.meta}, bp{predictor.pred.bp},
         bi{predictor.pred.bi}, bi2{predictor.pred.bi2},
@@ -119,6 +119,7 @@ public:
     fetch_pc = std::move(src.fetch_pc);
 
     hit = std::move(src.hit);
+    tags = std::move(src.tags);
     s = std::move(src.s);
     poses = std::move(src.poses);
     meta = std::move(src.meta);

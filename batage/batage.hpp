@@ -286,6 +286,7 @@ std::vector<uint32_t> ENTRIES_PER_TABLE;
   
   vector<vector<int>> poses;  // contains the offset within entry for the hitting subentry
   
+  vector<vector<int>> tags;       // tags for each table
   vector<int> bp; // dual-counter providing the final BATAGE prediction - index within s - vector for SS
   prediction pred_out; // (INFO_PER_ENTRY);
   int cat;  // CAT counter

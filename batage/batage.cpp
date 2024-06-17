@@ -555,6 +555,7 @@ hit.reserve(FETCHWIDTH);
 s.reserve(FETCHWIDTH);
 allocs.reserve(SBP_NUMG);
 
+tags.reserve(FETCHWIDTH);
 #if (defined (POS) || defined (MT_PLUS))
 poses.reserve(FETCHWIDTH);
 random = 0x05af5a0f ^ 0x5f0aa05f;
@@ -682,6 +683,7 @@ uint32_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> SBP_PC_SHIFT);
   {
   	hit[offset_within_packet].clear();
   	s[offset_within_packet].clear();
+  	tags[offset_within_packet].clear();
 #if (defined (POS) || defined (MT_PLUS))
   	poses[offset_within_packet].clear();
 #endif
@@ -709,11 +711,13 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 		//fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
 		#endif // DEBUG
    
+   		int tag;
 #ifdef MT_PLUS
     		int j = 0;
     		for (j = 0; j < INFO_PER_ENTRY[i]; j++)
     		{
-    			if (getge(i, j).tag == p.gtag ( hash_pc[offset_within_packet], i))
+			tag = getge(i, j).tag;
+    			if (tag == p.gtag ( hash_pc[offset_within_packet], i))
     			{
     				#ifdef DEBUG
 				fprintf (stderr, "For offset_within_packet = %d, bank = %d hit at subentry = %d\n", offset_within_packet, i, j);
@@ -721,14 +725,17 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
      		 		hit[offset_within_packet].push_back(i);
 				s[offset_within_packet].push_back(getge(i, j).dualc);
 				poses[offset_within_packet].push_back(j);
+				tags[offset_within_packet].push_back(tag);
 				break;
     			}
     		}
  #else // MT_PLUS
      #ifndef SINGLE_TAG
-   		if (getgp(i, offset_within_packet).tag == p.gtag(hash_pc[offset_within_packet], i))
+     		tag = getgp(i, offset_within_packet).tag;
+   		if ( tag == p.gtag(hash_pc[offset_within_packet], i))
     #else
-    	        if (getgb(i).tag == p.gtag(hash_fetch_pc, i)) 
+    		tag = getgb(i).tag;
+    	        if ( tag == p.gtag(hash_fetch_pc, i)) 
     #endif
     		{
 			#ifndef POS
@@ -737,6 +744,7 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 			#endif //DEBUG
      		 	hit[offset_within_packet].push_back(i);
 			s[offset_within_packet].push_back(getgp(i, offset_within_packet).dualc);
+			tags[offset_within_packet].push_back(tag);
 			#else // POS
 				int j;
 				for (j =0; j < INFO_PER_ENTRY[i]; j++)
@@ -750,6 +758,7 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
 						hit[offset_within_packet].push_back(i);
 						s[offset_within_packet].push_back(getge(i, j).dualc);
 						poses[offset_within_packet].push_back(j);
+						tags[offset_within_packet].push_back(tag);
 						break;
 					}
 				}
@@ -861,10 +870,10 @@ std::cerr << "33333" << "\n";
    	if ( (i_pred) && (i_highconf) && !gshare_tag_saved )
    	{
    		// TODO - Must be accounting for Bimodal, but that hits number of gshare predictions
-   		/*if (hit.empty()) // Bimodal
+   		if (hit.empty()) // Bimodal
    		{pred_out.gshare_tag = hash_fetch_pc;}
-   		else*/
-   		{pred_out.gshare_tag = gi[bp[offset_within_packet]];}
+   		else
+   		{pred_out.gshare_tag = tags[offset_within_packet][bp[offset_within_packet]]; } // gi[bp[offset_within_packet]];
    		gshare_tag_saved = true;
    	}
 }

@@ -211,6 +211,7 @@ fclose(details);
 #ifdef FTQ
 static inline void copy_ftq_data_to_predictor(ftq_entry *ftq_data_ptr) {
   bp.pred.hit = ftq_data_ptr->hit;
+  bp.pred.tags = ftq_data_ptr->tags;
   bp.pred.s = ftq_data_ptr->s;
   bp.pred.poses = ftq_data_ptr->poses;
   bp.pred.meta = ftq_data_ptr->meta;
