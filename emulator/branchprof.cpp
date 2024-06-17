@@ -253,6 +253,15 @@ If gshare_tracking is in progress -
 
 void resolve_gshare(int i, uint64_t target)
 {
+	if (last_gshare_pred_inst.tag_match)
+        {
+                if ( (last_gshare_pred_inst.info.poses[0] + i) == last_gshare_pred_inst.info.poses[1]) 
+        	{
+        		if ( last_gshare_pred_inst.info.PCs[1] == target)
+        		{gshare_pos1_correct = true;}
+        	}
+        }
+
         if (gshare_pred_inst.tag_match)
         {
         	if (i == gshare_pred_inst.info.poses[0]) 
@@ -261,15 +270,7 @@ void resolve_gshare(int i, uint64_t target)
         		{gshare_pos0_correct = true;}
         	}
         }
-        
-        if (last_gshare_pred_inst.tag_match)
-        {
-                if ( (last_gshare_pred_inst.info.poses[0] + i) == last_gshare_pred_inst.info.poses[1]) 
-        	{
-        		if ( last_gshare_pred_inst.info.PCs[1] == target)
-        		{gshare_pos1_correct = true;}
-        	}
-        }
+
 }
 
 #ifdef FTQ
