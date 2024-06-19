@@ -20,5 +20,6 @@
 
 //#define PC_TRACE
 #define GSHARE
+#define DEBUG_GSHARE_UTILIZATION
 
 enum class insn_t { non_cti, jump, branch, ret };

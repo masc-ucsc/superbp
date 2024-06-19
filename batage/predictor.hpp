@@ -35,6 +35,7 @@ public:
   void Updatehistory(bool resolveDir, uint64_t branchTarget);
   void TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget);
   uint32_t get_allocs(int table);
+
 };
 
 #endif

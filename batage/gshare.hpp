@@ -18,12 +18,16 @@
 //#define DEBUG_PREDICT
 //#define DEBUG_ALLOC
 //#define DEBUG_UPDATE
+#define DEBUG_UTILIZATION
 
 
 class gshare_entry {
 public :
 #ifdef DEBUG_PC
 uint64_t PC;
+#endif
+#ifdef DEBUG_UTILIZATION
+bool allocated;
 #endif
 uint8_t ctr;
 uint16_t tag;
@@ -38,6 +42,9 @@ gshare_entry ()
 {
 	ctr 		= 0;
 	tag		= 0;
+	#ifdef DEBUG_UTILIZATION
+	allocated = false;
+	#endif
 	// TODO - Update from 2
 	hist_patch.resize(2);  // NUM_TAKEN_BRANCHES
 	PCs.resize(2);  // NUM_TAKEN_BRANCHES
@@ -88,6 +95,12 @@ gshare_prediction prediction;
 //FILE *gshare_log;
 uint32_t decay_ctr;
 
+	#ifdef DEBUG_UTILIZATION
+	uint32_t num_unallocated;
+	uint64_t num_collisions_blocked;
+	uint64_t num_collisions_replaced;
+	#endif
+
 public :
 
 // constructor
@@ -96,6 +109,11 @@ gshare ()
 	table.resize(NUM_GSHARE_ENTRIES);
 	decay_ctr = 0;
 	//start_log();
+	#ifdef DEBUG_UTILIZATION
+	num_unallocated = NUM_GSHARE_ENTRIES;
+	num_collisions_blocked = 0;
+	num_collisions_replaced = 0;
+	#endif
 }
 
 void start_log()
@@ -198,13 +216,20 @@ void allocate (vector <uint64_t>& PCs, vector <uint8_t>& poses, uint16_t update_
 	{return;}
 	
 	uint8_t ctr = table[index].ctr;
+
 	// TODO Check
 	if (ctr > GSHARE_T_HIGHCONF)
 	{
 		#ifdef DEBUG_ALLOC
 		fprintf( gshare_log, "Alloc called for tag = %#x, old_tag = %#x, but ctr = %u is more than GSHARE_T_HIGHCONF = %u \n", tag, old_tag, ctr, GSHARE_T_HIGHCONF);
 		#endif // DEBUG_ALLOC
+		
 		table[index].ctr = ctr - 1;
+		
+	#ifdef DEBUG_UTILIZATION
+		num_collisions_blocked++;
+	#endif
+
 		return;
 	}
 	else
@@ -220,6 +245,18 @@ void allocate (vector <uint64_t>& PCs, vector <uint8_t>& poses, uint16_t update_
 		#ifdef DEBUG_ALLOC
 		fprintf( gshare_log, "Alloc done at index = %u for sent index update_gshare_index = %u, intended for fetch_pc = %#llx, saved branch to %#llx at pos = %u and  branch to %#llx at pos = %u, saving tag = %#x over old_tag = %#x\n", index, update_gshare_index, PCs[0], PCs[1], poses[0],  PCs[2], poses[1], tag, old_tag);
 		#endif // DEBUG_ALLOC
+		
+		#ifdef DEBUG_UTILIZATION
+		if (!table[index].allocated)
+		{
+			num_unallocated--;
+			table[index].allocated =true;
+		}
+		else
+		{
+			num_collisions_replaced++;
+		}
+		#endif
 	}
 }
 
@@ -247,4 +284,15 @@ void update (gshare_prediction& prediction, bool prediction_correct)
 		}
 	}
 }
+
+    #ifdef DEBUG_UTILIZATION
+		void get_gshare_utilization(uint64_t* buffer)
+		{
+			buffer[0] = num_unallocated;
+			buffer[1] = num_collisions_blocked;
+			buffer[2] = num_collisions_replaced;
+			return;
+		}
+	#endif
+	
 };
