@@ -10,6 +10,7 @@
 #include "string.h"
 
 #include "batage.hpp"
+#include "gshare.hpp"
 
 //#define SIMFASTER
 
@@ -296,6 +297,23 @@ int histories::gindex(uint32_t pc, int i, const batage* bp) const {
 fprintf (stderr, "ENTRIES_PER_TABLE = %d, rolled_index = %d \n", ENTRIES_PER_TABLE[i], rolled_index);
 #endif
    return rolled_index;
+}
+
+//#define DEBUG_GSHARE_INDEX
+int histories::gshare_index(uint32_t pc, int i, const batage* bp) const {
+
+	//const auto &ENTRIES_PER_TABLE = bp->ENTRIES_PER_TABLE;
+	
+  ASSERT((i >= 0) && (i < SBP_NUMG));
+  //ASSERT (SBP_LOGGE.size());
+	int j = i >> 2;
+  uint32_t hash = pc ^  (pc << j) ^ (pc >> j) ^ chg[i].fold ^ (chgg[i].fold << (chg[i].clength - chgg[i].clength));
+   int raw_index = hash & ((1 << ((int)log2(NUM_GSHARE_ENTRIES))) - 1);
+     #ifdef DEBUG_GSHARE_INDEX
+fprintf (stderr, "hash = %x and raw_index = %x \n", hash, raw_index);
+#endif
+
+   return raw_index;
 }
 
 //int histories::gtag(uint32_t pc, int i, const batage* bp) const {
@@ -702,10 +720,10 @@ for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_
     		gi[i] = p.gindex(hash_fetch_pc, i, this);
     		
 		//TODO - Try different i for gshare index
-    		if ( (offset_within_packet == 0) && (i == 3) )
+    		/*if ( (offset_within_packet == 0) && (i == 3) )
     		{
     			pred_out.gshare_index = gi[i]; 
-    		}
+    		}*/
 		#ifdef DEBUG
 		std::cerr << "11111" << "\n";
 		//fprintf (stderr, "For predict, gi[%d] = %d \n ", i, gi[i]);
@@ -877,7 +895,8 @@ std::cerr << "33333" << "\n";
    		gshare_tag_saved = true;
    	}
 }
-pred_out.gshare_index = pred_out.gshare_tag;
+//pred_out.gshare_index = pred_out.gshare_tag;
+pred_out.gshare_index = p.gshare_index(hash_fetch_pc, 6, this);
 
   #ifdef DEBUG
 	std::cerr << "66666" << "\n";

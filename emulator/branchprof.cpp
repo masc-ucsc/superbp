@@ -264,24 +264,36 @@ void resolve_gshare(int i, uint64_t target)
 {
 	if (last_gshare_pred_inst.tag_match)
         {
-                if (  i == last_gshare_pred_inst.info.poses[1]) 
+        	if (i == 0)
+        		{gshare_pos1_correct = false;}
+             if (  i == last_gshare_pred_inst.info.poses[1]) 
         	{
-        		gshare_pos1_correct = false;
-			if ( last_gshare_pred_inst.info.PCs[1] == target)
-        		{gshare_pos1_correct = true;}
-        		//gshare_prediction_correct = gshare_pos0_correct && gshare_pos1_correct;
-        		gshare_prediction_correct = gshare_pos0_correct && gshare_pos1_correct;
-        	
-		}
+				if ( last_gshare_pred_inst.info.PCs[1] == target)
+        		{gshare_pos1_correct = true;}     	
+			}
+			gshare_prediction_correct =  gshare_pos1_correct; 
         }
 
-        if (gshare_pred_inst.tag_match)
+        else if (gshare_pred_inst.tag_match)
         {
+        	if (i == 0) 
+        		{gshare_pos0_correct = false;}
         	if (i == gshare_pred_inst.info.poses[0]) 
         	{
-        		gshare_pos0_correct = false;
-			if  ( gshare_pred_inst.info.PCs[0] == target)
-        		{gshare_pos0_correct = true;}
+				if  ( gshare_pred_inst.info.PCs[0] == target)
+        		{
+        			gshare_pos0_correct = true;
+        		}
+        		else 
+        		{
+        			gshare_pos0_correct = false;
+        			gshare_pred_inst.tag_match = false;
+        			if (gshare_pred_inst.hit)
+        			{
+        				gshare_pred_inst.hit = false;
+        				num_gshare_predictions--;
+        			}
+        		}
         	}
         }
 
@@ -358,14 +370,17 @@ static inline void read_ftq_update_predictor() {
 		}
 		else
 		{
-			gshare_poses.push_back( ( i )); // (update_pc - update_fetch_pc) >> 1)
-			gshare_PCs.push_back(update_branchTarget);
+			if (gshare_poses[0] + i + 1 < FETCH_WIDTH)
+			{
+				gshare_poses.push_back( ( i )); // (update_pc - update_fetch_pc) >> 1)
+				gshare_PCs.push_back(update_branchTarget);
 			
-			bp.fast_pred.allocate(gshare_PCs, gshare_poses, update_gshare_index, update_gshare_tag);
-			#ifdef GSHARE_TRACE
-			fprintf (gshare_trace, "fetchPC = %llx allocated at index = %u with tag = %x \n", gshare_PCs[0], update_gshare_index, update_gshare_tag);
-			#endif
-			num_gshare_allocations++;
+				bp.fast_pred.allocate(gshare_PCs, gshare_poses, update_gshare_index, update_gshare_tag);
+				#ifdef GSHARE_TRACE
+				fprintf (gshare_trace, "fetchPC = %llx allocated at index = %u with tag = %x \n", gshare_PCs[0], update_gshare_index, update_gshare_tag);
+				#endif
+				num_gshare_allocations++;
+			}
 			// TODO - do we handle if there are 3 high conf T in 3 consecutive packets 
 			gshare_tracking = false;
 			gshare_PCs.clear();
@@ -440,7 +455,8 @@ static inline void read_ftq_update_predictor() {
         // TODO Check if consecutive tag_matches are handled correctly 
         if (last_gshare_pred_inst.tag_match)
         {
-        	bp.fast_pred.update(last_gshare_pred_inst, gshare_prediction_correct);
+        	//if (gshare_pos0_correct)
+        	{bp.fast_pred.update(last_gshare_pred_inst, gshare_prediction_correct);}
     		gshare_pos1_correct = false;
     		gshare_prediction_correct = false;
         }
@@ -858,23 +874,26 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 	#endif // DEBUG_GSHARE
  	get_gshare_prediction (fetch_pc, gshare_index, gshare_tag);
  	
- 	 if (gshare_pred_inst.tag_match)
-   		{
-   			num_gshare_tag_match++;
-   		}
    	if (gshare_pred_inst.hit)
  	{
  		int pos0 = gshare_pred_inst.info.poses[0];
  		if (!vec_predDir[pos0])
  		{
- 			gshare_pred_inst.hit = false;
+ 			/*gshare_pred_inst.tag_match = false;
+ 			gshare_pred_inst.hit = false;*/
  			gshare_batage_1st_pred_mismatch++;
  		}
-    	if (gshare_pred_inst.hit)
-    	{
-    		num_gshare_predictions++;
-    	}
  	}
+ 		
+ 		 if (gshare_pred_inst.tag_match)
+   		{
+   			num_gshare_tag_match++;
+   			if (gshare_pred_inst.hit)
+    		{
+    			num_gshare_predictions++;
+    		}
+   		}
+   		
  			#ifdef GSHARE_TRACE
 			fprintf (gshare_trace, "fetchPC = %llx predicted from index = %u with tag = %x and hit = %u\n", fetch_pc, gshare_index, gshare_tag, gshare_pred_inst.hit);
 			#endif

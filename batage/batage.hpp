@@ -207,6 +207,7 @@ uint32_t SBP_NUMG;
   histories(const batage * bp);
   void update(uint32_t targetpc, bool taken);
   int gindex(uint32_t pc, int i, const batage* bp) const;
+  int gshare_index(uint32_t pc, int i, const batage* bp) const;
   int gtag(uint32_t pc, int i) const;
 #ifdef BANK_INTERLEAVING
   int phybank(int i) const;
