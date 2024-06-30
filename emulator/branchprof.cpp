@@ -260,6 +260,7 @@ If gshare_tracking is in progress -
 	2. If not a high conf taken - deallocate and clear local gshare_tracking buffer
 */
 
+#ifdef GSHARE
 void resolve_gshare(int i, uint64_t target)
 {
 	if (last_gshare_pred_inst.tag_match)
@@ -296,8 +297,8 @@ void resolve_gshare(int i, uint64_t target)
         		}
         	}
         }
-
 }
+#endif // GSHARE
 
 #ifdef FTQ
 uint32_t update_gshare_index, update_gshare_tag;
@@ -317,7 +318,9 @@ static inline void read_ftq_update_predictor() {
   fprintf (stderr, "\nread_ftq_update_predictor : inst_index_in_fetch = %u, partial_pop = %d\n", inst_index_in_fetch, partial_pop);
   #endif
 
+#ifdef GSHARE
 	highconfT_in_packet = false;
+#endif // GSHARE
 
     for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH); i++) 
     {
@@ -726,10 +729,12 @@ when the packet is over and update for the entire packet needs to be done, gshar
 3. add target to update check
 */
 
+#ifdef GSHARE
 void get_gshare_prediction(uint64_t temp_pc, int index, int tag)
 {
    	gshare_pred_inst = bp.GetFastPrediction(temp_pc, index, tag);
 }
+#endif // GSHARE
 
 void handle_branch(uint64_t pc, uint32_t insn_raw) {
 
@@ -831,8 +836,9 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 
   if (inst_index_in_fetch == 0)      
   {
-  
+  #ifdef GSHARE
   	last_gshare_pred_inst = gshare_pred_inst;
+  	#endif // GSHARE
     	last_fetch_pc = fetch_pc;
 
     	
@@ -866,9 +872,11 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 			}
 		}
     	#endif
+    	
+    #ifdef GSHARE
 	gshare_index = batage_prediction.gshare_index;
 	gshare_tag = batage_prediction.gshare_tag;
-	#ifdef GSHARE
+	
 	#ifdef DEBUG_GSHARE2
 	//printf ("gshare_index = %u and gshare_tag = %x\n", gshare_index, gshare_tag);
 	#endif // DEBUG_GSHARE
