@@ -77,6 +77,8 @@ extern uint64_t instruction_count;    // total # of instructions - including
 uint64_t benchmark_instruction_count; // total # of benchmarked instructions
                                       // only - excluding skip instructions
                                       
+uint64_t num_fetches;
+                                      
 uint64_t fetch_pc, last_fetch_pc;
 
 /*
@@ -161,13 +163,13 @@ void branchprof_exit() {
           "%lu\nbenchmark_instruction_count = %lu\nInstruction Count = "
           "%lu\nCorrect prediciton Count = %lu\nmisprediction count = "
           "%lu\nbranch_mispredict_count=%lu\nmisscontrol_count=%"
-          "lu\nbranch misprediction rate = %lf\nMPKI = %lf\n",
+          "lu\nbranch misprediction rate = %lf\nMPKI = %lf\nAverage Fetch Width w/o gshare = %lf\n",
           branch_count, jump_count, cti_count, benchmark_instruction_count,
           instruction_count, correct_prediction_count, misprediction_count,
           branch_mispredict_count, misscontrol_count,
           (double)(branch_mispredict_count) /(double)(branch_count) * 100,
           (double)(branch_mispredict_count) / (double)(benchmark_instruction_count) *
-              1000);
+              1000, ((double)benchmark_instruction_count/num_fetches) );
 		#ifdef GSHARE
               fprintf (pc_trace, "gshare local rates - \ngshare_num_allocations = %llu\nnum_gshare_tag_match = %llu\ngshare_num_predictions = %llu\ngshare_num_correct_predictions = %llu\ngshare_num_jump_correct_predictions = %llu\ngshare_num_jump_mispredictions = %llu\ngshare_misprediction_rate = %lf%\ngshare_batage_1st_pred_mismatch = %llu\ngshare_batage_2nd_pred_mismatch = %llu\n",num_gshare_allocations, num_gshare_tag_match, num_gshare_predictions, num_gshare_correct_predictions, num_gshare_jump_correct_predictions, num_gshare_jump_mispredictions, ((double)(num_gshare_predictions-num_gshare_correct_predictions)*100/num_gshare_predictions), gshare_batage_1st_pred_mismatch, gshare_batage_2nd_pred_mismatch );
               
@@ -445,6 +447,7 @@ static inline void read_ftq_update_predictor() {
         	if (gshare_prediction_correct)
         	{
         		num_gshare_correct_predictions++;
+        		num_fetches--;
         	}
         	else
         	{
@@ -836,12 +839,12 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 
   if (inst_index_in_fetch == 0)      
   {
+  num_fetches++;
   #ifdef GSHARE
   	last_gshare_pred_inst = gshare_pred_inst;
   	#endif // GSHARE
     	last_fetch_pc = fetch_pc;
-
-    	
+	
   	fetch_pc = pc;
   	uint64_t temp_pc = fetch_pc;
   	set_ftq_index (inst_index_in_fetch);
@@ -855,8 +858,6 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
       std::cerr << "getting predictions" << "\n";
     }
     #endif // DEBUG
-    
-
     
 	//vec_predDir = std::move(bp.GetPrediction(temp_pc));
 	batage_prediction = bp.GetPrediction(fetch_pc);

@@ -9,9 +9,12 @@
 #define NUM_GSHARE_TAGBITS 12
 #define NUM_GSHARE_CTRBITS 3
 #define GSHARE_CTRMAX ((1 << NUM_GSHARE_CTRBITS) -1)
+
+// blocked if counter > HIGH_CONF
 #define GSHARE_T_HIGHCONF 4
 
 //TODO - Confirm these values
+// Hit if >= Threshold
 #define CTR_THRESHOLD 4
 #define CTR_ALLOC_VAL 4
 
