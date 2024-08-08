@@ -882,7 +882,7 @@ std::cerr << "33333" << "\n";
   {
      	//predict[offset_within_entry] = s[offset_within_entry][bp].pred();
    	i_pred = s[offset_within_packet][bp[offset_within_packet]].pred();
-   	i_highconf = (s[offset_within_packet][bp[offset_within_packet]].veryhighconf()) || (s[offset_within_packet][bp[offset_within_packet]].highconf());
+   	i_highconf = (s[offset_within_packet][bp[offset_within_packet]].veryhighconf()) /*|| (s[offset_within_packet][bp[offset_within_packet]].highconf())*/;
    	pred_out.prediction_vector.push_back(i_pred);
    	pred_out.highconf.push_back(i_highconf);   
    	if ( (i_pred) && (i_highconf) && !gshare_tag_saved )

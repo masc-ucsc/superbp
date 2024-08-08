@@ -163,7 +163,7 @@ void branchprof_exit() {
           "%lu\nbenchmark_instruction_count = %lu\nInstruction Count = "
           "%lu\nCorrect prediciton Count = %lu\nmisprediction count = "
           "%lu\nbranch_mispredict_count=%lu\nmisscontrol_count=%"
-          "lu\nbranch misprediction rate = %lf\nMPKI = %lf\nAverage Fetch Width w/o gshare = %lf\n",
+          "lu\nbranch misprediction rate = %lf\nMPKI = %lf\nAverage Fetch Width = %lf\n",
           branch_count, jump_count, cti_count, benchmark_instruction_count,
           instruction_count, correct_prediction_count, misprediction_count,
           branch_mispredict_count, misscontrol_count,
@@ -263,7 +263,7 @@ If gshare_tracking is in progress -
 */
 
 #ifdef GSHARE
-void resolve_gshare(int i, uint64_t target)
+void resolve_gshare(int i, bool update_predDir, bool update_resolveDir, uint64_t target)
 {
 	if (last_gshare_pred_inst.tag_match)
         {
@@ -281,23 +281,38 @@ void resolve_gshare(int i, uint64_t target)
         {
         	if (i == 0) 
         		{gshare_pos0_correct = false;}
-        	if (i == gshare_pred_inst.info.poses[0]) 
+        		
+        	if (update_resolveDir == update_predDir) 
         	{
-				if  ( gshare_pred_inst.info.PCs[0] == target)
+        		if ( update_predDir )
         		{
-        			gshare_pos0_correct = true;
-        		}
-        		else 
-        		{
-        			gshare_pos0_correct = false;
-        			gshare_pred_inst.tag_match = false;
-        			if (gshare_pred_inst.hit)
+        			if ( gshare_pred_inst.info.PCs[0] == target)
         			{
-        				gshare_pred_inst.hit = false;
-        				num_gshare_predictions--;
+        				gshare_pos0_correct = true;
+        			}
+        			else
+        			{
+        				gshare_pos0_correct = false;
+        				gshare_pred_inst.tag_match = false;
+        				if (gshare_pred_inst.hit)
+        				{
+        					gshare_pred_inst.hit = false;
+        					num_gshare_predictions--;
+        				}
         			}
         		}
         	}
+        	else 
+        	{
+        		gshare_pos0_correct = false;
+        		gshare_pred_inst.tag_match = false;
+        		if (gshare_pred_inst.hit)
+        		{
+        			gshare_pred_inst.hit = false;
+        			num_gshare_predictions--;
+        		}
+        	}
+        	
         }
 }
 #endif // GSHARE
@@ -337,9 +352,7 @@ static inline void read_ftq_update_predictor() {
         update_fetch_pc = ftq_data.fetch_pc;
 
 	#ifdef GSHARE
-	
-	
-       	resolve_gshare(i, update_branchTarget);
+       	resolve_gshare(i, update_predDir, update_resolveDir, update_branchTarget);
        	
        	if (last_gshare_pred_inst.hit && (i == last_gshare_pred_inst.info.poses[1]) && (update_insn == insn_t::jump))
        	{
@@ -359,6 +372,7 @@ static inline void read_ftq_update_predictor() {
 	// allocate on a branch or if second is a jump
 	// TODO Check
 	if ( update_resolveDir && update_predDir && (((update_insn == insn_t::branch) && update_highconf) || (update_insn == insn_t::jump)) )
+	//if ( update_resolveDir && update_predDir && (((update_insn == insn_t::branch) && update_highconf) || (update_insn == insn_t::jump)) )
 	{
 		highconfT_in_packet = true;
 		if (!gshare_tracking) // The first must be a branch
@@ -397,9 +411,11 @@ static inline void read_ftq_update_predictor() {
 	
         // Store the read predictor fields into the predictor
         copy_ftq_data_to_predictor(&ftq_data);
-		  #ifdef DEBUG_FTQ
-  fprintf (stderr, "Updating predictor tables for pc = %llx with resolvdir = %d, i = %d \n", update_pc, update_resolveDir, i);
-  #endif
+		
+		#ifdef DEBUG_FTQ
+  		fprintf (stderr, "Updating predictor tables for pc = %llx with resolvdir = %d, i = %d \n", update_pc, update_resolveDir, i);
+  		#endif
+  		
   if ((update_insn != insn_t::jump)  && (update_insn != insn_t::ret) )
   {
 	#ifdef GSHARE
@@ -843,7 +859,7 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
   #ifdef GSHARE
   	last_gshare_pred_inst = gshare_pred_inst;
   	#endif // GSHARE
-    	last_fetch_pc = fetch_pc;
+    last_fetch_pc = fetch_pc;
 	
   	fetch_pc = pc;
   	uint64_t temp_pc = fetch_pc;
