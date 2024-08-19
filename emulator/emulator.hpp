@@ -19,7 +19,8 @@
 #define EN_BB_FB_COUNT
 
 //#define PC_TRACE
+//#define Ideal_2T
 #define GSHARE
 #define DEBUG_GSHARE_UTILIZATION
 
-enum class insn_t { non_cti, jump, branch, ret };
+enum class insn_t { non_cti, jump, branch, call, ret };

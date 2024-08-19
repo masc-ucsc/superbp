@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <vector>
 
-#define NUM_GSHARE_ENTRIES (1 << 12)
+#define NUM_GSHARE_ENTRIES (1 << 10)
 #define NUM_GSHARE_TAGBITS 12
 #define NUM_GSHARE_CTRBITS 3
 #define GSHARE_CTRMAX ((1 << NUM_GSHARE_CTRBITS) -1)
@@ -199,12 +199,7 @@ gshare_prediction& predict (uint64_t PC, uint16_t index, uint16_t tag)
 			{fprintf( gshare_log, "gshare hit index = %u for fetchPC = %#llx, sent tag = %#x, pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] = %#llx \n", index, PC, tag, prediction.info.poses[0], prediction.info.PCs[0], prediction.info.poses[1], prediction.info.PCs[1]);}
 		#endif
 	}
-	/*decay_ctr++;
-	if (decay_ctr == NUM_GSHARE_ENTRIES)
-	{
-		decay();
-		decay_ctr = 0;
-	}*/
+
 	return prediction;
 }
 
@@ -245,6 +240,16 @@ void allocate (vector <uint64_t>& PCs, vector <uint8_t>& poses, uint16_t update_
 			table[index].PCs[i] = PCs[i+1];
 			table[index].poses[i] = poses[i];
 		}
+		
+		
+		decay_ctr++;
+		if (decay_ctr == (NUM_GSHARE_ENTRIES >> 1))
+		{
+			decay();
+			decay_ctr = 0;
+		}
+		
+		
 		#ifdef DEBUG_ALLOC
 		fprintf( gshare_log, "Alloc done at index = %u for sent index update_gshare_index = %u, intended for fetch_pc = %#llx, saved branch to %#llx at pos = %u and  branch to %#llx at pos = %u, saving tag = %#x over old_tag = %#x\n", index, update_gshare_index, PCs[0], PCs[1], poses[0],  PCs[2], poses[1], tag, old_tag);
 		#endif // DEBUG_ALLOC

@@ -1,3 +1,4 @@
+#include "utils.hpp"
 #include "branchprof.hpp"
 #include "dromajo.h"
 #include "emulator.hpp"
@@ -22,13 +23,22 @@ uint64_t branchTarget;
 gshare_prediction gshare_pred_inst, last_gshare_pred_inst;
 bool gshare_pos1_correct, gshare_pos0_correct, gshare_prediction_correct;
 uint8_t highconf_ctr = 0;
-bool gshare_tracking = false, highconfT_in_packet = false;
 vector <uint64_t> gshare_PCs;
 vector <uint8_t> gshare_poses;
 uint64_t num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions, gshare_batage_1st_pred_mismatch, gshare_batage_2nd_pred_mismatch,  num_gshare_jump_correct_predictions, num_gshare_jump_mispredictions, num_gshare_tag_match; 
 	int gshare_index;
 	int gshare_tag;	
 #endif
+
+#if (defined (GSHARE) || defined (Ideal_2T))
+	bool gshare_tracking = false;
+	bool highconfT_in_packet = false;
+#endif // GSHARE || Ideal_2T
+
+#ifdef Ideal_2T
+	uint8_t pos_0;
+#endif // Ideal_2T
+
 
 FILE *pc_trace;
 
@@ -289,6 +299,7 @@ void resolve_gshare(int i, bool update_predDir, bool update_resolveDir, uint64_t
         			if ( gshare_pred_inst.info.PCs[0] == target)
         			{
         				gshare_pos0_correct = true;
+        				//num_fetches--;
         			}
         			else
         			{
@@ -311,8 +322,7 @@ void resolve_gshare(int i, bool update_predDir, bool update_resolveDir, uint64_t
         			gshare_pred_inst.hit = false;
         			num_gshare_predictions--;
         		}
-        	}
-        	
+        	}	
         }
 }
 #endif // GSHARE
@@ -335,9 +345,9 @@ static inline void read_ftq_update_predictor() {
   fprintf (stderr, "\nread_ftq_update_predictor : inst_index_in_fetch = %u, partial_pop = %d\n", inst_index_in_fetch, partial_pop);
   #endif
 
-#ifdef GSHARE
+#if (defined (GSHARE) || defined (Ideal_2T))
 	highconfT_in_packet = false;
-#endif // GSHARE
+#endif // GSHARE 
 
     for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH); i++) 
     {
@@ -351,6 +361,29 @@ static inline void read_ftq_update_predictor() {
         update_branchTarget = ftq_data.branchTarget;
         update_fetch_pc = ftq_data.fetch_pc;
 
+#ifdef Ideal_2T
+if ( ( update_resolveDir && update_predDir ) ||  (update_insn == insn_t::jump) /*||  (update_insn == insn_t::ret)*/)
+{	
+	highconfT_in_packet = true;
+	num_fetches--;
+
+	if (!gshare_tracking && (update_insn == insn_t::branch)) // The first must be a branch
+	{
+		pos_0  = i;
+		gshare_tracking = true;
+	}
+	else
+	{
+		if (pos_0 + i + 1 < FETCH_WIDTH)
+		{
+			//num_fetches--;
+		}
+		gshare_tracking = false;
+		pos_0 = 100;
+	}
+}
+#endif // Ideal_2T
+
 	#ifdef GSHARE
        	resolve_gshare(i, update_predDir, update_resolveDir, update_branchTarget);
        	
@@ -362,8 +395,6 @@ static inline void read_ftq_update_predictor() {
        			{num_gshare_jump_mispredictions++;}
        	}
        	
-       	
-        
         // allocate_gshare
         update_highconf = ftq_data.highconf;
         // TODO Check
@@ -371,13 +402,12 @@ static inline void read_ftq_update_predictor() {
 
 	// allocate on a branch or if second is a jump
 	// TODO Check
-	if ( update_resolveDir && update_predDir && (((update_insn == insn_t::branch) && update_highconf) || (update_insn == insn_t::jump)) )
-	//if ( update_resolveDir && update_predDir && (((update_insn == insn_t::branch) && update_highconf) || (update_insn == insn_t::jump)) )
+	if ( ((update_insn == insn_t::branch) && update_resolveDir && update_predDir && update_highconf) || (update_insn == insn_t::jump) /* || (update_insn == insn_t::ret) */)
 	{
 		highconfT_in_packet = true;
 		if (!gshare_tracking) // The first must be a branch
 		{
-			if (!last_gshare_pred_inst.tag_match && !gshare_pred_inst.tag_match && update_insn == insn_t::branch) // The first must be a branch
+			if (!last_gshare_pred_inst.tag_match && !gshare_pred_inst.tag_match && (update_insn == insn_t::branch)) // The first must be a branch
 			{
 				gshare_PCs.push_back(update_fetch_pc);
 				gshare_poses.push_back( i ); // (update_pc - update_fetch_pc) >> 1
@@ -450,12 +480,20 @@ static inline void read_ftq_update_predictor() {
       }
     }
     
+#ifdef Ideal_2T
+if (!highconfT_in_packet)
+{
+	gshare_tracking = false;
+	pos_0 = 100;
+}
+#endif // Ideal_2T
+    
  	#ifdef GSHARE   
     if (!highconfT_in_packet)
     {
     	gshare_tracking = false;
     	gshare_PCs.clear();
-	gshare_poses.clear();
+	    gshare_poses.clear();
     }
 	    	
     	if (last_gshare_pred_inst.hit)
@@ -800,31 +838,53 @@ fprintf (stderr, "\n");
   print_pc_insn(pc, insn_raw);
 #endif
 
-      if (((insn_raw & 0x7fff) == 0x73)) {
-    // ECall and EBrk
-    insn = insn_t::jump;
-    close_pc_jump(pc, insn_raw);
-  }
-  else if (((insn_raw & 0x70) == 0x60)) {
-    if (((insn_raw & 0xf) == 0x3)) {
-      insn = insn_t::branch;
-      start_pc_branch();
-    } 
-    else if (((insn_raw & 0xf) == 0xf)) {
-      insn = insn_t::jump;
-      close_pc_jump(pc, insn_raw);
-    }
-    else // Return
-    {
-      insn = insn_t::ret;
-      close_pc_jump(pc, insn_raw);
-    }
-  }
-  else // Non CTI
+
+  if (opcode(insn_raw) == 0x73) // ECall, EBreak
   {
-    insn = insn_t::non_cti;
-    close_pc_non_cti();
+    	insn = insn_t::jump;
+    	close_pc_jump(pc, insn_raw);
   }
+  else if (opcode(insn_raw) == 0x63) // Branch
+  	{
+  		insn = insn_t::branch;
+   		start_pc_branch();
+  	}
+  	else if (opcode(insn_raw) == 0x6f) // jal
+  	{
+  				if ( rd(insn_raw) == 0x1) // call
+  				{
+    				insn = insn_t::jump;
+    				close_pc_jump(pc, insn_raw);
+  				}
+  				else // jump
+  				{
+    				insn = insn_t::jump;
+    				close_pc_jump(pc, insn_raw);	
+  				}
+  	}
+  	else if (opcode(insn_raw) == 0x67) // jalr
+  	{
+  				if ( rd(insn_raw) == 0x1) // call
+  				{
+    				insn = insn_t::jump;
+    				close_pc_jump(pc, insn_raw);
+  				}
+  				else if ( (rd(insn_raw) == 0x0) && (rs1(insn_raw) == 0x1) && (imm_itype(insn_raw) == 0x0)) // return
+  				{
+  					insn = insn_t::ret;
+      				close_pc_jump(pc, insn_raw);
+  				}
+  				else // jump
+  				{
+    				insn = insn_t::jump;
+    				close_pc_jump(pc, insn_raw);	
+  				}
+  	}
+  	else // non_cti
+  	{
+  			    insn = insn_t::non_cti;
+    			close_pc_non_cti();
+  	}
 
   // At this point - if present instruction - insn is not a branch - resolveDir
   // contains info about pc, else pc - 1
