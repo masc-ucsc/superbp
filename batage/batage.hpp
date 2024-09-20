@@ -202,6 +202,7 @@ uint32_t SBP_NUMG;
   folded_history *cht;  // compressed length = SBP_TAGBITS
   folded_history *chtt; // compressed length = SBP_TAGBITS-1
   
+void get_predictor_vars(const batage* bp);
   histories() = default;
   
   histories(const batage * bp);
@@ -306,6 +307,7 @@ int random;
 uint32_t get_allocs(int table);
 void read_env_variables();
 void populate_dependent_globals();
+void batage_resize();
   batage();
   tagged_entry &getgb(int i);
   tagged_entry &getgp(int i, uint32_t offset_within_packet);

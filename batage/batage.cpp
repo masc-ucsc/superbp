@@ -215,12 +215,53 @@ void folded_history::update(path_history &ph) {
   fold ^= inbits ^ outbits;
 }
 
+void histories::get_predictor_vars(const batage* bp)
+{
+	SBP_NUMG = bp->SBP_NUMG;
+	SBP_LOGGE = bp->SBP_LOGGE;
+	
+	 int *hist = new int[SBP_NUMG];
+  int prevh = 0;
+  
+   for (int i = 0; i < SBP_NUMG; i++) {
+    // geometric history lengths
+    int h = SBP_MINHIST * pow((double)SBP_MAXHIST / SBP_MINHIST, (double)i / (SBP_NUMG - 1));
+    h = max(prevh + 1, h);
+    hist[SBP_NUMG - 1 - i] = h; // hist[0] = longest history
+    prevh = h;
+  }
+  
+  bh.init(SBP_MAXHIST + 1);
+  ph.init(SBP_MAXPATH + 1);
+  chg = new folded_history[SBP_NUMG];
+  chgg = new folded_history[SBP_NUMG];
+  cht = new folded_history[SBP_NUMG];
+  chtt = new folded_history[SBP_NUMG];
+  
+  for (int i = 0; i < SBP_NUMG; i++) {
+    chg[i].init(hist[i], SBP_LOGGE[i], 1);
+    cht[i].init(hist[i], SBP_TAGBITS, 1);
+    int hashparam = 1;
+    if (SBP_LOGGE[i] == SBP_TAGBITS) {
+      hashparam = (lcm(SBP_LOGGE[i], SBP_LOGGE[i] - 3) > lcm(SBP_LOGGE[i], SBP_LOGGE[i] - 2)) ? 3 : 2;
+    }
+    if (hist[i] <= SBP_MAXPATH) {
+      chgg[i].init(hist[i], SBP_LOGGE[i] - hashparam, SBP_PATHBITS);
+      chtt[i].init(hist[i], SBP_TAGBITS - 1, SBP_PATHBITS);
+    } else {
+      chgg[i].init(hist[i], SBP_LOGGE[i] - hashparam, 1);
+      chtt[i].init(hist[i], SBP_TAGBITS - 1, 1);
+    }
+  }
+  
+}
+
 histories::histories(const batage* bp) : SBP_NUMG{ bp->SBP_NUMG }, SBP_LOGGE{ bp->SBP_LOGGE }
 {
 
 	/*int SBP_NUMG = bp->SBP_NUMG;
 	const auto &SBP_LOGGE = bp->SBP_LOGGE;*/
-
+/*
   int *hist = new int[SBP_NUMG];
   int prevh = 0;
   for (int i = 0; i < SBP_NUMG; i++) {
@@ -250,7 +291,7 @@ histories::histories(const batage* bp) : SBP_NUMG{ bp->SBP_NUMG }, SBP_LOGGE{ bp
       chgg[i].init(hist[i], SBP_LOGGE[i] - hashparam, 1);
       chtt[i].init(hist[i], SBP_TAGBITS - 1, 1);
     }
-  }
+  }*/
 }
 
 //void histories::update(uint32_t targetpc, bool taken, const batage* bp) {
@@ -516,12 +557,9 @@ void batage::populate_dependent_globals()
 	SBP_LOGB2E = (SBP_LOGB2 - LOGFE);
 }
 
-batage::batage() {
-
-	read_env_variables();
-	populate_dependent_globals();
-
-  g = new tagged_entry **[SBP_NUMG];
+void batage::batage_resize()
+{
+g = new tagged_entry **[SBP_NUMG];
   
   for (int i = 0; i < SBP_NUMG; i++) {
 #ifdef DEBUG_BATAGE
@@ -551,6 +589,28 @@ fprintf (stderr, "ENTRIES_PER_TABLE(%d) = %d and INFO_PER_ENTRY(%d) = %d \n", i,
     }
   }
   
+  #ifdef BANK_INTERLEAVING
+  bank = new int[SBP_NUMG];
+  check = new bool[SBP_NUMG];
+#endif
+
+  hit.resize(FETCHWIDTH);
+s.resize(FETCHWIDTH);
+allocs.resize(SBP_NUMG);
+
+tags.resize(FETCHWIDTH);
+#if (defined (POS) || defined (MT_PLUS))
+poses.resize(FETCHWIDTH);
+random = 0x05af5a0f ^ 0x5f0aa05f;
+#endif // POS
+  
+}
+
+batage::batage() {
+
+	//read_env_variables();
+	//populate_dependent_globals();
+
   cat = 0;
   meta = -1;
 #ifdef USE_META
@@ -559,25 +619,11 @@ fprintf (stderr, "ENTRIES_PER_TABLE(%d) = %d and INFO_PER_ENTRY(%d) = %d \n", i,
 #ifdef USE_CD
   cd = 0;
 #endif
-#ifdef BANK_INTERLEAVING
-  bank = new int[SBP_NUMG];
-  check = new bool[SBP_NUMG];
-#endif
 
 #ifdef DEBUG
   predict_pcs = fopen("predict_pcs.txt", "w+");
   update_pcs = fopen("update_pcs.txt", "w+");
 #endif // DEBUG
-
-hit.reserve(FETCHWIDTH);
-s.reserve(FETCHWIDTH);
-allocs.reserve(SBP_NUMG);
-
-tags.reserve(FETCHWIDTH);
-#if (defined (POS) || defined (MT_PLUS))
-poses.reserve(FETCHWIDTH);
-random = 0x05af5a0f ^ 0x5f0aa05f;
-#endif // POS
 
 }
 

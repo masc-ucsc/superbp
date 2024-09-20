@@ -162,6 +162,10 @@ details = fopen("details.txt", "w");
 #ifdef FTQ
   std::cerr << "NUM_FTQ_ENTRIES = " << NUM_FTQ_ENTRIES << "\n\n";
 #endif // FTQ
+	bp.pred.read_env_variables();
+	bp.pred.populate_dependent_globals();
+	bp.pred.batage_resize();
+	bp.hist.get_predictor_vars(&(bp.pred));
   return;
 }
 
