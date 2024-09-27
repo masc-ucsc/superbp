@@ -174,7 +174,7 @@ public:
 // advertised it with the PPM-like predictor (CBP 2004) see also the paper by
 // Schlais and Lipasti at ICCD 2016
 
-class folded_history {
+class SBP_folded_history {
 public:
   uint32_t fold;  // updated in update
   int clength;    // constant after init
@@ -197,10 +197,10 @@ uint32_t SBP_NUMG;
 
   path_history bh;      // global history of branch directions
   path_history ph;      // path history (target address bits)
-  folded_history *chg;  // compressed length = SBP_LOGGE
-  folded_history *chgg; // compressed length = SBP_LOGGE-hashparam
-  folded_history *cht;  // compressed length = SBP_TAGBITS
-  folded_history *chtt; // compressed length = SBP_TAGBITS-1
+  SBP_folded_history *chg;  // compressed length = SBP_LOGGE
+  SBP_folded_history *chgg; // compressed length = SBP_LOGGE-hashparam
+  SBP_folded_history *cht;  // compressed length = SBP_TAGBITS
+  SBP_folded_history *chtt; // compressed length = SBP_TAGBITS-1
   
 void get_predictor_vars(const batage* bp);
   histories() = default;

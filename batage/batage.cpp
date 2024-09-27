@@ -187,7 +187,7 @@ unsigned &path_history::operator[](int n) {
   return h[k];
 }
 
-void folded_history::init(int original_length, int compressed_length,
+void SBP_folded_history::init(int original_length, int compressed_length,
                           int injected_bits) {
   olength = original_length;
   clength = compressed_length;
@@ -199,7 +199,7 @@ void folded_history::init(int original_length, int compressed_length,
   fold = 0; // must be consistent with path_history::init()
 }
 
-uint32_t folded_history::rotateleft(uint32_t x, int m) {
+uint32_t SBP_folded_history::rotateleft(uint32_t x, int m) {
   ASSERT(m < clength);
   ASSERT((x >> clength) == 0);
   uint32_t y = x >> (clength - m);
@@ -207,7 +207,7 @@ uint32_t folded_history::rotateleft(uint32_t x, int m) {
   return x & mask1;
 }
 
-void folded_history::update(path_history &ph) {
+void SBP_folded_history::update(path_history &ph) {
   fold = rotateleft(fold, 1);
   unsigned inbits = ph[0] & mask2;
   unsigned outbits = ph[olength] & mask2;
@@ -233,10 +233,10 @@ void histories::get_predictor_vars(const batage* bp)
   
   bh.init(SBP_MAXHIST + 1);
   ph.init(SBP_MAXPATH + 1);
-  chg = new folded_history[SBP_NUMG];
-  chgg = new folded_history[SBP_NUMG];
-  cht = new folded_history[SBP_NUMG];
-  chtt = new folded_history[SBP_NUMG];
+  chg = new SBP_folded_history[SBP_NUMG];
+  chgg = new SBP_folded_history[SBP_NUMG];
+  cht = new SBP_folded_history[SBP_NUMG];
+  chtt = new SBP_folded_history[SBP_NUMG];
   
   for (int i = 0; i < SBP_NUMG; i++) {
     chg[i].init(hist[i], SBP_LOGGE[i], 1);
@@ -273,10 +273,10 @@ histories::histories(const batage* bp) : SBP_NUMG{ bp->SBP_NUMG }, SBP_LOGGE{ bp
   }
   bh.init(SBP_MAXHIST + 1);
   ph.init(SBP_MAXPATH + 1);
-  chg = new folded_history[SBP_NUMG];
-  chgg = new folded_history[SBP_NUMG];
-  cht = new folded_history[SBP_NUMG];
-  chtt = new folded_history[SBP_NUMG];
+  chg = new SBP_folded_history[SBP_NUMG];
+  chgg = new SBP_folded_history[SBP_NUMG];
+  cht = new SBP_folded_history[SBP_NUMG];
+  chtt = new SBP_folded_history[SBP_NUMG];
   for (int i = 0; i < SBP_NUMG; i++) {
     chg[i].init(hist[i], SBP_LOGGE[i], 1);
     cht[i].init(hist[i], SBP_TAGBITS, 1);
