@@ -13,6 +13,16 @@ PREDICTOR::PREDICTOR(void)  : pred(), hist(&pred){
 #endif
 }
 
+void PREDICTOR::fetchBoundaryBegin(uint64_t PC)
+{
+	pred.fetchBoundaryBegin(PC);
+}
+
+void PREDICTOR::fetchBoundaryEnd()
+{
+	pred.fetchBoundaryEnd();
+}
+
 gshare_prediction& PREDICTOR::GetFastPrediction(uint64_t PC, int index, int tag) 
   {return (fast_pred.predict(PC, index, tag));}
 

@@ -675,6 +675,17 @@ uint32_t offset_within_entry = get_offset_within_entry (offset_within_packet, i)
 #endif
 }
 
+
+void batage::fetchBoundaryBegin(uint64_t PC)
+{
+	return;
+}
+
+void batage::fetchBoundaryEnd()
+{
+	return;
+}
+
 // i is the bank number - not the index within bank
 // Index is taken from gi, must be saved from prediction to update
 tagged_entry &batage::getge(int i, uint32_t offset_within_entry) {

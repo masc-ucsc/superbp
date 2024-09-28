@@ -323,6 +323,9 @@ void batage_resize();
   void check_bank_conflicts();
 #endif
 
+void fetchBoundaryBegin(uint64_t PC);
+void fetchBoundaryEnd();
+
 #ifdef DEBUG
   FILE *predict_pcs, *update_pcs;
 #endif // DEBUG

@@ -28,6 +28,9 @@ public:
 
   PREDICTOR(void);
 
+void fetchBoundaryBegin(uint64_t PC);
+void fetchBoundaryEnd();
+
   gshare_prediction& GetFastPrediction(uint64_t PC, int index, int tag) ;
   prediction& GetPrediction(uint64_t PC) ;
   
