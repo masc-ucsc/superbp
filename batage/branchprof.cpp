@@ -86,7 +86,7 @@ huq_entry huq_data;
 #endif // FTQ
 #endif // SUPERSCALAR
 
-extern uint64_t instruction_count;    // total # of instructions - including skipped and benchmark instructions
+//extern uint64_t instruction_count;    // total # of instructions - including skipped and benchmark instructions
 /*
 uint64_t correct_prediction_count, misprediction_count;
 
@@ -198,12 +198,12 @@ void branchprof::branchprof_exit(PREDICTOR* bp) {
  // pc_trace = fopen(bp_logfile, "w");
   fprintf(pc_trace,
           "branch_count = %lu\njump_count = %lu\ncti_count = "
-          "%lu\nbenchmark_instruction_count = %lu\nInstruction Count = "
-          "%lu\nCorrect prediciton Count = %lu\nmisprediction count = "
+          "%lu\nbenchmark_instruction_count = %lu\n/*Instruction Count = "
+          "%lu\n*/Correct prediciton Count = %lu\nmisprediction count = "
           "%lu\nbranch_mispredict_count=%lu\nmisscontrol_count=%"
           "lu\nbranch misprediction rate = %lf\nMPKI = %lf\nAverage Fetch Width = %lf\n",
           branch_count, jump_count, cti_count, benchmark_instruction_count,
-          instruction_count, correct_prediction_count, misprediction_count,
+          /*instruction_count,*/ correct_prediction_count, misprediction_count,
           branch_mispredict_count, misscontrol_count,
           (double)(branch_mispredict_count) /(double)(branch_count) * 100,
           (double)(branch_mispredict_count) / (double)(benchmark_instruction_count) *
