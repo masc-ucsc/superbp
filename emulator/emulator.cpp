@@ -12,7 +12,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <termios.h>
@@ -20,8 +20,9 @@
 #include <unistd.h>
 
 #ifdef BRANCHPROF
-#include "branchprof.hpp"
+//#include "branchprof.hpp"
 #include "predictor.hpp"
+PREDICTOR bp;
 uint64_t maxinsns = 0;
 uint64_t skip_insns = 0;
 char* bp_logfile = NULL;
@@ -57,7 +58,7 @@ int iterate_core(RISCVMachine *m, int hartid) {
 #ifdef BRANCHPROF
   if (instruction_count >= skip_insns) {
     for (int i = 0; i < m->ncpus; ++i) {
-      handle_branch(pc, insn_raw);
+      bp.handle_insn(pc, insn_raw);
     }
   }
 #endif // BRANCHPROF
@@ -211,14 +212,21 @@ for (int i = 0; i < argc; ++i) {
 
 
 #ifdef BRANCHPROF
-  branchprof_init(bp_logfile);
+  //bp.branchprof_inst.branchprof_init(bp_logfile);
+  fprintf(stderr, "%s\n", "Reading Env variables\n");
+	bp.pred.read_env_variables();
+	bp.pred.populate_dependent_globals();
+	bp.pred.batage_resize();
+	fprintf(stderr, "%s\n", "Finished Resize\n");
+	bp.hist.get_predictor_vars(&(bp.pred));
+  bp.init_branchprof(bp_logfile);
 #endif // BRANCHPROF
 
   RISCVMachine *m = virt_machine_main(newArgc, newArgv);
   if (!m)
     return 1;
     
-    #ifdef BRANCHPROF
+#ifdef BRANCHPROF
   maxinsns = m->common.maxinsns;
   skip_insns = m->common.skip_insns;
 #endif // BRANCHPROF
@@ -253,7 +261,8 @@ for (int i = 0; i < argc; ++i) {
   virt_machine_end(m);
 
 #ifdef BRANCHPROF
-  branchprof_exit();
+  //bp.branchprof_inst.branchprof_exit();
+  bp.exit_branchprof();
 //branchprof_exit(bp_logfile);
 #endif // BRANCHPROF
 
