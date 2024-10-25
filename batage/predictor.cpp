@@ -23,12 +23,12 @@ PREDICTOR::PREDICTOR(void)  : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pr
 
 void PREDICTOR::fetchBoundaryBegin(uint64_t PC)
 {
-	pred.fetchBoundaryBegin(PC);
+	branchprof_inst.fetchBoundaryBegin(PC);
 }
 
 void PREDICTOR::fetchBoundaryEnd()
 {
-	pred.fetchBoundaryEnd();
+	branchprof_inst.fetchBoundaryEnd();
 }
 
 gshare_prediction& PREDICTOR::GetFastPrediction(uint64_t PC, int index, int tag) 

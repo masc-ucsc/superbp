@@ -255,6 +255,16 @@ fclose(details);
   return;
 }
 
+void branchprof::fetchBoundaryBegin(uint64_t PC)
+{
+	return;
+}
+
+void branchprof::fetchBoundaryEnd()
+{
+	return;
+}
+
 //#ifdef FTQ
 void branchprof::copy_ftq_data_to_predictor(PREDICTOR* bp, ftq_entry *ftq_data_ptr) {
   bp->pred.hit = ftq_data_ptr->hit;

@@ -64,4 +64,7 @@ void branchprof_exit(PREDICTOR*);
 #endif // FTQ
 void handle_insn(uint64_t pc, uint32_t insn_raw);
 
+void fetchBoundaryBegin(uint64_t PC);
+void fetchBoundaryEnd();
+
 };
