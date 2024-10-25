@@ -9,10 +9,22 @@
 
 #include <cstdint>
 
-//#include "utils.h"
+#define BRANCHPROF
+#define BATAGE
+#define SUPERSCALAR
+#define FTQ
+#define GSHARE
+
 
 #include "batage.hpp"
 #include "gshare.hpp"
+#include "ftq.hpp"
+#include "huq.hpp"
+#include "branchprof.hpp"
+#include "utils.hpp"
+
+//class ftq;
+//class huq;
 
 class PREDICTOR {
 
@@ -25,7 +37,10 @@ public:
   batage pred;
   gshare fast_pred;
   histories hist;
-
+  ftq ftq_inst;
+  huq huq_inst;
+  branchprof branchprof_inst;
+  
   PREDICTOR(void);
 
 void fetchBoundaryBegin(uint64_t PC);
@@ -38,6 +53,11 @@ void fetchBoundaryEnd();
   void Updatehistory(bool resolveDir, uint64_t branchTarget);
   void TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget);
   uint32_t get_allocs(int table);
+  
+ void handle_insn(uint64_t pc, uint32_t insn_raw);
+ 
+ void init_branchprof(char* logfile);
+ void exit_branchprof();
 
 };
 

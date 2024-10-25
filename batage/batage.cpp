@@ -465,9 +465,11 @@ void batage::read_env_variables()
 	
 	temp = getenv("SBP_NUMG");
 	SBP_NUMG = atoi(temp);
+	fprintf(stderr, "SBP_NUMG = %d\n", SBP_NUMG);
 	
 	temp = getenv("LOG2FETCHWIDTH");
 	LOG2FETCHWIDTH = atoi(temp);
+	fprintf(stderr, "LOG2FETCHWIDTH = %d\n", LOG2FETCHWIDTH);
 	
 	temp = getenv("NUM_TAKEN_BRANCHES");
 	NUM_TAKEN_BRANCHES = atoi(temp);
@@ -531,6 +533,8 @@ void batage::read_env_variables()
 void batage::populate_dependent_globals()
 {
 	FETCHWIDTH = (1 << LOG2FETCHWIDTH);
+	fprintf(stderr, "LOG2FETCHWIDTH = %d\n", LOG2FETCHWIDTH);
+	fprintf(stderr, "BATAGE:FETCHWIDTH = %d\n", FETCHWIDTH);
 	
 	SBP_LOGE.resize(SBP_NUMG);
 	SBP_LOGG.resize(SBP_NUMG);
@@ -610,6 +614,7 @@ batage::batage() {
 
 	//read_env_variables();
 	//populate_dependent_globals();
+	fprintf(stderr, "%s\n", "BATAGE Constructed\n");
 
   cat = 0;
   meta = -1;

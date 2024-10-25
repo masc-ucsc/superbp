@@ -3,14 +3,22 @@
 
 #include "batage.hpp"
 #include "predictor.hpp"
+#include "ftq.hpp"
+#include "huq.hpp"
+#include "branchprof.hpp"
+#include "gshare.hpp"
 
 #define VERBOSE
 
-PREDICTOR::PREDICTOR(void)  : pred(), hist(&pred){
+PREDICTOR::PREDICTOR(void)  : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pred), branchprof_inst(&ftq_inst, &huq_inst, &pred, this), fast_pred() {
 #ifdef VERBOSE
   hist.printconfig();
   fmt::print("total bits = {}\n", pred.size() + hist.size());
 #endif
+
+//ftq_inst = new ftq(&pred);
+//huq_inst = new huq(&pred);
+
 }
 
 void PREDICTOR::fetchBoundaryBegin(uint64_t PC)
@@ -49,4 +57,18 @@ void PREDICTOR::TrackOtherInst(uint64_t PC, bool branchDir,
 uint32_t PREDICTOR::get_allocs(int table)
 {
 	return (pred.get_allocs(table));
+}
+
+ void PREDICTOR::init_branchprof(char* logfile)
+ {
+ 	branchprof_inst.branchprof_init(logfile);
+ }
+ void PREDICTOR::exit_branchprof()
+ {
+ 	branchprof_inst.branchprof_exit(this);
+ }
+
+ void PREDICTOR::handle_insn(uint64_t pc, uint32_t insn_raw)
+{
+	branchprof_inst.handle_insn(pc, insn_raw);
 }
