@@ -22,6 +22,10 @@ uint64_t temp;
 bool predDir, last_predDir, resolveDir, last_resolveDir;
 uint64_t branchTarget;
 */
+
+uint8_t partial_pop;
+uint32_t update_gshare_index, update_gshare_tag;
+
 #ifdef GSHARE
 // gshare allocate
 gshare_prediction gshare_pred_inst, last_gshare_pred_inst;
@@ -255,127 +259,22 @@ fclose(details);
   return;
 }
 
-void branchprof::fetchBoundaryBegin(uint64_t PC)
+void branchprof::fetchBoundaryBegin(uint64_t pc)
 {
-	return;
+	num_fetches++;
+  	#ifdef GSHARE
+  	last_gshare_pred_inst = gshare_pred_inst;
+  	#endif // GSHARE
+    last_fetch_pc = fetch_pc;
+	
+  	fetch_pc = pc;
+  	bp->ftq_inst.set_ftq_index (inst_index_in_fetch);
+  	return;
 }
 
 void branchprof::fetchBoundaryEnd()
 {
-	return;
-}
-
-//#ifdef FTQ
-void branchprof::copy_ftq_data_to_predictor(PREDICTOR* bp, ftq_entry *ftq_data_ptr) {
-  bp->pred.hit = ftq_data_ptr->hit;
-  bp->pred.tags = ftq_data_ptr->tags;
-  bp->pred.s = ftq_data_ptr->s;
-  bp->pred.poses = ftq_data_ptr->poses;
-  bp->pred.meta = ftq_data_ptr->meta;
-  bp->pred.bp = ftq_data_ptr->bp;
-  bp->pred.bi = ftq_data_ptr->bi;
-  bp->pred.bi2 = ftq_data_ptr->bi2;
-  bp->pred.b_bi = ftq_data_ptr->b_bi;
-  bp->pred.b2_bi2 = ftq_data_ptr->b2_bi2;
-  memcpy(bp->pred.gi, &((ftq_data_ptr->gi)[0]), sizeof(int) * bp->pred.SBP_NUMG);
-}
-//#endif // FTQ
-
-void branchprof::update_counters_pc_minus_1_branch() {
-  // branch is resolved in next CC, so match last_resolveDir with last_predDir
-  if (last_predDir == last_resolveDir) {
-    last_misprediction = false;
-    correct_prediction_count++;
-    #ifdef DEBUG
-  	fprintf (stderr, "Branch correctly predicted \n");
-  	#endif
-  } else {
-    last_misprediction = true;
-    misprediction_count++;     // Both mispredicted T and NT
-    branch_mispredict_count++; // Both mispredicted T and NT
-    #ifdef DEBUG
-  	fprintf (stderr, "Branch Mispredicted \n");
-  	#endif
-  }
-}
-
-/*
-gshare allocation -
-if no gshare_tracking is in progress - start gshare_tracking - push to PCs[0]
-If gshare_tracking is in progress - 
-	1. if found a highconf taken branch - 
-	push to gshare PCs and poses
-	if the ctr reaches desired value - allocate on gshare and then clear the local buffer
-	if the ctr is not at desired value - do nothing
-	2. If not a high conf taken - deallocate and clear local gshare_tracking buffer
-*/
-
-#ifdef GSHARE
-void branchprof::resolve_gshare(int i, bool update_predDir, bool update_resolveDir, uint64_t target)
-{
-	if (last_gshare_pred_inst.tag_match)
-        {
-        	if (i == 0)
-        		{gshare_pos1_correct = false;}
-             if (  i == last_gshare_pred_inst.info.poses[1]) 
-        	{
-				if ( last_gshare_pred_inst.info.PCs[1] == target)
-        		{gshare_pos1_correct = true;}     	
-			}
-			gshare_prediction_correct =  gshare_pos1_correct; 
-        }
-
-        else if (gshare_pred_inst.tag_match)
-        {
-        	if (i == 0) 
-        		{gshare_pos0_correct = false;}
-        		
-        	if (update_resolveDir == update_predDir) 
-        	{
-        		if ( update_predDir )
-        		{
-        			if ( gshare_pred_inst.info.PCs[0] == target)
-        			{
-        				gshare_pos0_correct = true;
-        				//num_fetches--;
-        			}
-        			else
-        			{
-        				gshare_pos0_correct = false;
-        				gshare_pred_inst.tag_match = false;
-        				if (gshare_pred_inst.hit)
-        				{
-        					gshare_pred_inst.hit = false;
-        					num_gshare_predictions--;
-        				}
-        			}
-        		}
-        	}
-        	else 
-        	{
-        		gshare_pos0_correct = false;
-        		gshare_pred_inst.tag_match = false;
-        		if (gshare_pred_inst.hit)
-        		{
-        			gshare_pred_inst.hit = false;
-        			num_gshare_predictions--;
-        		}
-        	}	
-        }
-}
-#endif // GSHARE
-
-#ifdef FTQ
-uint32_t update_gshare_index, update_gshare_tag;
-
- void branchprof::read_ftq_update_predictor() {
-
-  uint8_t partial_pop = (last_misprediction || last_resolveDir);
-
-	// For multiple taken predictions, changed from FETCH_WIDTH to INFO_PER_ENTRY 
-  if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) {
-  
-  uint64_t update_pc, update_fetch_pc, update_branchTarget;
+	uint64_t update_pc, update_fetch_pc, update_branchTarget;
   insn_t update_insn;
   bool update_predDir, update_resolveDir;
   bool update_highconf;
@@ -595,6 +494,117 @@ if (!highconfT_in_packet)
                 << inst_index_in_fetch << "\n";
     }
 #endif // DEBUG_FTQ
+return;
+}
+
+//#ifdef FTQ
+void branchprof::copy_ftq_data_to_predictor(PREDICTOR* bp, ftq_entry *ftq_data_ptr) {
+  bp->pred.hit = ftq_data_ptr->hit;
+  bp->pred.tags = ftq_data_ptr->tags;
+  bp->pred.s = ftq_data_ptr->s;
+  bp->pred.poses = ftq_data_ptr->poses;
+  bp->pred.meta = ftq_data_ptr->meta;
+  bp->pred.bp = ftq_data_ptr->bp;
+  bp->pred.bi = ftq_data_ptr->bi;
+  bp->pred.bi2 = ftq_data_ptr->bi2;
+  bp->pred.b_bi = ftq_data_ptr->b_bi;
+  bp->pred.b2_bi2 = ftq_data_ptr->b2_bi2;
+  memcpy(bp->pred.gi, &((ftq_data_ptr->gi)[0]), sizeof(int) * bp->pred.SBP_NUMG);
+}
+//#endif // FTQ
+
+void branchprof::update_counters_pc_minus_1_branch() {
+  // branch is resolved in next CC, so match last_resolveDir with last_predDir
+  if (last_predDir == last_resolveDir) {
+    last_misprediction = false;
+    correct_prediction_count++;
+    #ifdef DEBUG
+  	fprintf (stderr, "Branch correctly predicted \n");
+  	#endif
+  } else {
+    last_misprediction = true;
+    misprediction_count++;     // Both mispredicted T and NT
+    branch_mispredict_count++; // Both mispredicted T and NT
+    #ifdef DEBUG
+  	fprintf (stderr, "Branch Mispredicted \n");
+  	#endif
+  }
+}
+
+/*
+gshare allocation -
+if no gshare_tracking is in progress - start gshare_tracking - push to PCs[0]
+If gshare_tracking is in progress - 
+	1. if found a highconf taken branch - 
+	push to gshare PCs and poses
+	if the ctr reaches desired value - allocate on gshare and then clear the local buffer
+	if the ctr is not at desired value - do nothing
+	2. If not a high conf taken - deallocate and clear local gshare_tracking buffer
+*/
+
+#ifdef GSHARE
+void branchprof::resolve_gshare(int i, bool update_predDir, bool update_resolveDir, uint64_t target)
+{
+	if (last_gshare_pred_inst.tag_match)
+        {
+        	if (i == 0)
+        		{gshare_pos1_correct = false;}
+             if (  i == last_gshare_pred_inst.info.poses[1]) 
+        	{
+				if ( last_gshare_pred_inst.info.PCs[1] == target)
+        		{gshare_pos1_correct = true;}     	
+			}
+			gshare_prediction_correct =  gshare_pos1_correct; 
+        }
+
+        else if (gshare_pred_inst.tag_match)
+        {
+        	if (i == 0) 
+        		{gshare_pos0_correct = false;}
+        		
+        	if (update_resolveDir == update_predDir) 
+        	{
+        		if ( update_predDir )
+        		{
+        			if ( gshare_pred_inst.info.PCs[0] == target)
+        			{
+        				gshare_pos0_correct = true;
+        				//num_fetches--;
+        			}
+        			else
+        			{
+        				gshare_pos0_correct = false;
+        				gshare_pred_inst.tag_match = false;
+        				if (gshare_pred_inst.hit)
+        				{
+        					gshare_pred_inst.hit = false;
+        					num_gshare_predictions--;
+        				}
+        			}
+        		}
+        	}
+        	else 
+        	{
+        		gshare_pos0_correct = false;
+        		gshare_pred_inst.tag_match = false;
+        		if (gshare_pred_inst.hit)
+        		{
+        			gshare_pred_inst.hit = false;
+        			num_gshare_predictions--;
+        		}
+        	}	
+        }
+}
+#endif // GSHARE
+
+#ifdef FTQ
+ void branchprof::read_ftq_update_predictor() {
+
+  partial_pop = (last_misprediction || last_resolveDir);
+
+	// For multiple taken predictions, changed from FETCH_WIDTH to INFO_PER_ENTRY 
+  if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) {
+  fetchBoundaryEnd();  
   }
 }
 #endif // FTQ
@@ -955,15 +965,9 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 
   if (inst_index_in_fetch == 0)      
   {
-  num_fetches++;
-  #ifdef GSHARE
-  	last_gshare_pred_inst = gshare_pred_inst;
-  	#endif // GSHARE
-    last_fetch_pc = fetch_pc;
-	
-  	fetch_pc = pc;
+  	fetchBoundaryBegin(pc);
+  	
   	uint64_t temp_pc = fetch_pc;
-  	bp->ftq_inst.set_ftq_index (inst_index_in_fetch);
   	
   	// temp_predDir = bp->GetPrediction(temp_pc);
   	std::vector<bool> vec_predDir(FETCH_WIDTH, false);
