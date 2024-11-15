@@ -1124,7 +1124,7 @@ else
   }
 }
 
-void handle_insn_t(uint64_t pc, insn_t insn_type)
+void handle_insn_t(uint64_t pc, uint8_t insn_type)
 {
 	// TBDone
 	return;

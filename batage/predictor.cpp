@@ -36,7 +36,7 @@ void PREDICTOR::fetchBoundaryEnd()
 	branchprof_inst.handle_insn(pc, insn_raw);
 }
 
-void PREDICTOR::handle_insn_t(uint64_t pc, insn_t insn_type)
+void PREDICTOR::handle_insn_t(uint64_t pc, uint8_t insn_type)
 {
 	branchprof_inst.handle_insn_t(pc, insn_type);
 }
