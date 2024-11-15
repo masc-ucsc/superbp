@@ -63,6 +63,7 @@ void branchprof_exit(PREDICTOR*);
 //static inline void copy_ftq_data_to_predictor(ftq_entry *ftq_data_ptr);
 #endif // FTQ
 void handle_insn(uint64_t pc, uint32_t insn_raw);
+void handle_insn_t(uint64_t pc, insn_t insn_type);
 
 void fetchBoundaryBegin(uint64_t PC);
 void fetchBoundaryEnd();

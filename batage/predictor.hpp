@@ -45,6 +45,8 @@ public:
 
 void fetchBoundaryBegin(uint64_t PC);
 void fetchBoundaryEnd();
+void handle_insn(uint64_t pc, uint32_t insn_raw);
+void handle_insn_t(uint64_t pc, insn_t insn_type);
 
   gshare_prediction& GetFastPrediction(uint64_t PC, int index, int tag) ;
   prediction& GetPrediction(uint64_t PC) ;
@@ -53,8 +55,6 @@ void fetchBoundaryEnd();
   void Updatehistory(bool resolveDir, uint64_t branchTarget);
   void TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget);
   uint32_t get_allocs(int table);
-  
- void handle_insn(uint64_t pc, uint32_t insn_raw);
  
  void init_branchprof(char* logfile);
  void exit_branchprof();
