@@ -269,6 +269,106 @@ void branchprof::fetchBoundaryBegin(uint64_t pc)
 	
   	fetch_pc = pc;
   	bp->ftq_inst.set_ftq_index (inst_index_in_fetch);
+  	
+  	  	uint64_t temp_pc = fetch_pc;
+  	
+  	// temp_predDir = bp->GetPrediction(temp_pc);
+  	std::vector<bool> vec_predDir(FETCH_WIDTH, false);
+  	std::vector<bool> vec_highconf(FETCH_WIDTH, false);
+  	
+  	#ifdef DEBUG
+    {
+      std::cerr << "getting predictions" << "\n";
+    }
+    #endif // DEBUG
+    
+	//vec_predDir = std::move(bp->GetPrediction(temp_pc));
+	batage_prediction = bp->GetPrediction(fetch_pc);
+	vec_predDir =  batage_prediction.prediction_vector;
+	vec_highconf = batage_prediction.highconf;	
+
+    	#ifdef DEBUG_DETAIL
+    	for (int i =0; i < FETCH_WIDTH; i++)
+    	{
+			if ( vec_predDir[i] && vec_highconf[i]) 
+			{
+				//fprintf (details, "fetchpc = %llx has a high conf branch at pos = %u \n", fetch_pc, i);
+			}
+		}
+    	#endif
+    	
+    #ifdef GSHARE
+	gshare_index = batage_prediction.gshare_index;
+	gshare_tag = batage_prediction.gshare_tag;
+	
+	#ifdef DEBUG_GSHARE2
+	//printf ("gshare_index = %u and gshare_tag = %x\n", gshare_index, gshare_tag);
+	#endif // DEBUG_GSHARE
+ 	get_gshare_prediction (fetch_pc, gshare_index, gshare_tag);
+ 	
+   	if (gshare_pred_inst.hit)
+ 	{
+ 		int pos0 = gshare_pred_inst.info.poses[0];
+ 		if (!vec_predDir[pos0])
+ 		{
+ 			/*gshare_pred_inst.tag_match = false;
+ 			gshare_pred_inst.hit = false;*/
+ 			gshare_batage_1st_pred_mismatch++;
+ 		}
+ 	}
+ 		
+ 		 if (gshare_pred_inst.tag_match)
+   		{
+   			num_gshare_tag_match++;
+   			if (gshare_pred_inst.hit)
+    		{
+    			num_gshare_predictions++;
+    		}
+   		}
+   		
+ 			#ifdef GSHARE_TRACE
+			fprintf (gshare_trace, "fetchPC = %llx predicted from index = %u with tag = %x and hit = %u\n", fetch_pc, gshare_index, gshare_tag, gshare_pred_inst.hit);
+			#endif
+	#endif  // GSHARE
+
+	#ifdef DEBUG
+    	{
+      		std::cerr << "got predictions" << "\n";
+    	}
+	#endif // DEBUG
+	
+	//fprintf(stderr, "FETCH_WIDTH = %d\n", FETCH_WIDTH);
+  	for (int i = 0; i < FETCH_WIDTH; i++)
+  	{
+  		/*
+  		Not required with dromajo, will be needed with desesc
+  		if (i == 0)
+  		{
+  			if ( gftq.is_ftq_full() == false )
+  			{
+  				gftq.allocate_ftq_entry(gshare_pred_inst);
+  			}
+  		}
+  		*/
+  		// Allocate
+  		//fprintf(stderr, "%s\n", "Checking FTQ full\n");
+  		if (bp->ftq_inst.is_ftq_full() == false) {
+  			// Always allocate with default info - i.e. a non_cti 
+  			// At this point if 1st instruction for which correct info is avail is non-cti it is already updated
+  			// If it is cti - then branchtarget is avail in next CC and hence should only be updated condirionally then
+  			 //fprintf(stderr, "%s\n", "Requesting FTQ entry allocation\n");
+    		bp->ftq_inst.allocate_ftq_entry(vec_predDir[i], vec_highconf[i], false, temp_pc, insn_t::non_cti, temp_pc+2, fetch_pc);
+    	} else {
+      fprintf(stderr, "%s\n", "FTQ full");
+    	}
+  		// Repeat for next sequential instruction
+  		temp_pc+=2;
+  	}
+#ifdef DEBUG
+    {
+      std::cerr << "FTQ allocarions done" << "\n";
+    }
+#endif // DEBUG  
   	return;
 }
 
@@ -599,18 +699,15 @@ void branchprof::resolve_gshare(int i, bool update_predDir, bool update_resolveD
 
 #ifdef FTQ
  void branchprof::read_ftq_update_predictor() {
-
   partial_pop = (last_misprediction || last_resolveDir);
-
 	// For multiple taken predictions, changed from FETCH_WIDTH to INFO_PER_ENTRY 
-  if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) {
+  if ((inst_index_in_fetch == FETCH_WIDTH) || partial_pop) 																																																																																									{
   fetchBoundaryEnd();  
   }
 }
 #endif // FTQ
 
 void branchprof::resolve_pc_minus_1_branch(uint64_t pc) {
-
   if (pc - last_pc == 4) {
     last_resolveDir = false;
 #ifdef DEBUG
@@ -636,7 +733,6 @@ fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
     fprintf(stderr, "%llx is %32s\n", last_pc, "Taken Branch");
 #endif
   }
-
 
   //fprintf(stderr, "target pc=%llx last_pc (branch pc) =%llx diff=%d pred:%d resolv:%d\n", pc, last_pc, pc - last_pc, last_predDir, last_resolveDir);
           
@@ -965,107 +1061,7 @@ bp + Check counters "s", bi, bi2, gi, b_bi, b2_bi2
 
   if (inst_index_in_fetch == 0)      
   {
-  	fetchBoundaryBegin(pc);
-  	
-  	uint64_t temp_pc = fetch_pc;
-  	
-  	// temp_predDir = bp->GetPrediction(temp_pc);
-  	std::vector<bool> vec_predDir(FETCH_WIDTH, false);
-  	std::vector<bool> vec_highconf(FETCH_WIDTH, false);
-  	
-  	#ifdef DEBUG
-    {
-      std::cerr << "getting predictions" << "\n";
-    }
-    #endif // DEBUG
-    
-	//vec_predDir = std::move(bp->GetPrediction(temp_pc));
-	batage_prediction = bp->GetPrediction(fetch_pc);
-	vec_predDir =  batage_prediction.prediction_vector;
-	vec_highconf = batage_prediction.highconf;	
-
-    	#ifdef DEBUG_DETAIL
-    	for (int i =0; i < FETCH_WIDTH; i++)
-    	{
-			if ( vec_predDir[i] && vec_highconf[i]) 
-			{
-				//fprintf (details, "fetchpc = %llx has a high conf branch at pos = %u \n", fetch_pc, i);
-			}
-		}
-    	#endif
-    	
-    #ifdef GSHARE
-	gshare_index = batage_prediction.gshare_index;
-	gshare_tag = batage_prediction.gshare_tag;
-	
-	#ifdef DEBUG_GSHARE2
-	//printf ("gshare_index = %u and gshare_tag = %x\n", gshare_index, gshare_tag);
-	#endif // DEBUG_GSHARE
- 	get_gshare_prediction (fetch_pc, gshare_index, gshare_tag);
- 	
-   	if (gshare_pred_inst.hit)
- 	{
- 		int pos0 = gshare_pred_inst.info.poses[0];
- 		if (!vec_predDir[pos0])
- 		{
- 			/*gshare_pred_inst.tag_match = false;
- 			gshare_pred_inst.hit = false;*/
- 			gshare_batage_1st_pred_mismatch++;
- 		}
- 	}
- 		
- 		 if (gshare_pred_inst.tag_match)
-   		{
-   			num_gshare_tag_match++;
-   			if (gshare_pred_inst.hit)
-    		{
-    			num_gshare_predictions++;
-    		}
-   		}
-   		
- 			#ifdef GSHARE_TRACE
-			fprintf (gshare_trace, "fetchPC = %llx predicted from index = %u with tag = %x and hit = %u\n", fetch_pc, gshare_index, gshare_tag, gshare_pred_inst.hit);
-			#endif
-	#endif  // GSHARE
-
-	#ifdef DEBUG
-    	{
-      		std::cerr << "got predictions" << "\n";
-    	}
-	#endif // DEBUG
-	
-	//fprintf(stderr, "FETCH_WIDTH = %d\n", FETCH_WIDTH);
-  	for (int i = 0; i < FETCH_WIDTH; i++)
-  	{
-  		/*
-  		Not required with dromajo, will be needed with desesc
-  		if (i == 0)
-  		{
-  			if ( gftq.is_ftq_full() == false )
-  			{
-  				gftq.allocate_ftq_entry(gshare_pred_inst);
-  			}
-  		}
-  		*/
-  		// Allocate
-  		//fprintf(stderr, "%s\n", "Checking FTQ full\n");
-  		if (bp->ftq_inst.is_ftq_full() == false) {
-  			// Always allocate with default info - i.e. a non_cti 
-  			// At this point if 1st instruction for which correct info is avail is non-cti it is already updated
-  			// If it is cti - then branchtarget is avail in next CC and hence should only be updated condirionally then
-  			 //fprintf(stderr, "%s\n", "Requesting FTQ entry allocation\n");
-    		bp->ftq_inst.allocate_ftq_entry(vec_predDir[i], vec_highconf[i], false, temp_pc, insn_t::non_cti, temp_pc+2, fetch_pc);
-    	} else {
-      fprintf(stderr, "%s\n", "FTQ full");
-    	}
-  		// Repeat for next sequential instruction
-  		temp_pc+=2;
-  	}
-#ifdef DEBUG
-    {
-      std::cerr << "FTQ allocarions done" << "\n";
-    }
-#endif // DEBUG  	
+  	fetchBoundaryBegin(pc);	
   }
   	
   	predDir = false;
