@@ -1124,8 +1124,37 @@ else
   }
 }
 
-void handle_insn_t(uint64_t pc, uint8_t insn_type)
+void branchprof:: handle_insn_t(uint64_t pc, uint8_t insn_type)
 {
-	// TBDone
+	switch (insn_type)
+	{
+		case 0: insn = insn_t::non_cti;
+					break;
+		case 1 : insn = insn_t::jump;
+					break;
+		case 2 : insn = insn_t::branch;
+					break;	
+		case 3 : insn = insn_t::call;
+					break;
+		case 4 : insn = insn_t::ret;
+					break;
+		default : printf ("Wrong insn_t \n");
+					break;
+	}
+	
+	bb_over = 0, fb_over = 0;
+  	misprediction = false;
+  	
+  	// get resolved info
+  	bp->ftq_inst.ftq_update_resolvedinfo (last_inst_index_in_fetch, last_pc, last_insn, last_resolveDir, branchTarget); 
+ #ifdef SUPERSCALAR
+#ifdef FTQ
+    read_ftq_update_predictor();
+#endif // FTQ
+#else  // #ifndef SUPERSCALAR
+    bp->UpdatePredictor(last_pc, last_resolveDir, last_predDir, branchTarget);
+#endif // SUPERSCALAR
+
+ 	
 	return;
 }
