@@ -51,6 +51,7 @@ void close_pc_non_cti();
 void start_pc_branch();
 void resolve_pc_minus_1_branch(uint64_t pc);
 void close_pc_jump(uint64_t pc, uint32_t insn_raw);
+void close_pc_jump_t(uint64_t pc);
 void close_pc_minus_1_branch(uint64_t pc);
 void read_ftq_update_predictor();
 void copy_ftq_data_to_predictor(PREDICTOR* bp, ftq_entry *ftq_data_ptr);

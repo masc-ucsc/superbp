@@ -748,6 +748,17 @@ void branchprof::close_pc_minus_1_branch(uint64_t pc) {
   return;
 }
 
+void branchprof::close_pc_jump_t(uint64_t pc) {
+  jump_count++;
+  cti_count++;
+  resolveDir = true;
+
+#ifdef EN_BB_FB_COUNT
+  bb_over = 1;
+  fb_over = 1;
+#endif // EN_BB_FB_COUNT
+}
+
 void branchprof::close_pc_jump(uint64_t pc, uint32_t insn_raw) {
   jump_count++;
   cti_count++;
@@ -1126,35 +1137,123 @@ else
 
 void branchprof:: handle_insn_t(uint64_t pc, uint8_t insn_type)
 {
+	branchTarget = pc;
+  	bb_over = 0, fb_over = 0;
+  	misprediction = false;
+
+  // for (int i = 0; i < m->ncpus; ++i)
+  if (i0_done == true) {
+    // If previous instruction was a branch. resolve that first
+    if (last_insn == insn_t::branch) {
+      resolve_pc_minus_1_branch(pc);
+    }
+
+	// Update ftq for all insns, even if last_insn == non_cti
+	//if (last_insn != insn_t::non_cti)
+	{
+		bp->ftq_inst.ftq_update_resolvedinfo (last_inst_index_in_fetch, last_pc, last_insn, last_resolveDir, branchTarget); 
+	}
+  }
+
+#ifdef PC_TRACE
+fprintf (stderr, "\n");
+  print_pc_insn(pc, insn_raw);
+#endif
+
 	switch (insn_type)
 	{
 		case 0: insn = insn_t::non_cti;
+					close_pc_non_cti();
 					break;
 		case 1 : insn = insn_t::jump;
+					close_pc_jump_t(pc);
 					break;
 		case 2 : insn = insn_t::branch;
+					start_pc_branch();
 					break;	
 		case 3 : insn = insn_t::call;
+					close_pc_jump_t(pc);
 					break;
 		case 4 : insn = insn_t::ret;
+					close_pc_jump_t(pc);
 					break;
 		default : printf ("Wrong insn_t \n");
 					break;
 	}
 	
-	bb_over = 0, fb_over = 0;
-  	misprediction = false;
-  	
-  	// get resolved info
-  	bp->ftq_inst.ftq_update_resolvedinfo (last_inst_index_in_fetch, last_pc, last_insn, last_resolveDir, branchTarget); 
- #ifdef SUPERSCALAR
-#ifdef FTQ
-    read_ftq_update_predictor();
-#endif // FTQ
-#else  // #ifndef SUPERSCALAR
-    bp->UpdatePredictor(last_pc, last_resolveDir, last_predDir, branchTarget);
-#endif // SUPERSCALAR
+	#ifdef EN_BB_FB_COUNT
+  update_bb_fb();
+#endif // EN_BB_FB_COUNT
 
+ #ifdef T_TRACE
+ if ( (PC1_branch == true) && (insn == insn_t::jump) ) 
+ {
+ 	PC2 = pc;
+	PC2_branch = false;
+	fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
+ 	i_count = 0;
+ 	PC1 = PC2;
+ 	PC1_branch = PC2_branch;
+}
+#endif
  	
+ 	predDir = false;
+#ifdef GSHARE 	
+   	/*if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
+  	{
+  		if (!get_predDir_from_ftq (inst_index_in_fetch))
+  		{
+  			gshare_batage_1st_pred_mismatch++;
+  		}
+  	}*/
+ 
+  if ( /*(gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) ||*/ (  last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1])) )
+  {
+  	predDir = true;
+  	if (!(bp->ftq_inst.get_predDir_from_ftq (inst_index_in_fetch)))
+  	{
+  		gshare_batage_2nd_pred_mismatch++;
+  	}
+  }
+else
+#endif
+  //Get predDir for the instruction
+  {predDir = bp->ftq_inst.get_predDir_from_ftq (inst_index_in_fetch);}
+
+#ifdef DEBUG
+    {
+      std::cerr << "Prediction gotten from ftq" << "\n";
+    }
+#endif // DEBUG  
+  // Update counters -
+  // If this instruction is not a branch - straight case - predDir and
+  // resolveDir in sync If this instruction is a branch - it will be resolved in
+  // next CC - hence,
+
+  if (insn != insn_t::branch) {
+    handle_nb();
+  }
+
+  	benchmark_instruction_count++;
+  	last_inst_index_in_fetch = inst_index_in_fetch;
+	inst_index_in_fetch++;
+	#ifdef T_TRACE
+	i_count++;
+	#endif
+
+  	last_pc = pc;
+  	last_insn = insn;
+  	last_predDir = predDir;
+  	//last_aligned_fetch_pc = aligned_fetch_pc;
+	//last_index_from_aligned_fetch_pc = index_from_aligned_fetch_pc;
+    	
+  if (insn != insn_t::branch) {
+    last_resolveDir = resolveDir;
+    last_misprediction = misprediction;
+  }
+  if (i0_done == false) {
+    i0_done = true;
+  }
+  
 	return;
 }
