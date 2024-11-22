@@ -1135,7 +1135,7 @@ else
   }
 }
 
-void branchprof:: handle_insn_t(uint64_t pc, uint8_t insn_type)
+bool branchprof:: handle_insn_t(uint64_t pc, uint8_t insn_type)
 {
 	branchTarget = pc;
   	bb_over = 0, fb_over = 0;
@@ -1255,5 +1255,5 @@ else
     i0_done = true;
   }
   
-	return;
+	return predDir;
 }
