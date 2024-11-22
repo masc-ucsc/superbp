@@ -36,9 +36,9 @@ void PREDICTOR::fetchBoundaryEnd()
 	branchprof_inst.handle_insn(pc, insn_raw);
 }
 
-bool PREDICTOR::handle_insn_t(uint64_t pc, uint8_t insn_type)
+bool PREDICTOR::handle_insn_t(uint64_t pc, uint8_t insn_type, bool taken)
 {
-	return branchprof_inst.handle_insn_t(pc, insn_type);
+	return branchprof_inst.handle_insn_t(pc, insn_type, taken);
 }
 
 gshare_prediction& PREDICTOR::GetFastPrediction(uint64_t PC, int index, int tag) 

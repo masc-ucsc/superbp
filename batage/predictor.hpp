@@ -46,7 +46,7 @@ public:
 void fetchBoundaryBegin(uint64_t PC);
 void fetchBoundaryEnd();
 void handle_insn(uint64_t pc, uint32_t insn_raw);
-bool handle_insn_t(uint64_t pc, uint8_t insn_type);
+bool handle_insn_t(uint64_t pc, uint8_t insn_type, bool taken);
 
   gshare_prediction& GetFastPrediction(uint64_t PC, int index, int tag) ;
   prediction& GetPrediction(uint64_t PC) ;

@@ -740,23 +740,57 @@ fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
   return;
 }
 
+void branchprof::resolve_pc_minus_1_branch_t(uint64_t pc) {
+  if (!last_resolveDir) {
+    //last_resolveDir = false;
+#ifdef DEBUG
+    fprintf(pc_trace, "%32s\n", "Not Taken Branch");
+    fprintf(stderr, "%llx is %32s\n", last_pc, "Not Taken Branch");
+#endif
+  } else {
+    //last_resolveDir = true;
+    taken_branch_count++;
+#ifdef EN_BB_FB_COUNT
+    fb_over = 1;
+#endif // EN_BB_FB_COUNT
+#ifdef T_TRACE
+PC2 = last_pc;
+PC2_branch = true;
+fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
+ i_count = 0;
+ PC1 = PC2;
+ PC1_branch = PC2_branch;
+#endif
+#ifdef DEBUG
+    fprintf(pc_trace, "%32s\n", "Taken Branch");
+    fprintf(stderr, "%llx is %32s\n", last_pc, "Taken Branch");
+#endif
+  }
+
+  //fprintf(stderr, "target pc=%llx last_pc (branch pc) =%llx diff=%d pred:%d resolv:%d\n", pc, last_pc, pc - last_pc, last_predDir, last_resolveDir);
+          
+  update_counters_pc_minus_1_branch();
+  return;
+}
+
 // Not being used
-void branchprof::close_pc_minus_1_branch(uint64_t pc) {
+void branchprof::close_pc_minus_1_branch (uint64_t pc) {
 #ifdef FTQ
   //read_ftq_update_predictor();
 #endif
   return;
 }
 
-void branchprof::close_pc_jump_t(uint64_t pc) {
+void branchprof::close_pc_jump_t (uint64_t pc) {
   jump_count++;
   cti_count++;
-  resolveDir = true;
+  //resolveDir = true;
 
 #ifdef EN_BB_FB_COUNT
   bb_over = 1;
   fb_over = 1;
 #endif // EN_BB_FB_COUNT
+
 }
 
 void branchprof::close_pc_jump(uint64_t pc, uint32_t insn_raw) {
@@ -815,9 +849,9 @@ void branchprof::close_pc_non_cti() {
   fprintf(pc_trace, "%32s\n", "Non - CTI");
   fprintf(stderr, "%32s\n", "Non - CTI");
 #endif
-																																																																																																																																																																																																									}
-
-																																																																																																																																																																																																									void branchprof::print_pc_insn(uint64_t pc, uint32_t insn_raw) {
+}
+																																																																																																																																			
+void branchprof::print_pc_insn(uint64_t pc, uint32_t insn_raw) {
   fprintf(pc_trace, "%20lx\t|%20x\t", pc, insn_raw);
   fprintf(stderr, "Fetched %d|\t%20lx\t|%20x\t", inst_index_in_fetch, pc, insn_raw);
   if (insn_raw < 0x100) {
@@ -1135,7 +1169,7 @@ else
   }
 }
 
-bool branchprof:: handle_insn_t(uint64_t pc, uint8_t insn_type)
+bool branchprof:: handle_insn_t(uint64_t pc, uint8_t insn_type, bool taken)
 {
 	branchTarget = pc;
   	bb_over = 0, fb_over = 0;
@@ -1145,7 +1179,7 @@ bool branchprof:: handle_insn_t(uint64_t pc, uint8_t insn_type)
   if (i0_done == true) {
     // If previous instruction was a branch. resolve that first
     if (last_insn == insn_t::branch) {
-      resolve_pc_minus_1_branch(pc);
+      resolve_pc_minus_1_branch_t(pc);
     }
 
 	// Update ftq for all insns, even if last_insn == non_cti
@@ -1163,7 +1197,7 @@ fprintf (stderr, "\n");
 	switch (insn_type)
 	{
 		case 0: insn = insn_t::non_cti;
-					close_pc_non_cti();
+					//close_pc_non_cti();
 					break;
 		case 1 : insn = insn_t::jump;
 					close_pc_jump_t(pc);
@@ -1180,6 +1214,9 @@ fprintf (stderr, "\n");
 		default : printf ("Wrong insn_t \n");
 					break;
 	}
+	
+	// overwrite resolvedDir with the one gotten from desesc -for all including branches
+	resolveDir = taken;
 	
 	#ifdef EN_BB_FB_COUNT
   update_bb_fb();
@@ -1246,9 +1283,8 @@ else
   	last_predDir = predDir;
   	//last_aligned_fetch_pc = aligned_fetch_pc;
 	//last_index_from_aligned_fetch_pc = index_from_aligned_fetch_pc;
-    	
-  if (insn != insn_t::branch) {
     last_resolveDir = resolveDir;
+  if (insn != insn_t::branch) {
     last_misprediction = misprediction;
   }
   if (i0_done == false) {
