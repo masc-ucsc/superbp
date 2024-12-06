@@ -77,7 +77,7 @@ public:
 
 class huq {
 public :
-	uint8_t NUM_HUQ_ENTRIES = 16;
+	uint8_t NUM_HUQ_ENTRIES = 128;
 	std::vector<huq_entry> mem;
 	
 	uint16_t next_allocate_index; // To be written/ allocated next

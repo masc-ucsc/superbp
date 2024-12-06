@@ -152,7 +152,7 @@ using ftq_entry_ptr = ftq_entry *;
 
 class ftq {
 public :
-	uint8_t NUM_FTQ_ENTRIES = 16;
+	uint8_t NUM_FTQ_ENTRIES = 128;
 	batage* bp;
 	std::vector<ftq_entry> mem;
 	
