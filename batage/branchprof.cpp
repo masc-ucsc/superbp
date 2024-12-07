@@ -740,7 +740,7 @@ fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
   return;
 }
 
-void branchprof::resolve_pc_minus_1_branch_t(uint64_t pc) {
+void branchprof::resolve_pc_minus_1_branch_desesc(uint64_t pc) {
   if (!last_resolveDir) {
     //last_resolveDir = false;
 #ifdef DEBUG
@@ -781,7 +781,7 @@ void branchprof::close_pc_minus_1_branch (uint64_t pc) {
   return;
 }
 
-void branchprof::close_pc_jump_t (uint64_t pc) {
+void branchprof::close_pc_jump_desesc (uint64_t pc) {
   jump_count++;
   cti_count++;
   //resolveDir = true;
@@ -1169,8 +1169,13 @@ else
   }
 }
 
-bool branchprof:: handle_insn_t(uint64_t pc, uint8_t insn_type, bool taken)
+bool branchprof:: handle_insn_desesc(uint64_t pc, uint8_t insn_type, bool taken)
 {
+	
+	// TODO - Written for 16 bit instructions, actual are mostly 32, so wrong aligned fetch_pc and offset
+	//aligned_fetch_pc = (pc >> ((pred->LOG2FETCHWIDTH) + 2)) << ((pred->LOG2FETCHWIDTH) + 2);
+	//inst_index_in_fetch = (pc - aligned_fetch_pc)>>1; 
+
 	branchTarget = pc;
   	bb_over = 0, fb_over = 0;
   	misprediction = false;
@@ -1179,7 +1184,7 @@ bool branchprof:: handle_insn_t(uint64_t pc, uint8_t insn_type, bool taken)
   if (i0_done == true) {
     // If previous instruction was a branch. resolve that first
     if (last_insn == insn_t::branch) {
-      resolve_pc_minus_1_branch_t(pc);
+      resolve_pc_minus_1_branch_desesc(pc);
     }
 
 	// Update ftq for all insns, even if last_insn == non_cti
@@ -1200,16 +1205,16 @@ fprintf (stderr, "\n");
 					//close_pc_non_cti();
 					break;
 		case 1 : insn = insn_t::jump;
-					close_pc_jump_t(pc);
+					close_pc_jump_desesc(pc);
 					break;
 		case 2 : insn = insn_t::branch;
 					start_pc_branch();
 					break;	
 		case 3 : insn = insn_t::call;
-					close_pc_jump_t(pc);
+					close_pc_jump_desesc(pc);
 					break;
 		case 4 : insn = insn_t::ret;
-					close_pc_jump_t(pc);
+					close_pc_jump_desesc(pc);
 					break;
 		default : printf ("Wrong insn_t \n");
 					break;

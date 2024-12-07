@@ -222,6 +222,7 @@ for (int i = 0; i < argc; ++i) {
   bp.init_branchprof(bp_logfile);
 #endif // BRANCHPROF
 
+  //bp = new(....)
   RISCVMachine *m = virt_machine_main(newArgc, newArgv);
   if (!m)
     return 1;

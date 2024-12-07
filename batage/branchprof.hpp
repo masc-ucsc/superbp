@@ -50,9 +50,9 @@ void handle_nb() ;
 void close_pc_non_cti();
 void start_pc_branch();
 void resolve_pc_minus_1_branch(uint64_t pc);
-void resolve_pc_minus_1_branch_t(uint64_t pc);
+void resolve_pc_minus_1_branch_desesc(uint64_t pc);
 void close_pc_jump(uint64_t pc, uint32_t insn_raw);
-void close_pc_jump_t(uint64_t pc);
+void close_pc_jump_desesc(uint64_t pc);
 void close_pc_minus_1_branch(uint64_t pc);
 void read_ftq_update_predictor();
 void copy_ftq_data_to_predictor(PREDICTOR* bp, ftq_entry *ftq_data_ptr);
@@ -65,7 +65,7 @@ void branchprof_exit(PREDICTOR*);
 //static inline void copy_ftq_data_to_predictor(ftq_entry *ftq_data_ptr);
 #endif // FTQ
 void handle_insn(uint64_t pc, uint32_t insn_raw);
-bool handle_insn_t(uint64_t pc, uint8_t insn_type, bool taken);
+bool handle_insn_desesc(uint64_t pc, uint8_t insn_type, bool taken);
 
 void fetchBoundaryBegin(uint64_t PC);
 void fetchBoundaryEnd();
