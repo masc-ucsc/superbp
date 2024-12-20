@@ -138,7 +138,7 @@ prediction batage_prediction;
 static uint8_t bb_over = 0, fb_over = 0;
 #endif // EN_BB_FB_COUNT
 #ifdef SUPERSCALAR
-//static int16_t inst_index_in_fetch = 0, last_inst_index_in_fetch; // starts from 0 after every redirect
+static int16_t inst_index_in_fetch = 0, last_inst_index_in_fetch; // starts from 0 after every redirect
 #endif
 
 extern uint64_t maxinsns, skip_insns;
@@ -268,7 +268,7 @@ void branchprof::fetchBoundaryBegin(uint64_t pc)
     last_fetch_pc = fetch_pc;
 	
   	fetch_pc = pc;
-  	bp->ftq_inst.set_ftq_index (inst_index_in_fetch);
+  	bp->ftq_inst.set_ftq_index (0);
   	
   	  	uint64_t temp_pc = fetch_pc;
   	
@@ -741,35 +741,12 @@ fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
 }
 
 void branchprof::resolve_pc_minus_1_branch_desesc(uint64_t pc) {
-  if (!last_resolveDir) {
-    //last_resolveDir = false;
-#ifdef DEBUG
-    fprintf(pc_trace, "%32s\n", "Not Taken Branch");
-    fprintf(stderr, "%llx is %32s\n", last_pc, "Not Taken Branch");
-#endif
-  } else {
-    //last_resolveDir = true;
+  if (resolveDir) {
     taken_branch_count++;
 #ifdef EN_BB_FB_COUNT
     fb_over = 1;
 #endif // EN_BB_FB_COUNT
-#ifdef T_TRACE
-PC2 = last_pc;
-PC2_branch = true;
-fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
- i_count = 0;
- PC1 = PC2;
- PC1_branch = PC2_branch;
-#endif
-#ifdef DEBUG
-    fprintf(pc_trace, "%32s\n", "Taken Branch");
-    fprintf(stderr, "%llx is %32s\n", last_pc, "Taken Branch");
-#endif
-  }
-
-  //fprintf(stderr, "target pc=%llx last_pc (branch pc) =%llx diff=%d pred:%d resolv:%d\n", pc, last_pc, pc - last_pc, last_predDir, last_resolveDir);
-          
-  update_counters_pc_minus_1_branch();
+  }          
   return;
 }
 
@@ -912,6 +889,23 @@ void branchprof::handle_nb() {
   	fprintf (stderr, " that is also a Non_CTI \n");
   	#endif
   }
+}
+
+void branchprof::update_counters_desesc()
+{
+	if (predDir == resolveDir) {
+    misprediction = false;
+    correct_prediction_count++;
+  } else {
+    misprediction = true;
+    misprediction_count++;
+  }
+  
+  if (misprediction) {
+  if (insn == insn_t::non_cti) { misscontrol_count++; }
+  if (insn == insn_t::branch) { branch_mispredict_count++;}
+  }
+   
 }
 
   /******************************************************************
@@ -1171,37 +1165,13 @@ else
 
 bool branchprof:: handle_insn_desesc(uint64_t pc, uint8_t insn_type, bool taken)
 {
+	// 16 instructions of any size, fetch_pc saved in fetchboundarybegin
+	// aligned_fetch_pc = (pc >> ((pred->LOG2FETCHWIDTH) + 2)) << ((pred->LOG2FETCHWIDTH) + 2);
+	inst_index_in_fetch = (pc - fetch_pc) >> 1; 
 	
-	// TODO - Written for 16 bit instructions, actual are mostly 32, so wrong aligned fetch_pc and offset
-	//aligned_fetch_pc = (pc >> ((pred->LOG2FETCHWIDTH) + 2)) << ((pred->LOG2FETCHWIDTH) + 2);
-	//inst_index_in_fetch = (pc - aligned_fetch_pc)>>1; 
-
-	branchTarget = pc;
-  	bb_over = 0, fb_over = 0;
-  	misprediction = false;
-
-  // for (int i = 0; i < m->ncpus; ++i)
-  if (i0_done == true) {
-    // If previous instruction was a branch. resolve that first
-    if (last_insn == insn_t::branch) {
-      resolve_pc_minus_1_branch_desesc(pc);
-    }
-
-	// Update ftq for all insns, even if last_insn == non_cti
-	//if (last_insn != insn_t::non_cti)
+    switch (insn_type)
 	{
-		bp->ftq_inst.ftq_update_resolvedinfo (last_inst_index_in_fetch, last_pc, last_insn, last_resolveDir, branchTarget); 
-	}
-  }
-
-#ifdef PC_TRACE
-fprintf (stderr, "\n");
-  print_pc_insn(pc, insn_raw);
-#endif
-
-	switch (insn_type)
-	{
-		case 0: insn = insn_t::non_cti;
+		case 0 : insn = insn_t::non_cti;
 					//close_pc_non_cti();
 					break;
 		case 1 : insn = insn_t::jump;
@@ -1219,27 +1189,12 @@ fprintf (stderr, "\n");
 		default : printf ("Wrong insn_t \n");
 					break;
 	}
-	
-	// overwrite resolvedDir with the one gotten from desesc -for all including branches
-	resolveDir = taken;
-	
-	#ifdef EN_BB_FB_COUNT
-  update_bb_fb();
-#endif // EN_BB_FB_COUNT
 
- #ifdef T_TRACE
- if ( (PC1_branch == true) && (insn == insn_t::jump) ) 
- {
- 	PC2 = pc;
-	PC2_branch = false;
-	fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
- 	i_count = 0;
- 	PC1 = PC2;
- 	PC1_branch = PC2_branch;
-}
-#endif
- 	
- 	predDir = false;
+  	predDir = false;
+	resolveDir = taken;
+  	misprediction = false;
+
+// TODO - Did not update yet for GSHARE case since handling is different from Dromajo
 #ifdef GSHARE 	
    	/*if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
   	{
@@ -1266,35 +1221,49 @@ else
     {
       std::cerr << "Prediction gotten from ftq" << "\n";
     }
-#endif // DEBUG  
-  // Update counters -
-  // If this instruction is not a branch - straight case - predDir and
-  // resolveDir in sync If this instruction is a branch - it will be resolved in
-  // next CC - hence,
+#endif // DEBUG    
 
-  if (insn != insn_t::branch) {
-    handle_nb();
-  }
+ resolve_pc_minus_1_branch_desesc(pc);
+
+  // Update counters -
+  {
+   	update_counters_desesc();
+  }	
+	
+#ifdef EN_BB_FB_COUNT
+  update_bb_fb();
+#endif // EN_BB_FB_COUNT
+
+ #ifdef T_TRACE
+ if ( (PC1_branch == true) && (insn == insn_t::jump) ) 
+ {
+ 	PC2 = pc;
+	PC2_branch = false;
+	fprintf (t_trace, "PC1 = %llx, PC2 = %llx, i_count = %u\n", PC1, PC2, i_count);
+ 	i_count = 0;
+ 	PC1 = PC2;
+ 	PC1_branch = PC2_branch;
+}
+#endif
 
   	benchmark_instruction_count++;
-  	last_inst_index_in_fetch = inst_index_in_fetch;
-	inst_index_in_fetch++;
+  	//last_inst_index_in_fetch = inst_index_in_fetch;
+	//inst_index_in_fetch++;
 	#ifdef T_TRACE
 	i_count++;
 	#endif
 
+  	/*
   	last_pc = pc;
   	last_insn = insn;
   	last_predDir = predDir;
-  	//last_aligned_fetch_pc = aligned_fetch_pc;
-	//last_index_from_aligned_fetch_pc = index_from_aligned_fetch_pc;
+  	last_aligned_fetch_pc = aligned_fetch_pc;
+	last_index_from_aligned_fetch_pc = index_from_aligned_fetch_pc;
     last_resolveDir = resolveDir;
-  if (insn != insn_t::branch) {
     last_misprediction = misprediction;
-  }
+    */
   if (i0_done == false) {
     i0_done = true;
   }
-  
 	return predDir;
 }
