@@ -1019,17 +1019,17 @@ void branchprof::handle_insn(uint64_t pc, uint32_t insn_raw) {
   print_pc_insn(pc, insn_raw);
 #endif
 
-  if (opcode(insn_raw) == 0x73)  // ECall, EBreak
+  if (riscv_opcode(insn_raw) == 0x73)  // ECall, EBreak
   {
     insn = insn_t::jump;
     close_pc_jump(pc, insn_raw);
-  } else if (opcode(insn_raw) == 0x63)  // Branch
+  } else if (riscv_opcode(insn_raw) == 0x63)  // Branch
   {
     insn = insn_t::branch;
     start_pc_branch();
-  } else if (opcode(insn_raw) == 0x6f)  // jal
+  } else if (riscv_opcode(insn_raw) == 0x6f)  // jal
   {
-    if (rd(insn_raw) == 0x1)  // call
+    if (riscv_rd(insn_raw) == 0x1)  // call
     {
       insn = insn_t::jump;
       close_pc_jump(pc, insn_raw);
@@ -1038,13 +1038,13 @@ void branchprof::handle_insn(uint64_t pc, uint32_t insn_raw) {
       insn = insn_t::jump;
       close_pc_jump(pc, insn_raw);
     }
-  } else if (opcode(insn_raw) == 0x67)  // jalr
+  } else if (riscv_opcode(insn_raw) == 0x67)  // jalr
   {
-    if (rd(insn_raw) == 0x1)  // call
+    if (riscv_rd(insn_raw) == 0x1)  // call
     {
       insn = insn_t::jump;
       close_pc_jump(pc, insn_raw);
-    } else if ((rd(insn_raw) == 0x0) && (rs1(insn_raw) == 0x1) && (imm_itype(insn_raw) == 0x0))  // return
+    } else if ((riscv_rd(insn_raw) == 0x0) && (riscv_rs1(insn_raw) == 0x1) && (riscv_imm_itype(insn_raw) == 0x0))  // return
     {
       insn = insn_t::ret;
       close_pc_jump(pc, insn_raw);
