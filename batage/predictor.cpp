@@ -1,48 +1,37 @@
 
-#include "fmt/format.h"
+#include "predictor.hpp"
 
 #include "batage.hpp"
-#include "predictor.hpp"
-#include "ftq.hpp"
-#include "huq.hpp"
 #include "branchprof.hpp"
+#include "fmt/format.h"
+#include "ftq.hpp"
 #include "gshare.hpp"
+#include "huq.hpp"
 
 #define VERBOSE
 
-PREDICTOR::PREDICTOR(void)  : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pred), branchprof_inst(&ftq_inst, &huq_inst, &pred, this), fast_pred() {
+PREDICTOR::PREDICTOR(void)
+    : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pred), branchprof_inst(&ftq_inst, &huq_inst, &pred, this), fast_pred() {
 #ifdef VERBOSE
   hist.printconfig();
   fmt::print("total bits = {}\n", pred.size() + hist.size());
 #endif
 
-//ftq_inst = new ftq(&pred);
-//huq_inst = new huq(&pred);
-
+  // ftq_inst = new ftq(&pred);
+  // huq_inst = new huq(&pred);
 }
 
-void PREDICTOR::fetchBoundaryBegin(uint64_t PC)
-{
-	branchprof_inst.fetchBoundaryBegin(PC);
+void PREDICTOR::fetchBoundaryBegin(uint64_t PC) { branchprof_inst.fetchBoundaryBegin(PC); }
+
+void PREDICTOR::fetchBoundaryEnd() { branchprof_inst.fetchBoundaryEnd(); }
+
+void PREDICTOR::handle_insn(uint64_t pc, uint32_t insn_raw) { branchprof_inst.handle_insn(pc, insn_raw); }
+
+bool PREDICTOR::handle_insn_desesc(uint64_t pc, uint8_t insn_type, bool taken) {
+  return branchprof_inst.handle_insn_desesc(pc, insn_type, taken);
 }
 
-void PREDICTOR::fetchBoundaryEnd()
-{
-	branchprof_inst.fetchBoundaryEnd();
-}
-
- void PREDICTOR::handle_insn(uint64_t pc, uint32_t insn_raw)
-{
-	branchprof_inst.handle_insn(pc, insn_raw);
-}
-
-bool PREDICTOR::handle_insn_desesc(uint64_t pc, uint8_t insn_type, bool taken)
-{
-	return branchprof_inst.handle_insn_desesc(pc, insn_type, taken);
-}
-
-gshare_prediction& PREDICTOR::GetFastPrediction(uint64_t PC, int index, int tag) 
-  {return (fast_pred.predict(PC, index, tag));}
+gshare_prediction& PREDICTOR::GetFastPrediction(uint64_t PC, int index, int tag) { return (fast_pred.predict(PC, index, tag)); }
 
 prediction& PREDICTOR::GetPrediction(uint64_t PC) { return pred.predict_vec(PC, hist); }
 
@@ -57,25 +46,13 @@ void PREDICTOR::Updatehistory(bool resolveDir, uint64_t branchTarget) {
 }
 
 // Update for unconditional cti-s
-void PREDICTOR::TrackOtherInst(uint64_t PC, bool branchDir,
-                               uint64_t branchTarget) {
+void PREDICTOR::TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget) {
   // also update the global history with unconditional branches
   hist.update(branchTarget, true);
   return;
 }
 
-uint32_t PREDICTOR::get_allocs(int table)
-{
-	return (pred.get_allocs(table));
-}
+uint32_t PREDICTOR::get_allocs(int table) { return (pred.get_allocs(table)); }
 
- void PREDICTOR::init_branchprof(char* logfile)
- {
- 	branchprof_inst.branchprof_init(logfile);
- }
- void PREDICTOR::exit_branchprof()
- {
- 	branchprof_inst.branchprof_exit(this);
- }
-
-
+void PREDICTOR::init_branchprof(char* logfile) { branchprof_inst.branchprof_init(logfile); }
+void PREDICTOR::exit_branchprof() { branchprof_inst.branchprof_exit(this); }
