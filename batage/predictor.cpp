@@ -16,9 +16,30 @@ PREDICTOR::PREDICTOR(void)
   hist.printconfig();
   fmt::print("total bits = {}\n", pred.size() + hist.size());
 #endif
-
   // ftq_inst = new ftq(&pred);
   // huq_inst = new huq(&pred);
+}
+
+PREDICTOR::~PREDICTOR(void)
+{
+//exit_branchprof();
+}
+
+PREDICTOR::PREDICTOR (int SBP_NUMG, int LOG2FETCHWIDTH, int NUM_TAKEN_BRANCHES)  : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pred), branchprof_inst(&ftq_inst, &huq_inst, &pred, this), fast_pred()
+{
+#ifdef VERBOSE
+  hist.printconfig();
+  fmt::print("total bits = {}\n", pred.size() + hist.size());
+#endif
+	pred.SBP_NUMG = SBP_NUMG;
+	pred.LOG2FETCHWIDTH = LOG2FETCHWIDTH;
+	pred.NUM_TAKEN_BRANCHES = NUM_TAKEN_BRANCHES;
+	
+	pred.populate_dependent_globals();
+	pred.batage_resize();
+	fprintf(stderr, "%s\n", "Finished Resize\n");
+	hist.get_predictor_vars(&pred);
+    //init_branchprof(bp_logfile);
 }
 
 void PREDICTOR::fetchBoundaryBegin(uint64_t PC) { branchprof_inst.fetchBoundaryBegin(PC); }

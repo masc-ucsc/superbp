@@ -40,6 +40,8 @@ public:
   branchprof branchprof_inst;
 
   PREDICTOR(void);
+  ~PREDICTOR(void);
+  PREDICTOR (int SBP_NUMG, int LOG2FETCHWIDTH, int NUM_TAKEN_BRANCHES);
 
   void fetchBoundaryBegin(uint64_t PC);
   void fetchBoundaryEnd();
