@@ -29,7 +29,7 @@
 #define SBP_TAGBITS   12
 #define SBP_BHYSTBITS 2
 
-extern uint32_t SBP_NUMG;
+//extern uint32_t SBP_NUMG;
 
 // #define SINGLE_TAG
 #ifdef SINGLE_TAG
