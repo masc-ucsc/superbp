@@ -25,7 +25,7 @@ PREDICTOR::~PREDICTOR(void)
 //exit_branchprof();
 }
 
-PREDICTOR::PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES)  : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pred), branchprof_inst(&ftq_inst, &huq_inst, &pred, this), fast_pred()
+PREDICTOR::PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES, std::vector<uint32_t>& ORIG_ENTRIES_PER_TABLE, std::vector<uint32_t>& INFO_PER_ENTRY)  : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pred), branchprof_inst(&ftq_inst, &huq_inst, &pred, this), fast_pred()
 {
 #ifdef VERBOSE
   hist.printconfig();
@@ -35,6 +35,9 @@ PREDICTOR::PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHE
 	pred.LOG2FETCHWIDTH = LOG2FETCHWIDTH;
 	pred.NUM_TAKEN_BRANCHES = NUM_TAKEN_BRANCHES;
 	
+	pred.ORIG_ENTRIES_PER_TABLE = ORIG_ENTRIES_PER_TABLE;
+	pred.INFO_PER_ENTRY = INFO_PER_ENTRY;
+
 	pred.populate_dependent_globals();
 	pred.batage_resize();
 	fprintf(stderr, "%s\n", "Finished Resize\n");

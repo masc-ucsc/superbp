@@ -41,7 +41,7 @@ public:
 
   PREDICTOR(void);
   ~PREDICTOR(void);
-  PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES);
+  PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES, std::vector<uint32_t>& ORIG_ENTRIES_PER_TABLE, std::vector<uint32_t>& INFO_PER_ENTRY);
 
   void fetchBoundaryBegin(uint64_t PC);
   void fetchBoundaryEnd();
