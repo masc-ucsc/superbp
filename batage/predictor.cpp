@@ -8,7 +8,7 @@
 #include "gshare.hpp"
 #include "huq.hpp"
 
-#define VERBOSE
+//#define VERBOSE
 
 PREDICTOR::PREDICTOR(void)
     : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pred), branchprof_inst(&ftq_inst, &huq_inst, &pred, this), fast_pred() {
@@ -42,7 +42,8 @@ PREDICTOR::PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHE
 	pred.batage_resize();
 	fprintf(stderr, "%s\n", "Finished Resize\n");
 	hist.get_predictor_vars(&pred);
-    //init_branchprof(bp_logfile);
+	char* bplogfile = "log.txt";
+    init_branchprof(bp_logfile);
 }
 
 void PREDICTOR::fetchBoundaryBegin(uint64_t PC) { branchprof_inst.fetchBoundaryBegin(PC); }

@@ -400,11 +400,13 @@ int histories::ghg(int i) const {  // int SBP_NUMG = bp->SBP_NUMG;
 void histories::printconfig() {
   // int SBP_NUMG = bp->SBP_NUMG;
 
+/*
   printf("history lengths: ");
   for (int i = SBP_NUMG - 1; i >= 0; i--) {
     printf("%d ", chg[i].olength);
   }
   printf("\n");
+  */
 }
 
 int histories::size() {
