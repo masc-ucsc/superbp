@@ -42,7 +42,7 @@ PREDICTOR::PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHE
 	pred.batage_resize();
 	fprintf(stderr, "%s\n", "Finished Resize\n");
 	hist.get_predictor_vars(&pred);
-	char* bplogfile = "log.txt";
+	char bplogfile[] = "log.txt";
     init_branchprof(bp_logfile);
 }
 
