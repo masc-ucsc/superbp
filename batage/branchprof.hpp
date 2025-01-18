@@ -67,8 +67,9 @@ public:
   void resolve_pc_minus_1_branch_desesc(uint64_t pc);
   void close_pc_jump_desesc(uint64_t pc);
   void update_counters_desesc();
-  bool handle_insn_desesc(uint64_t pc, uint8_t insn_type, bool taken);
+  bool handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken);
 
   void fetchBoundaryBegin(uint64_t PC);
   void fetchBoundaryEnd();
+  void fetchBoundaryEnd_dromajo();
 };
