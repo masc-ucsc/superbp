@@ -908,7 +908,7 @@ prediction &batage::predict_vec(uint32_t fetch_pc, const histories &p) {
     }
   }
   // pred_out.gshare_index = pred_out.gshare_tag;
-  pred_out.gshare_index = p.gshare_index(hash_fetch_pc, 7, this);
+  pred_out.gshare_index = p.gshare_index(hash_fetch_pc, ((SBP_NUMG/2) + 1), this);
 
 #ifdef DEBUG
   std::cerr << "66666" << "\n";
