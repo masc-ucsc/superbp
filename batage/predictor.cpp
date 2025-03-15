@@ -25,7 +25,7 @@ PREDICTOR::~PREDICTOR(void)
 //exit_branchprof();
 }
 
-PREDICTOR::PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES, std::vector<uint32_t>& ORIG_ENTRIES_PER_TABLE, std::vector<uint32_t>& INFO_PER_ENTRY)  : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pred), branchprof_inst(&ftq_inst, &huq_inst, &pred, this), fast_pred()
+PREDICTOR::PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES, std::vector<uint32_t>& ORIG_ENTRIES_PER_TABLE, std::vector<uint32_t>& INFO_PER_ENTRY, uint32_t NUM_GSHARE_ENTRIES_SHIFT, uint8_t NUM_PAGES_PER_GROUP, uint8_t PAGE_OFFSET_SIZE, uint8_t PAGE_TABLE_INDEX_SIZE)  : pred(), hist(&pred), ftq_inst(&pred), huq_inst(&pred), branchprof_inst(&ftq_inst, &huq_inst, &pred, this), fast_pred()
 {
 #ifdef VERBOSE
   hist.printconfig();
@@ -40,8 +40,17 @@ PREDICTOR::PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHE
 
 	pred.populate_dependent_globals();
 	pred.batage_resize();
+	
+	fast_pred.NUM_GSHARE_ENTRIES_SHIFT = NUM_GSHARE_ENTRIES_SHIFT;
+	fast_pred.NUM_PAGES_PER_GROUP = NUM_PAGES_PER_GROUP;
+	fast_pred.PAGE_OFFSET_SIZE = PAGE_OFFSET_SIZE;
+	fast_pred.PAGE_TABLE_INDEX_SIZE =PAGE_TABLE_INDEX_SIZE;
+	
+	fast_pred.populate_dependent_globals();
+	fast_pred.gshare_resize();
+	
 	fprintf(stderr, "%s\n", "Finished Resize\n");
-	hist.get_predictor_vars(&pred);
+	hist.get_predictor_vars(&pred, &fast_pred);
 	char bp_logfile[] = "log.txt";
     init_branchprof(bp_logfile);
 }

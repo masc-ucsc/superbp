@@ -41,7 +41,7 @@ public:
 
   PREDICTOR(void);
   ~PREDICTOR(void);
-  PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES, std::vector<uint32_t>& ORIG_ENTRIES_PER_TABLE, std::vector<uint32_t>& INFO_PER_ENTRY);
+  PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES, std::vector<uint32_t>& ORIG_ENTRIES_PER_TABLE, std::vector<uint32_t>& INFO_PER_ENTRY, uint32_t NUM_GSHARE_ENTRIES_SHIFT, uint8_t NUM_PAGES_PER_GROUP, uint8_t PAGE_OFFSET_SIZE, uint8_t PAGE_TABLE_INDEX_SIZE);
 
   void fetchBoundaryBegin(uint64_t PC);
   void fetchBoundaryEnd();

@@ -1,6 +1,34 @@
 #include "gshare.hpp"
 #include "time.h"
 
+  	void gshare::read_env_variables()
+  	{
+  		char *temp; 
+  		
+  		temp     = getenv("NUM_GSHARE_ENTRIES_SHIFT");
+  NUM_GSHARE_ENTRIES_SHIFT = atoi(temp);
+  fprintf(stderr, "NUM_GSHARE_ENTRIES_SHIFT = %d\n", NUM_GSHARE_ENTRIES_SHIFT);
+  
+  temp     = getenv("NUM_PAGES_PER_GROUP");
+  NUM_PAGES_PER_GROUP = atoi(temp);
+  fprintf(stderr, "NUM_PAGES_PER_GROUP = %d\n", NUM_PAGES_PER_GROUP);
+  
+  temp     = getenv("PAGE_OFFSET_SIZE");
+  PAGE_OFFSET_SIZE = atoi(temp);
+  fprintf(stderr, "PAGE_OFFSET_SIZE = %d\n", PAGE_OFFSET_SIZE);
+  
+    temp     = getenv("PAGE_TABLE_INDEX_SIZE");
+  PAGE_TABLE_INDEX_SIZE = atoi(temp);
+  fprintf(stderr, "PAGE_TABLE_INDEX_SIZE = %d\n", PAGE_TABLE_INDEX_SIZE);
+  	}
+  	
+	void gshare::populate_dependent_globals()
+	{
+		NUM_GSHARE_ENTRIES = (1 << NUM_GSHARE_ENTRIES_SHIFT);
+		PAGE_SIZE = (1 << PAGE_OFFSET_SIZE);
+		NUM_PAGE_TABLE_ENTRIES = (1 << PAGE_TABLE_INDEX_SIZE);
+	}
+	
 gshare_entry::gshare_entry() {
   ctr = 0;
   tag = 0;
@@ -16,7 +44,7 @@ gshare_entry::gshare_entry() {
   page_offset.resize(2); 
 }
 
-uint64_t gshare_entry::size()
+uint64_t gshare_entry::size(uint8_t PAGE_TABLE_INDEX_SIZE, uint8_t PAGE_OFFSET_SIZE)
 {
 	// ctr + tag + 2 * (poses + valid + page_table_index + page_offset)
 	return ( NUM_GSHARE_CTRBITS + NUM_GSHARE_TAGBITS + 1 + 2 * (4 + PAGE_TABLE_INDEX_SIZE + PAGE_OFFSET_SIZE));
@@ -34,7 +62,7 @@ gshare_entry_formed::gshare_entry_formed() {
   PCs.resize(2);         // NUM_TAKEN_BRANCHES
 }
 
-gshare_entry_formed::gshare_entry_formed(const uint64_t PC, const gshare_entry& rhs, vector<uint64_t>&  pages) {
+gshare_entry_formed::gshare_entry_formed(const uint64_t PC, const gshare_entry& rhs, vector<uint64_t>&  pages, uint8_t PAGE_OFFSET_SIZE) {
     ctr        = rhs.ctr;
     tag        = rhs.tag;
     hist_patch = rhs.hist_patch;
@@ -60,17 +88,25 @@ gshare_entry_formed& gshare_entry_formed::operator=(const gshare_entry_formed& r
     PCs        = rhs.PCs; 
     return *this;
   }
-
-gshare::gshare() {
-
-  pages.resize(NUM_PAGE_TABLE_ENTRIES);
+ 
+ void gshare::gshare_resize()
+ {
+ 	  pages.resize(NUM_PAGE_TABLE_ENTRIES);
   page_valid.resize(NUM_PAGE_TABLE_ENTRIES);
   //page_repl_ctr.resize(NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP);
   fifo.resize(NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP);
-  srand (time(NULL));
+  table.resize(NUM_GSHARE_ENTRIES);
+  
+  size();
+ }
+
+gshare::gshare() {
+
+
+  srand (time(NULL));		
   random = 0x05af5a0f ^ 0x5f0aa05f;
   
-  table.resize(NUM_GSHARE_ENTRIES);
+  
   decay_ctr = 0;
 // start_log();
 #ifdef DEBUG_UTILIZATION
@@ -78,8 +114,6 @@ gshare::gshare() {
   num_collisions_blocked  = 0;
   num_collisions_replaced = 0;
 #endif
-
-size();
 }
 
 uint16_t gshare::calc_tag(uint64_t PC) {
@@ -146,7 +180,7 @@ gshare_prediction& gshare::predict(uint64_t PC, uint16_t index, uint16_t tag) {
     // uint16_t index = calc_index(PC);
     prediction.hit   = is_hit(PC, index, tag);
     prediction.index = index;
-    prediction.info  = gshare_entry_formed(PC, table[index], pages);
+    prediction.info  = gshare_entry_formed(PC, table[index], pages, PAGE_OFFSET_SIZE);
 #ifdef DEBUG_PREDICT
     if (prediction.hit) {
       fprintf(
@@ -331,8 +365,8 @@ void gshare::update(gshare_prediction& prediction, bool prediction_correct) {
 void gshare::size ()
 {
 	uint64_t pages_size = NUM_PAGE_TABLE_ENTRIES * ( log2(NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP) + (40 - PAGE_OFFSET_SIZE));
-	uint64_t table_size = NUM_GSHARE_ENTRIES * gshare_entry::size();
-	printf ("gshare size in bits = %lu \n", pages_size + table_size);
+	uint64_t table_size = NUM_GSHARE_ENTRIES * gshare_entry::size(PAGE_TABLE_INDEX_SIZE, PAGE_OFFSET_SIZE);
+	printf ("pages size in bits = %lu, table size = %lu, gshare size = %lu \n", pages_size, table_size, pages_size + table_size);
 }
 
 #ifdef DEBUG_UTILIZATION

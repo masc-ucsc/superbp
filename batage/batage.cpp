@@ -213,9 +213,10 @@ void SBP_folded_history::update(path_history &ph) {
   fold ^= inbits ^ outbits;
 }
 
-void histories::get_predictor_vars(const batage *bp) {
+void histories::get_predictor_vars(const batage *bp, const gshare* fp) {
   SBP_NUMG  = bp->SBP_NUMG;
   SBP_LOGGE = bp->SBP_LOGGE;
+  NUM_GSHARE_ENTRIES = fp->NUM_GSHARE_ENTRIES;
 
   int *hist  = new int[SBP_NUMG];
   int  prevh = 0;

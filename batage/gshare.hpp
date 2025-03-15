@@ -7,6 +7,7 @@
 
 #include "batage.hpp"
 
+/*
 #define NUM_GSHARE_ENTRIES (1 << 10)
 
 #define NUM_PAGES_PER_GROUP 8
@@ -16,6 +17,7 @@
 
 #define PAGE_TABLE_INDEX_SIZE (6)
 #define NUM_PAGE_TABLE_ENTRIES (1 << PAGE_TABLE_INDEX_SIZE)
+*/
 
 #define NUM_GSHARE_TAGBITS 12
 #define NUM_GSHARE_CTRBITS 3
@@ -78,7 +80,7 @@ public:
     return *this;
   }
   
-  static uint64_t size();
+  static uint64_t size(uint8_t PAGE_TABLE_INDEX_SIZE, uint8_t PAGE_OFFSET_SIZE);
 };
 
 class gshare_entry_formed {
@@ -98,7 +100,7 @@ public:
 public:
   // constructor
   gshare_entry_formed();
-  gshare_entry_formed(const uint64_t PC, const gshare_entry& rhs, vector<uint64_t>&  pages);
+  gshare_entry_formed(const uint64_t PC, const gshare_entry& rhs, vector<uint64_t>&  pages, uint8_t PAGE_OFFSET_SIZE);
   // Copy assignment
   gshare_entry_formed& operator=(const gshare_entry_formed& rhs) ;
 
@@ -130,8 +132,19 @@ public:
 
 class gshare {
 public:
+friend class gshare_entry_formed;
 
-	friend class gshare_entry_formed;
+	uint32_t NUM_GSHARE_ENTRIES_SHIFT;
+	 uint32_t NUM_GSHARE_ENTRIES; // (1 << 10)
+
+ uint8_t NUM_PAGES_PER_GROUP; // 8
+
+ uint8_t PAGE_OFFSET_SIZE; // (6)
+ uint32_t PAGE_SIZE; // (1 << PAGE_OFFSET_SIZE)
+
+ uint8_t PAGE_TABLE_INDEX_SIZE; // (6)
+ uint8_t NUM_PAGE_TABLE_ENTRIES; // (1 << PAGE_TABLE_INDEX_SIZE)
+	
 	vector<uint64_t>  pages;	// only contains page numbers, size = 64 - PAGE_OFFSET_SIZE
 	vector<bool>  page_valid;
 	//vector<uint8_t> page_repl_ctr;
@@ -154,6 +167,10 @@ public:
 public:
   // constructor
   gshare();
+  
+  	void read_env_variables();
+	void populate_dependent_globals();
+	void gshare_resize();
 
   void start_log() {
     // gshare_log = fopen("gshare_trace.txt", "w");
@@ -181,7 +198,7 @@ public:
 
   void update(gshare_prediction& prediction, bool prediction_correct);
   
-  static void size ();
+  void size ();
 
 #ifdef DEBUG_UTILIZATION
   void get_gshare_utilization(uint64_t* buffer);

@@ -213,12 +213,19 @@ for (int i = 0; i < argc; ++i) {
 
 #ifdef BRANCHPROF
   //bp.branchprof_inst.branchprof_init(bp_logfile);
-  fprintf(stderr, "%s\n", "Reading Env variables\n");
+  fprintf(stderr, "%s\n", "Reading batage Env variables\n");
 	bp.pred.read_env_variables();
 	bp.pred.populate_dependent_globals();
 	bp.pred.batage_resize();
-	fprintf(stderr, "%s\n", "Finished Resize\n");
-	bp.hist.get_predictor_vars(&(bp.pred));
+	fprintf(stderr, "%s\n", "Finished batage Resize\n");
+	
+	  fprintf(stderr, "%s\n", "Reading gshare Env variables\n");
+	bp.fast_pred.read_env_variables();
+	bp.fast_pred.populate_dependent_globals();
+	bp.fast_pred.gshare_resize();
+	fprintf(stderr, "%s\n", "Finished gshare Resize\n");
+	
+	bp.hist.get_predictor_vars(&(bp.pred), &(bp.fast_pred));
   bp.init_branchprof(bp_logfile);
 #endif // BRANCHPROF
 
