@@ -1,4 +1,5 @@
 #include "gshare.hpp"
+#include "time.h"
 
 gshare_entry::gshare_entry() {
   ctr = 0;
@@ -10,16 +11,15 @@ gshare_entry::gshare_entry() {
   hist_patch.resize(2);  // NUM_TAKEN_BRANCHES
   poses.resize(2);       // NUM_TAKEN_BRANCHES
   
-  //   PCs.resize(2);         // NUM_TAKEN_BRANCHES
-  same_page.resize(2); 			
+  //   PCs.resize(2);         // NUM_TAKEN_BRANCHES 			
   page_table_index.resize(2); 		
   page_offset.resize(2); 
 }
 
 uint64_t gshare_entry::size()
 {
-	// allocated + ctr + tag + 2 * (poses + same_page + page_table_index + page_offset)
-	return (1 + NUM_GSHARE_CTRBITS + NUM_GSHARE_TAGBITS + 2 * (4 + 1 + PAGE_TABLE_INDEX_SIZE + PAGE_OFFSET_SIZE));
+	// ctr + tag + 2 * (poses + valid + page_table_index + page_offset)
+	return ( NUM_GSHARE_CTRBITS + NUM_GSHARE_TAGBITS + 1 + 2 * (4 + PAGE_TABLE_INDEX_SIZE + PAGE_OFFSET_SIZE));
 }
 
 gshare_entry_formed::gshare_entry_formed() {
@@ -44,7 +44,7 @@ gshare_entry_formed::gshare_entry_formed(const uint64_t PC, const gshare_entry& 
 	vector<uint64_t> targets(2);
 	for (int i = 0; i < 2; i++)
     {
-    	uint64_t page_num 	= rhs.same_page[i] ? PC_page_num : pages[rhs.page_table_index[i]];
+    	uint64_t page_num 	= rhs.page_table_index[i] ? pages[rhs.page_table_index[i]] : PC_page_num;
     	uint16_t page_offset 	= rhs.page_offset[i];
     	targets[i] 			= (page_num << PAGE_OFFSET_SIZE) | page_offset;
 	}
@@ -64,7 +64,12 @@ gshare_entry_formed& gshare_entry_formed::operator=(const gshare_entry_formed& r
 gshare::gshare() {
 
   pages.resize(NUM_PAGE_TABLE_ENTRIES);
-
+  page_valid.resize(NUM_PAGE_TABLE_ENTRIES);
+  //page_repl_ctr.resize(NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP);
+  fifo.resize(NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP);
+  srand (time(NULL));
+  random = 0x05af5a0f ^ 0x5f0aa05f;
+  
   table.resize(NUM_GSHARE_ENTRIES);
   decay_ctr = 0;
 // start_log();
@@ -161,14 +166,49 @@ gshare_prediction& gshare::predict(uint64_t PC, uint16_t index, uint16_t tag) {
   return prediction;
 }
 
+uint8_t gshare::get_group()
+{
+	// return LRU
+	uint8_t num_groups = (NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP);
+	return fifo[num_groups-1];
+}
+
+uint8_t gshare::get_entry_in_group(uint8_t group)
+{
+	// If any entry has page_valid = 0, then use it, but skip group 0, index 0, that is reserved for same page
+	for (int i = group ? 1 : 0; i < NUM_PAGES_PER_GROUP; i++)
+	{
+		if (page_valid[(group * NUM_PAGES_PER_GROUP)+i]== 0)
+		return i;
+	}
+	// If no entry has page_valid = 0, choose random
+	//return (random ^ (random >> 5) ^ (random << 5)) % NUM_PAGES_PER_GROUP;
+	// TODO Check to handle index 0 - that is not index in the group, it is index in 
+	return group ?  (rand() % NUM_PAGES_PER_GROUP) : ((rand() % (NUM_PAGES_PER_GROUP-1))+1) ;
+}
+
 uint64_t gshare::get_a_page_index()
 {
 	// TODO
-	for (int i = 0; i < NUM_PAGE_TABLE_ENTRIES; i++)
+	uint8_t group = get_group();
+	return get_entry_in_group(group);
+}
+
+void gshare::update_page_repl_ctr(uint8_t page_index)
+{
+	uint8_t num_groups = (NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP);
+	uint8_t group = page_index % NUM_PAGES_PER_GROUP;
+	uint8_t sel_index;
+	for (int i = 0; i < num_groups; i++ )
 	{
-		if (pages[i]== 0)
-		return i;
+		if (i == group)
+			{ sel_index = i; }
 	}
+	for (int i = sel_index; i >0; i-- )
+	{
+		fifo[i] = fifo[i-1];
+	}
+	fifo[0] = group;
 }
 
 void gshare::allocate(vector<uint64_t>& PCs, vector<uint8_t>& poses, uint16_t update_gshare_index, uint16_t update_gshare_tag) {
@@ -212,11 +252,13 @@ void gshare::allocate(vector<uint64_t>& PCs, vector<uint8_t>& poses, uint16_t up
       //       table[index].PCs[i]   = PCs[i + 1];
     uint64_t target_page_num = (PCs[i+1] >> PAGE_OFFSET_SIZE);
     uint16_t target_page_offset = (PCs[i+1] << (64-PAGE_OFFSET_SIZE)) >> (64-PAGE_OFFSET_SIZE);
-    table[index].same_page[i] = (PCs0_page_num == target_page_num) ? true : false;
 	// TODO - Check page_table_index and saving the page number and comparison
-	uint64_t page_index = index; // get_a_page_index();
+	uint64_t page_index = get_a_page_index();
 	pages[page_index] = target_page_num;
-	table[index].page_table_index[i] = table[index].same_page[i] ? 0 : page_index;
+	page_valid[page_index] = true;
+	// TODO Check update page_repl_ctr for this and others
+	update_page_repl_ctr(page_index);
+	table[index].page_table_index[i] = (PCs0_page_num == target_page_num) ? 0 : page_index;
 	table[index].page_offset[i] = target_page_offset;
     }
     
@@ -259,6 +301,12 @@ void gshare::update(gshare_prediction& prediction, bool prediction_correct) {
   if (tag_match) {
     if (prediction_correct) {
       table[index].ctr = (ctr < GSHARE_CTRMAX) ? (ctr + 1) : GSHARE_CTRMAX;
+      
+      uint8_t page_index = table[index].page_table_index[1];
+      if (page_index != 0)
+      {
+      	update_page_repl_ctr(page_index);
+      }
 #ifdef DEBUG_UPDATE
       fprintf(gshare_log,
               "Update on correct prediction for PC = %#llx, updated index = %d's counter to %u\n",
@@ -267,6 +315,7 @@ void gshare::update(gshare_prediction& prediction, bool prediction_correct) {
               table[index].ctr);
 #endif
     } else {
+    // TODO Check if 
       table[index].ctr = (ctr > 0) ? (ctr - 1) : 0;
 #ifdef DEBUG_UPDATE
       fprintf(gshare_log,
@@ -281,13 +330,13 @@ void gshare::update(gshare_prediction& prediction, bool prediction_correct) {
 
 void gshare::size ()
 {
-	uint64_t pages_size = NUM_PAGE_TABLE_ENTRIES * (64 - PAGE_OFFSET_SIZE);
+	uint64_t pages_size = NUM_PAGE_TABLE_ENTRIES * ( log2(NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP) + (40 - PAGE_OFFSET_SIZE));
 	uint64_t table_size = NUM_GSHARE_ENTRIES * gshare_entry::size();
 	printf ("gshare size in bits = %lu \n", pages_size + table_size);
 }
 
 #ifdef DEBUG_UTILIZATION
-void gshare::get_gshare_utilization(uint64_t* buffer) {
+void gshare::get_gshare_utilization (uint64_t* buffer) {
   buffer[0] = num_unallocated;
   buffer[1] = num_collisions_blocked;
   buffer[2] = num_collisions_replaced;

@@ -9,10 +9,12 @@
 
 #define NUM_GSHARE_ENTRIES (1 << 10)
 
-#define PAGE_OFFSET_SIZE (12)
+#define NUM_PAGES_PER_GROUP 8
+
+#define PAGE_OFFSET_SIZE (6)
 #define PAGE_SIZE (1 << PAGE_OFFSET_SIZE)
 
-#define PAGE_TABLE_INDEX_SIZE (10)
+#define PAGE_TABLE_INDEX_SIZE (6)
 #define NUM_PAGE_TABLE_ENTRIES (1 << PAGE_TABLE_INDEX_SIZE)
 
 #define NUM_GSHARE_TAGBITS 12
@@ -54,7 +56,7 @@ public:
   vector<uint8_t>  poses;
   
   //vector<uint64_t> PCs;
-  vector<bool> same_page;					// 1 bit
+  // index = 0 means same page
   vector<uint64_t> page_table_index;		// actual size = PAGE_TABLE_INDEX_SIZE
   vector<uint16_t> page_offset;			// actual size = PAGE_OFFSET_SIZE
 
@@ -69,8 +71,7 @@ public:
     hist_patch = rhs.hist_patch;
     poses      = rhs.poses;
 
-    //PCs        = rhs.PCs;
-    same_page = rhs.same_page;   
+    //PCs        = rhs.PCs; 
     page_table_index = rhs.page_table_index;
     page_offset = rhs.page_offset;
  
@@ -132,6 +133,11 @@ public:
 
 	friend class gshare_entry_formed;
 	vector<uint64_t>  pages;	// only contains page numbers, size = 64 - PAGE_OFFSET_SIZE
+	vector<bool>  page_valid;
+	//vector<uint8_t> page_repl_ctr;
+	vector<uint8_t> fifo;
+	int random;
+	//int seed = 0;
 
 	// table of predictions - not of pages
   vector<gshare_entry> table;
@@ -166,7 +172,11 @@ public:
   // Also how to infer the prediction - does it return taken, not taken ?
   gshare_prediction& predict(uint64_t PC, uint16_t index, uint16_t tag);
 
+  uint8_t get_group();
+  uint8_t get_entry_in_group(uint8_t group);
   uint64_t get_a_page_index();
+  void update_page_repl_ctr(uint8_t page_index);
+  
   void allocate(vector<uint64_t>& PCs, vector<uint8_t>& poses, uint16_t update_gshare_index, uint16_t update_gshare_tag);
 
   void update(gshare_prediction& prediction, bool prediction_correct);

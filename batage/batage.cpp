@@ -13,6 +13,7 @@
 
 #include "gshare.hpp"
 #include "string.h"
+#include "time.h"
 
 // #define SIMFASTER
 
@@ -587,7 +588,9 @@ void batage::batage_resize() {
   tags.resize(FETCHWIDTH);
 #if (defined(POS) || defined(MT_PLUS))
   poses.resize(FETCHWIDTH);
-  random = 0x05af5a0f ^ 0x5f0aa05f;
+  //random = 0x05af5a0f ^ 0x5f0aa05f;
+  srand(time(NULL));
+  random = rand();
 #endif  // POS
 }
 
@@ -1179,13 +1182,13 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
       do {
 #endif  // NOT_MRU
         offset_within_entry = random % INFO_PER_ENTRY[i];
-        random              = (random ^ (random >> 5));
+        random              = rand(); //(random ^ (random >> 5) ^ (random << 5));
 #ifdef NOT_MRU
       } while (offset_within_entry == getgb(i).mru);
 #endif  // NOT_MRU
 #else   // RANDOM_ALLOCS_or_NOT_MRU
 
-      random = (random ^ (random >> 5));
+      random = rand(); //(random ^ (random >> 5)^ (random << 5));
       int r  = random % 2;
       for (int j = r ? 0 : INFO_PER_ENTRY[i] - 1; r ? (j < INFO_PER_ENTRY[i]) : (j >= 0); r ? (j++) : (j--)) {
 #ifdef MT_PLUS
