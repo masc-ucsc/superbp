@@ -46,7 +46,7 @@ bool highconfT_in_packet = false;
 #endif  // GSHARE || Ideal_2T
 
 #ifdef Ideal_2T
-uint8_t pos_0;
+int8_t pos_0;
 #endif  // Ideal_2T
 
 FILE* pc_trace;
@@ -139,7 +139,10 @@ prediction batage_prediction;
 static uint8_t bb_over = 0, fb_over = 0;
 #endif  // EN_BB_FB_COUNT
 #ifdef SUPERSCALAR
+// index into ftq, used to interact with ftq, increases by 1 for each instruction for every instruction pushed to ftq till fetchboundaryend
 static int16_t inst_index_in_fetch = 0, last_inst_index_in_fetch;  // starts from 0 after every redirect
+// offset from fetch_pc, used for pos
+static int16_t inst_offset_from_fpc = 0, last_inst_offset_from_fpc;  // starts from 0 after every redirect
 #endif
 
 extern uint64_t maxinsns, skip_insns;
@@ -279,13 +282,22 @@ void branchprof::branchprof_exit(PREDICTOR* bp) {
 }
 
 void branchprof::fetchBoundaryBegin(uint64_t pc) {
+  last_fetch_pc = fetch_pc;
+  fetch_pc = pc;
+  //flag = 1;
+  /* For desesc, just do not make new prediction and exit, 
+but fetch_pc and last_fetch_pc must be updated */
+// TODO Check - last_gshare_pred_inst
+/*
+if (gshare_pred_inst.hit) {
+return;
+}
+*/
   num_fetches++;
 #ifdef GSHARE
   last_gshare_pred_inst = gshare_pred_inst;
 #endif  // GSHARE
-  last_fetch_pc = fetch_pc;
 
-  fetch_pc = pc;
   bp->ftq_inst.set_ftq_index(0);
 
   uint64_t temp_pc = fetch_pc;
@@ -323,14 +335,16 @@ void branchprof::fetchBoundaryBegin(uint64_t pc) {
 #endif  // DEBUG_GSHARE
   get_gshare_prediction(fetch_pc, gshare_index, gshare_tag);
 
+/*
   if (gshare_pred_inst.hit) {
     int pos0 = gshare_pred_inst.info.poses[0];
     if (!vec_predDir[pos0]) {
-      /*gshare_pred_inst.tag_match = false;
-      gshare_pred_inst.hit = false;*/
+      gshare_pred_inst.tag_match = false;
+      gshare_pred_inst.hit = false;
       gshare_batage_1st_pred_mismatch++;
     }
   }
+*/
 
   if (gshare_pred_inst.tag_match) {
     num_gshare_tag_match++;
@@ -375,7 +389,9 @@ void branchprof::fetchBoundaryBegin(uint64_t pc) {
       // At this point if 1st instruction for which correct info is avail is non-cti it is already updated
       // If it is cti - then branchtarget is avail in next CC and hence should only be updated condirionally then
       // fprintf(stderr, "%s\n", "Requesting FTQ entry allocation\n");
-      bp->ftq_inst.allocate_ftq_entry(vec_predDir[i], vec_highconf[i], false, temp_pc, insn_t::non_cti, temp_pc + 2, fetch_pc);
+	//printf("inst_offset_from_fpc = %d \n", inst_offset_from_fpc);
+	// TODO Check - Dromajo will put all inst_offset_from_fpc = 0 since the value is updated after the call to fetchboundarybegin
+      bp->ftq_inst.allocate_ftq_entry(vec_predDir[i], vec_highconf[i], false, temp_pc, insn_t::non_cti, temp_pc + 2, fetch_pc, inst_offset_from_fpc);
     } else {
       fprintf(stderr, "%s\n", "FTQ full");
     }
@@ -396,6 +412,7 @@ void branchprof::fetchBoundaryEnd_dromajo() {
   insn_t   update_insn;
   bool     update_predDir, update_resolveDir;
   bool     update_highconf;
+  uint8_t update_inst_offset_from_fpc;
 
 #ifdef DEBUG_FTQ
   fprintf(stderr, "\nread_ftq_update_predictor : inst_index_in_fetch = %u, partial_pop = %d\n", inst_index_in_fetch, partial_pop);
@@ -405,6 +422,7 @@ void branchprof::fetchBoundaryEnd_dromajo() {
   highconfT_in_packet = false;
 #endif  // GSHARE
 
+// TODO - Check the inst_index_in_fetch - how it is being used and updated - this is probably correct
   for (int i = 0; i < (partial_pop ? inst_index_in_fetch : FETCH_WIDTH); i++) {
     if (!(bp->ftq_inst.is_ftq_empty())) {
       bp->ftq_inst.get_ftq_data(&ftq_data);
@@ -415,6 +433,8 @@ void branchprof::fetchBoundaryEnd_dromajo() {
       update_predDir      = ftq_data.predDir;
       update_branchTarget = ftq_data.branchTarget;
       update_fetch_pc     = ftq_data.fetch_pc;
+      update_inst_offset_from_fpc = ftq_data.inst_offset_from_fpc;
+//printf ("update_inst_offset_from_fpc = %d\n", update_inst_offset_from_fpc);
 
 #ifdef Ideal_2T
       if ((update_resolveDir && update_predDir) || (update_insn == insn_t::jump) /*||  (update_insn == insn_t::ret)*/) {
@@ -423,10 +443,11 @@ void branchprof::fetchBoundaryEnd_dromajo() {
 
         if (!gshare_tracking && (update_insn == insn_t::branch))  // The first must be a branch
         {
-          pos_0           = i;
+        // TODO Check if should be last_inst_offset_from_fpc
+          pos_0           = update_inst_offset_from_fpc;
           gshare_tracking = true;
         } else {
-          if (pos_0 + i + 1 < FETCH_WIDTH) {
+          if (inst_index_in_fetch < FETCH_WIDTH) {
             // num_fetches--;
           }
           gshare_tracking = false;
@@ -436,9 +457,9 @@ void branchprof::fetchBoundaryEnd_dromajo() {
 #endif  // Ideal_2T
 
 #ifdef GSHARE
-      resolve_gshare(i, update_predDir, update_resolveDir, update_branchTarget);
+      resolve_gshare(update_inst_offset_from_fpc, update_predDir, update_resolveDir, update_branchTarget);
 
-      if (last_gshare_pred_inst.hit && (i == last_gshare_pred_inst.info.poses[1]) && (update_insn == insn_t::jump)) {
+      if (last_gshare_pred_inst.hit && (update_inst_offset_from_fpc == last_gshare_pred_inst.info.poses[1]) && (update_insn == insn_t::jump)) {
         if (gshare_pos1_correct) {
           num_gshare_jump_correct_predictions++;
         } else {
@@ -462,15 +483,16 @@ void branchprof::fetchBoundaryEnd_dromajo() {
               && (update_insn == insn_t::branch))  // The first must be a branch
           {
             gshare_PCs.push_back(update_fetch_pc);
-            gshare_poses.push_back(i);  // (update_pc - update_fetch_pc) >> 1
+            gshare_poses.push_back(update_inst_offset_from_fpc);  // (update_pc - update_fetch_pc) >> 1
             gshare_PCs.push_back(update_branchTarget);
             update_gshare_tag   = batage_prediction.gshare_tag;  // ftq_data.tags[i][ftq_data.bp[i]];
             update_gshare_index = batage_prediction.gshare_index;
             gshare_tracking     = true;
           }
         } else {
-          if (gshare_poses[0] + i + 1 < FETCH_WIDTH) {
-            gshare_poses.push_back((i));  // (update_pc - update_fetch_pc) >> 1)
+        // TODO - Check how to do this check
+          if (inst_index_in_fetch < FETCH_WIDTH) {
+            gshare_poses.push_back((update_inst_offset_from_fpc));  // (update_pc - update_fetch_pc) >> 1)
             gshare_PCs.push_back(update_branchTarget);
 
             bp->fast_pred.allocate(gshare_PCs, gshare_poses, update_gshare_index, update_gshare_tag);
@@ -577,6 +599,7 @@ void branchprof::fetchBoundaryEnd_dromajo() {
 #endif
 
   inst_index_in_fetch = 0;
+  inst_offset_from_fpc = 0;
 #ifdef DEBUG
   fprintf(stderr, "||||||||||||||||||||||||||| NUKING FTQ |||||||||||||||||||||||||| \n");
 #endif
@@ -610,6 +633,7 @@ void branchprof::fetchBoundaryEnd() {
   insn_t   update_insn;
   bool     update_predDir, update_resolveDir;
   bool     update_highconf;
+  uint8_t update_inst_offset_from_fpc;
 
 #ifdef DEBUG_FTQ
   fprintf(stderr, "\nread_ftq_update_predictor : inst_index_in_fetch = %u, partial_pop = %d\n", inst_index_in_fetch, partial_pop);
@@ -631,6 +655,7 @@ void branchprof::fetchBoundaryEnd() {
       update_predDir      = ftq_data.predDir;
       update_branchTarget = ftq_data.branchTarget;
       update_fetch_pc     = ftq_data.fetch_pc;
+      update_inst_offset_from_fpc = ftq_data.inst_offset_from_fpc;
 
 #ifdef Ideal_2T
       if ((update_resolveDir && update_predDir) || (update_insn == insn_t::jump) /*||  (update_insn == insn_t::ret)*/) {
@@ -794,6 +819,7 @@ i++;
 #endif
 
   inst_index_in_fetch = 0;
+  inst_offset_from_fpc = 0;
 #ifdef DEBUG
   fprintf(stderr, "||||||||||||||||||||||||||| NUKING FTQ |||||||||||||||||||||||||| \n");
 #endif
@@ -868,7 +894,7 @@ If gshare_tracking is in progress -
 */
 
 #ifdef GSHARE
-void branchprof::resolve_gshare(int i, bool update_predDir, bool update_resolveDir, uint64_t target) {
+void branchprof::resolve_gshare(int i /* inst_offset_from_fpc */, bool update_predDir, bool update_resolveDir, uint64_t target) {
   if (last_gshare_pred_inst.tag_match) {
     if (i == 0) {
       gshare_pos1_correct = false;
@@ -1107,6 +1133,7 @@ void branchprof::handle_nb() {
 }
 
 void branchprof::update_counters_desesc() {
+printf ("************** desesc fxn called ******************* \n");
   if (predDir == resolveDir) {
     misprediction = false;
     correct_prediction_count++;
@@ -1216,7 +1243,7 @@ void branchprof::handle_insn(uint64_t pc, uint32_t insn_raw) {
 
     // Update ftq for all insns, even if last_insn == non_cti
     // if (last_insn != insn_t::non_cti)
-    { bp->ftq_inst.ftq_update_resolvedinfo(last_inst_index_in_fetch, last_pc, last_insn, last_resolveDir, branchTarget); }
+    { bp->ftq_inst.ftq_update_resolvedinfo(last_inst_index_in_fetch, last_pc, last_insn, last_resolveDir, branchTarget, last_inst_offset_from_fpc); }
 
 #ifdef SUPERSCALAR
 #ifdef FTQ
@@ -1306,7 +1333,7 @@ void branchprof::handle_insn(uint64_t pc, uint32_t insn_raw) {
   if (inst_index_in_fetch == 0) {
     fetchBoundaryBegin(pc);
   }
-
+  
   predDir = false;
 #ifdef GSHARE
   /*if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
@@ -1318,7 +1345,7 @@ void branchprof::handle_insn(uint64_t pc, uint32_t insn_raw) {
   }*/
 
   if (/*(gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) ||*/ (
-      last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1]))) {
+      last_gshare_pred_inst.hit && (inst_offset_from_fpc == last_gshare_pred_inst.info.poses[1]))) {
     predDir = true;
     if (!(bp->ftq_inst.get_predDir_from_ftq(inst_index_in_fetch))) {
       gshare_batage_2nd_pred_mismatch++;
@@ -1348,6 +1375,9 @@ void branchprof::handle_insn(uint64_t pc, uint32_t insn_raw) {
   benchmark_instruction_count++;
   last_inst_index_in_fetch = inst_index_in_fetch;
   inst_index_in_fetch++;
+  last_inst_offset_from_fpc = inst_offset_from_fpc;
+    // TODO-Check
+  inst_offset_from_fpc = (pc - fetch_pc) >> 1;
 #ifdef T_TRACE
   i_count++;
 #endif
@@ -1371,7 +1401,8 @@ void branchprof::handle_insn(uint64_t pc, uint32_t insn_raw) {
 bool branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken) {
   // 16 instructions of any size, fetch_pc saved in fetchboundarybegin
   // aligned_fetch_pc = (pc >> ((pred->LOG2FETCHWIDTH) + 2)) << ((pred->LOG2FETCHWIDTH) + 2);
-  inst_index_in_fetch = (pc - fetch_pc) >> 1;
+  inst_index_in_fetch++;
+  inst_offset_from_fpc = (pc - fetch_pc) >> 1;
 
 	/*
 	// in ftq, fetchpc = 6218146, target = 6218174 
@@ -1406,7 +1437,7 @@ bool branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t 
 	// TODO Check if default true is ok
   misprediction = true; 
   resolveDir    = taken;
-  { bp->ftq_inst.ftq_update_resolvedinfo(inst_index_in_fetch, pc, insn, resolveDir, branchTarget); }
+  { bp->ftq_inst.ftq_update_resolvedinfo(inst_index_in_fetch, pc, insn, resolveDir, branchTarget, inst_offset_from_fpc); }
 
 // TODO - Did not update yet for GSHARE case since handling is different from Dromajo
 #ifdef GSHARE
@@ -1459,7 +1490,8 @@ bool branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t 
 #endif
 
   benchmark_instruction_count++;
-// last_inst_index_in_fetch = inst_index_in_fetch;
+ last_inst_index_in_fetch = inst_index_in_fetch;
+ last_inst_offset_from_fpc = inst_offset_from_fpc;
 // inst_index_in_fetch++;
 #ifdef T_TRACE
   i_count++;

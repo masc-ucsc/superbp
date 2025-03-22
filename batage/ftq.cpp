@@ -15,7 +15,7 @@ ftq_entry_ptr ftq[NUM_FTQ_ENTRIES];
 #endif
 
 ftq_entry::ftq_entry(const bool &predDir1, const bool &highconf1, const bool &resolveDir1, const uint64_t &pc1, const insn_t &insn1,
-                     const uint64_t &branchTarget1, const uint64_t &fetch_pc, const batage *bp)
+                     const uint64_t &branchTarget1, const uint64_t &fetch_pc, const uint8_t inst_offset_from_fpc, const batage *bp)
     /*: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget
        {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta
        {predictor.pred.meta}, bp {predictor.pred.bp}, cat
@@ -31,6 +31,7 @@ ftq_entry::ftq_entry(const bool &predDir1, const bool &highconf1, const bool &re
     , insn{insn1}
     , branchTarget{branchTarget1}
     , fetch_pc{fetch_pc}
+    , inst_offset_from_fpc{inst_offset_from_fpc}
     , hit{bp->hit}
     , tags{bp->tags}
     , s{bp->s}
@@ -65,7 +66,7 @@ void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI &IMLI_i
 #elif defined BATAGE
 void ftq::allocate_ftq_entry(const bool &predDir, const bool &highconf, const bool &resolveDir, const uint64_t &pc,
                              const insn_t &insn, const uint64_t &branchTarget,
-                             const uint64_t &fetch_pc)  // , histories* hist_ptr)
+                             const uint64_t &fetch_pc, const uint8_t inst_offset_from_fpc)  // , histories* hist_ptr)
 #else
 void allocate_ftq_entry(void)
 #endif
@@ -98,7 +99,7 @@ void allocate_ftq_entry(void)
 #elif defined BATAGE
   // ftq_entry f {predDir, resolveDir, pc, branchTarget, predictor.pred.hit,
   // predictor.pred.s, predictor.pred.meta};
-  ftq_entry f{predDir, highconf, resolveDir, pc, insn, branchTarget, fetch_pc, bp};
+  ftq_entry f{predDir, highconf, resolveDir, pc, insn, branchTarget, fetch_pc, inst_offset_from_fpc, bp};
   // Move assignment
   mem[next_allocate_index] = std::move(f);
 #endif
@@ -126,11 +127,12 @@ void ftq::set_ftq_index(uint16_t index) {
 
 bool ftq::get_predDir_from_ftq(uint16_t index) { return mem[index].predDir; }
 
-void ftq::ftq_update_resolvedinfo(uint16_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget) {
+void ftq::ftq_update_resolvedinfo(uint16_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget, const uint8_t inst_offset_from_fpc) {
   // ftq[index].pc = branch_pc;
   mem[index].insn         = insn;
   mem[index].resolveDir   = resolveDir;
   mem[index].branchTarget = branchTarget;
+  mem[index].inst_offset_from_fpc = inst_offset_from_fpc;
   return;
 }
 #endif  // BATAGE
