@@ -664,10 +664,10 @@ void branchprof::fetchBoundaryEnd() {
 
         if (!gshare_tracking && (update_insn == insn_t::branch))  // The first must be a branch
         {
-          pos_0           = i;
+          pos_0           = update_inst_offset_from_fpc;
           gshare_tracking = true;
         } else {
-          if (pos_0 + i + 1 < FETCH_WIDTH) {
+          if (inst_index_in_fetch < FETCH_WIDTH) {
             // num_fetches--;
           }
           gshare_tracking = false;
@@ -677,9 +677,9 @@ void branchprof::fetchBoundaryEnd() {
 #endif  // Ideal_2T
 
 #ifdef GSHARE
-      resolve_gshare(i, update_predDir, update_resolveDir, update_branchTarget);
+      resolve_gshare(update_inst_offset_from_fpc, update_predDir, update_resolveDir, update_branchTarget);
 
-      if (last_gshare_pred_inst.hit && (i == last_gshare_pred_inst.info.poses[1]) && (update_insn == insn_t::jump)) {
+      if (last_gshare_pred_inst.hit && (update_inst_offset_from_fpc == last_gshare_pred_inst.info.poses[1]) && (update_insn == insn_t::jump)) {
         if (gshare_pos1_correct) {
           num_gshare_jump_correct_predictions++;
         } else {
@@ -703,15 +703,15 @@ void branchprof::fetchBoundaryEnd() {
               && (update_insn == insn_t::branch))  // The first must be a branch
           {
             gshare_PCs.push_back(update_fetch_pc);
-            gshare_poses.push_back(i);  // (update_pc - update_fetch_pc) >> 1
+            gshare_poses.push_back(update_inst_offset_from_fpc);  // (update_pc - update_fetch_pc) >> 1
             gshare_PCs.push_back(update_branchTarget);
             update_gshare_tag   = batage_prediction.gshare_tag;  // ftq_data.tags[i][ftq_data.bp[i]];
             update_gshare_index = batage_prediction.gshare_index;
             gshare_tracking     = true;
           }
         } else {
-          if (gshare_poses[0] + i + 1 < FETCH_WIDTH) {
-            gshare_poses.push_back((i));  // (update_pc - update_fetch_pc) >> 1)
+          if (inst_index_in_fetch < FETCH_WIDTH) {
+            gshare_poses.push_back((update_inst_offset_from_fpc));  // (update_pc - update_fetch_pc) >> 1)
             gshare_PCs.push_back(update_branchTarget);
 
             bp->fast_pred.allocate(gshare_PCs, gshare_poses, update_gshare_index, update_gshare_tag);
@@ -1133,7 +1133,6 @@ void branchprof::handle_nb() {
 }
 
 void branchprof::update_counters_desesc() {
-printf ("************** desesc fxn called ******************* \n");
   if (predDir == resolveDir) {
     misprediction = false;
     correct_prediction_count++;
