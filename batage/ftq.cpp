@@ -15,7 +15,7 @@ ftq_entry_ptr ftq[NUM_FTQ_ENTRIES];
 #endif
 
 ftq_entry::ftq_entry(const bool &predDir1, const bool &highconf1, const bool &resolveDir1, const uint64_t &pc1, const insn_t &insn1,
-                     const uint64_t &branchTarget1, const uint64_t &fetch_pc, const uint8_t inst_offset_from_fpc, const batage *bp)
+                     const uint64_t &branchTarget1, const uint64_t &fetch_pc, const uint8_t& inst_offset_from_fpc, const batage *bp)
     /*: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget
        {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta
        {predictor.pred.meta}, bp {predictor.pred.bp}, cat
@@ -66,7 +66,7 @@ void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI &IMLI_i
 #elif defined BATAGE
 void ftq::allocate_ftq_entry(const bool &predDir, const bool &highconf, const bool &resolveDir, const uint64_t &pc,
                              const insn_t &insn, const uint64_t &branchTarget,
-                             const uint64_t &fetch_pc, const uint8_t inst_offset_from_fpc)  // , histories* hist_ptr)
+                             const uint64_t &fetch_pc, const uint8_t& inst_offset_from_fpc)  // , histories* hist_ptr)
 #else
 void allocate_ftq_entry(void)
 #endif

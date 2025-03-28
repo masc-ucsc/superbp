@@ -90,7 +90,7 @@ public:
 
   // Constructor - to allocate entry
   ftq_entry(const bool &predDir1, const bool &highconf1, const bool &resolveDir1, const uint64_t &pc1, const insn_t &insn1,
-            const uint64_t &branchTarget1, const uint64_t &fetch_pc, const uint8_t inst_offset_from_fpc, const batage *bp);
+            const uint64_t &branchTarget1, const uint64_t &fetch_pc, const uint8_t& inst_offset_from_fpc, const batage *bp);
   /*: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget
      {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta
      {predictor.pred.meta}, bp {predictor.pred.bp}, cat
@@ -177,7 +177,7 @@ public:
   uint16_t get_num_free_ftq_entries(void);
   void allocate_ftq_entry(const bool &predDir, const bool &highconf, const bool &resolveDir, const uint64_t &pc, const insn_t &insn,
                           const uint64_t &branchTarget,
-                          const uint64_t &fetch_pc, const uint8_t inst_offset_from_fpc);  // , histories* hist_ptr);
+                          const uint64_t &fetch_pc, const uint8_t& inst_offset_from_fpc);  // , histories* hist_ptr);
   void set_ftq_index(uint16_t index);
   bool get_predDir_from_ftq(uint16_t index);
   void ftq_update_resolvedinfo(uint16_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget, const uint8_t inst_offset_from_fpc);
