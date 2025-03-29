@@ -1422,7 +1422,7 @@ void branchprof::handle_insn(uint64_t pc, uint32_t insn_raw) {
   }
 }
 
-bool branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken) {
+bool branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken, bool* p_gshare_correct) {
   // 16 instructions of any size, fetch_pc saved in fetchboundarybegin
   // aligned_fetch_pc = (pc >> ((pred->LOG2FETCHWIDTH) + 2)) << ((pred->LOG2FETCHWIDTH) + 2);
   inst_index_in_fetch++;
@@ -1537,5 +1537,6 @@ last_misprediction = misprediction;
   if (i0_done == false) {
     i0_done = true;
   }
+  *p_gshare_correct =  gshare_prediction_correct; // (last_gshare_pred_inst.hit && predDir);
   return predDir;
 }
