@@ -1091,7 +1091,11 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 #endif  // DEBUG_POS
     // TODO Check
     if ((int)hit[offset_within_packet].size() > 0) {
-      offset_within_entry = poses[offset_within_packet][bp[offset_within_packet]];
+      auto sz = bp[offset_within_packet];
+      if (sz>=poses[offset_within_packet].size()) {
+        std::cerr << "OVERFLOW\n";
+      }
+      offset_within_entry = poses[offset_within_packet][sz];
     } else  // no hit, bimodal, this is not used since bimodal uses offset_within_packet directly in update_entry_e
     {
       offset_within_entry = offset_within_packet;

@@ -65,7 +65,7 @@ bool PREDICTOR::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t i
   return branchprof_inst.handle_insn_desesc(pc, branchTarget, insn_type, taken);
 }
 
-gshare_prediction& PREDICTOR::GetFastPrediction(uint64_t PC, int index, int tag) { return (fast_pred.predict(PC, index, tag)); }
+gshare_prediction PREDICTOR::GetFastPrediction(uint64_t PC, int index, int tag) { return (fast_pred.predict(PC, index, tag)); }
 
 prediction& PREDICTOR::GetPrediction(uint64_t PC) { return pred.predict_vec(PC, hist); }
 

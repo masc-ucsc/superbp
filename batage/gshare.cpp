@@ -136,14 +136,17 @@ void gshare::decay() {
   }
 }
 
-bool gshare::is_hit(uint64_t PC, uint16_t index, uint16_t tag) {
+
+bool gshare::is_tag_match(uint64_t PC, uint16_t index, uint16_t tag) const {
+  return ((tag == table[index].tag) && (tag != 0));
+}
+
+bool gshare::is_hit(bool tag_match, uint64_t PC, uint16_t index, uint16_t tag) const {
   // uint16_t index = calc_index(PC);
   // uint16_t tag = calc_tag(PC);
   uint8_t ctr = table[index].ctr;
 
   if ((tag == table[index].tag) && (tag != 0)) {
-    prediction.tag_match = true;
-
 #ifdef DEBUG_PREDICT
     if (ctr < CTR_THRESHOLD) {
       fprintf(gshare_log,
@@ -157,14 +160,15 @@ bool gshare::is_hit(uint64_t PC, uint16_t index, uint16_t tag) {
 #endif
   }
 
-  return (prediction.tag_match && (ctr >= CTR_THRESHOLD));
+  return (tag_match && (ctr >= CTR_THRESHOLD));
 }
 
-gshare_prediction& gshare::predict(uint64_t PC, uint16_t index, uint16_t tag) {
+gshare_prediction gshare::predict(uint64_t PC, uint16_t index, uint16_t tag) {
   index %= NUM_GSHARE_ENTRIES;
-  prediction.index     = index;
-  prediction.hit       = false;
-  prediction.tag_match = false;
+  gshare_prediction pred;
+  pred.index     = index;
+  pred.hit       = false;
+  pred.tag_match = false;
 #ifdef DEBUG_PC
   if ((PC == 0xffffffff8010a4f2) || (PC == 0xffffffff8010a130)) {
     for (int i = 0; i < NUM_GSHARE_ENTRIES; i++) {
@@ -178,26 +182,27 @@ gshare_prediction& gshare::predict(uint64_t PC, uint16_t index, uint16_t tag) {
   // if ()
   {
     // uint16_t index = calc_index(PC);
-    prediction.hit   = is_hit(PC, index, tag);
-    prediction.index = index;
-    prediction.info  = gshare_entry_formed(PC, table[index], pages, PAGE_OFFSET_SIZE);
+    pred.tag_match = is_tag_match(PC, index, tag);
+    pred.hit   = is_hit(pred.tag_match, PC, index, tag);
+    pred.index = index;
+    pred.info  = gshare_entry_formed(PC, table[index], pages, PAGE_OFFSET_SIZE);
 #ifdef DEBUG_PREDICT
-    if (prediction.hit) {
+    if (pred.hit) {
       fprintf(
           gshare_log,
           "gshare hit index = %u for fetchPC = %#llx, sent tag = %#x, pos[0] = %u, PC[0] = %#llx, pos[1] = %u, PC[1] = %#llx \n",
           index,
           PC,
           tag,
-          prediction.info.poses[0],
-          prediction.info.PCs[0],
-          prediction.info.poses[1],
-          prediction.info.PCs[1]);
+          pred.info.poses[0],
+          pred.info.PCs[0],
+          pred.info.poses[1],
+          pred.info.PCs[1]);
     }
 #endif
   }
 
-  return prediction;
+  return pred;
 }
 
 uint8_t gshare::get_group()
@@ -328,9 +333,9 @@ void gshare::allocate(vector<uint64_t>& PCs, vector<uint8_t>& poses, uint16_t up
   }
 }
 
-void gshare::update(gshare_prediction& prediction, bool prediction_correct) {
-  uint16_t index     = prediction.index;
-  bool     tag_match = prediction.tag_match;
+void gshare::update(gshare_prediction& upd_pred, bool prediction_correct) {
+  uint16_t index     = upd_pred.index;
+  bool     tag_match = upd_pred.tag_match;
   uint8_t  ctr       = table[index].ctr;
   if (tag_match) {
     if (prediction_correct) {
@@ -344,7 +349,7 @@ void gshare::update(gshare_prediction& prediction, bool prediction_correct) {
 #ifdef DEBUG_UPDATE
       fprintf(gshare_log,
               "Update on correct prediction for PC = %#llx, updated index = %d's counter to %u\n",
-              prediction.info.PCs[0],
+              upd_pred.info.PCs[0],
               index,
               table[index].ctr);
 #endif
@@ -354,7 +359,7 @@ void gshare::update(gshare_prediction& prediction, bool prediction_correct) {
 #ifdef DEBUG_UPDATE
       fprintf(gshare_log,
               "Update on misprediction for PC = %#llx, updated index = %d's counter to %u\n",
-              prediction.info.PCs[0],
+              upd_pred.info.PCs[0],
               index,
               table[index].ctr);
 #endif

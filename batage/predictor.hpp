@@ -48,7 +48,7 @@ public:
   void handle_insn(uint64_t pc, uint32_t insn_raw);
   bool handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken);
 
-  gshare_prediction& GetFastPrediction(uint64_t PC, int index, int tag);
+  gshare_prediction GetFastPrediction(uint64_t PC, int index, int tag);
   prediction&        GetPrediction(uint64_t PC);
 
   void     Updatetables(uint64_t PC, uint64_t fetch_pc, uint32_t offset_within_entry, bool resolveDir);

@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <iostream>
 
 #include <vector>
 
@@ -67,6 +68,7 @@ public:
   gshare_entry();
 
   // Copy assignment
+  /*
   gshare_entry& operator=(const gshare_entry& rhs) {
     ctr        = rhs.ctr;
     tag        = rhs.tag;
@@ -79,6 +81,7 @@ public:
  
     return *this;
   }
+  */
   
   static uint64_t size(uint8_t PAGE_TABLE_INDEX_SIZE, uint8_t PAGE_OFFSET_SIZE);
 };
@@ -182,12 +185,13 @@ public:
 
   void decay();
 
-  bool is_hit(uint64_t PC, uint16_t index, uint16_t tag);
+  bool is_tag_match(uint64_t PC, uint16_t index, uint16_t tag) const;
+  bool is_hit(bool tag_match, uint64_t PC, uint16_t index, uint16_t tag) const;
 
   // TODO Check - Ques - When is gshare predict called - is it once for a SS packet - then how do we get pos ?
   // Is it once per PC in packet ?
   // Also how to infer the prediction - does it return taken, not taken ?
-  gshare_prediction& predict(uint64_t PC, uint16_t index, uint16_t tag);
+  gshare_prediction predict(uint64_t PC, uint16_t index, uint16_t tag);
 
   uint8_t get_group();
   uint8_t get_entry_in_group(uint8_t group);
