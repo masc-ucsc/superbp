@@ -213,9 +213,9 @@ void SBP_folded_history::update(path_history &ph) {
   fold ^= inbits ^ outbits;
 }
 
-void histories::get_predictor_vars(const batage *bp, const gshare* fp) {
-  SBP_NUMG  = bp->SBP_NUMG;
-  SBP_LOGGE = bp->SBP_LOGGE;
+void histories::get_predictor_vars(const batage *bp, const gshare *fp) {
+  SBP_NUMG           = bp->SBP_NUMG;
+  SBP_LOGGE          = bp->SBP_LOGGE;
   NUM_GSHARE_ENTRIES = fp->NUM_GSHARE_ENTRIES;
 
   int *hist  = new int[SBP_NUMG];
@@ -402,13 +402,13 @@ int histories::ghg(int i) const {  // int SBP_NUMG = bp->SBP_NUMG;
 void histories::printconfig() {
   // int SBP_NUMG = bp->SBP_NUMG;
 
-/*
-  printf("history lengths: ");
-  for (int i = SBP_NUMG - 1; i >= 0; i--) {
-    printf("%d ", chg[i].olength);
-  }
-  printf("\n");
-  */
+  /*
+    printf("history lengths: ");
+    for (int i = SBP_NUMG - 1; i >= 0; i--) {
+      printf("%d ", chg[i].olength);
+    }
+    printf("\n");
+    */
 }
 
 int histories::size() {
@@ -589,7 +589,7 @@ void batage::batage_resize() {
   tags.resize(FETCHWIDTH);
 #if (defined(POS) || defined(MT_PLUS))
   poses.resize(FETCHWIDTH);
-  //random = 0x05af5a0f ^ 0x5f0aa05f;
+  // random = 0x05af5a0f ^ 0x5f0aa05f;
   srand(time(NULL));
   random = rand();
 #endif  // POS
@@ -912,7 +912,7 @@ prediction &batage::predict_vec(uint32_t fetch_pc, const histories &p) {
     }
   }
   // pred_out.gshare_index = pred_out.gshare_tag;
-  pred_out.gshare_index = p.gshare_index(hash_fetch_pc, ((SBP_NUMG/2) + 1), this);
+  pred_out.gshare_index = p.gshare_index(hash_fetch_pc, ((SBP_NUMG / 2) + 1), this);
 
 #ifdef DEBUG
   std::cerr << "66666" << "\n";
@@ -1092,7 +1092,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
     // TODO Check
     if ((int)hit[offset_within_packet].size() > 0) {
       auto sz = bp[offset_within_packet];
-      if (sz>=poses[offset_within_packet].size()) {
+      if (sz >= poses[offset_within_packet].size()) {
         std::cerr << "OVERFLOW\n";
       }
       offset_within_entry = poses[offset_within_packet][sz];
@@ -1187,13 +1187,13 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
       do {
 #endif  // NOT_MRU
         offset_within_entry = random % INFO_PER_ENTRY[i];
-        random              = rand(); //(random ^ (random >> 5) ^ (random << 5));
+        random              = rand();  //(random ^ (random >> 5) ^ (random << 5));
 #ifdef NOT_MRU
       } while (offset_within_entry == getgb(i).mru);
 #endif  // NOT_MRU
 #else   // RANDOM_ALLOCS_or_NOT_MRU
 
-      random = rand(); //(random ^ (random >> 5)^ (random << 5));
+      random = rand();  //(random ^ (random >> 5)^ (random << 5));
       int r  = random % 2;
       for (int j = r ? 0 : INFO_PER_ENTRY[i] - 1; r ? (j < INFO_PER_ENTRY[i]) : (j >= 0); r ? (j++) : (j--)) {
 #ifdef MT_PLUS

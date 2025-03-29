@@ -41,7 +41,9 @@ public:
 
   PREDICTOR(void);
   ~PREDICTOR(void);
-  PREDICTOR (int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES, std::vector<uint32_t>& ORIG_ENTRIES_PER_TABLE, std::vector<uint32_t>& INFO_PER_ENTRY, uint32_t& NUM_GSHARE_ENTRIES_SHIFT, uint8_t& NUM_PAGES_PER_GROUP, uint8_t& PAGE_OFFSET_SIZE, uint8_t& PAGE_TABLE_INDEX_SIZE);
+  PREDICTOR(int& SBP_NUMG, int& LOG2FETCHWIDTH, int& NUM_TAKEN_BRANCHES, std::vector<uint32_t>& ORIG_ENTRIES_PER_TABLE,
+            std::vector<uint32_t>& INFO_PER_ENTRY, uint32_t& NUM_GSHARE_ENTRIES_SHIFT, uint8_t& NUM_PAGES_PER_GROUP,
+            uint8_t& PAGE_OFFSET_SIZE, uint8_t& PAGE_TABLE_INDEX_SIZE);
 
   void fetchBoundaryBegin(uint64_t PC);
   void fetchBoundaryEnd();
@@ -49,7 +51,7 @@ public:
   bool handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken);
 
   gshare_prediction GetFastPrediction(uint64_t PC, int index, int tag);
-  prediction&        GetPrediction(uint64_t PC);
+  prediction&       GetPrediction(uint64_t PC);
 
   void     Updatetables(uint64_t PC, uint64_t fetch_pc, uint32_t offset_within_entry, bool resolveDir);
   void     Updatehistory(bool resolveDir, uint64_t branchTarget);

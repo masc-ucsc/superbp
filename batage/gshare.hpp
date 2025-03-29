@@ -2,8 +2,8 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <iostream>
 
+#include <iostream>
 #include <vector>
 
 #include "batage.hpp"
@@ -53,15 +53,15 @@ public:
 #ifdef DEBUG_UTILIZATION
   bool allocated;
 #endif
-  uint8_t          ctr;
-  uint16_t         tag;
-  vector<uint8_t>  hist_patch;
-  vector<uint8_t>  poses;
-  
-  //vector<uint64_t> PCs;
-  // index = 0 means same page
-  vector<uint64_t> page_table_index;		// actual size = PAGE_TABLE_INDEX_SIZE
-  vector<uint16_t> page_offset;			// actual size = PAGE_OFFSET_SIZE
+  uint8_t         ctr;
+  uint16_t        tag;
+  vector<uint8_t> hist_patch;
+  vector<uint8_t> poses;
+
+  // vector<uint64_t> PCs;
+  //  index = 0 means same page
+  vector<uint64_t> page_table_index;  // actual size = PAGE_TABLE_INDEX_SIZE
+  vector<uint16_t> page_offset;       // actual size = PAGE_OFFSET_SIZE
 
 public:
   // constructor
@@ -75,14 +75,14 @@ public:
     hist_patch = rhs.hist_patch;
     poses      = rhs.poses;
 
-    //PCs        = rhs.PCs; 
+    //PCs        = rhs.PCs;
     page_table_index = rhs.page_table_index;
     page_offset = rhs.page_offset;
- 
+
     return *this;
   }
   */
-  
+
   static uint64_t size(uint8_t PAGE_TABLE_INDEX_SIZE, uint8_t PAGE_OFFSET_SIZE);
 };
 
@@ -94,19 +94,19 @@ public:
 #ifdef DEBUG_UTILIZATION
   bool allocated;
 #endif
-  uint8_t          ctr;
-  uint16_t         tag;
-  vector<uint8_t>  hist_patch;
-  vector<uint8_t>  poses;
-  
+  uint8_t         ctr;
+  uint16_t        tag;
+  vector<uint8_t> hist_patch;
+  vector<uint8_t> poses;
+
   vector<uint64_t> PCs;
+
 public:
   // constructor
   gshare_entry_formed();
-  gshare_entry_formed(const uint64_t PC, const gshare_entry& rhs, vector<uint64_t>&  pages, uint8_t PAGE_OFFSET_SIZE);
+  gshare_entry_formed(const uint64_t PC, const gshare_entry& rhs, vector<uint64_t>& pages, uint8_t PAGE_OFFSET_SIZE);
   // Copy assignment
-  gshare_entry_formed& operator=(const gshare_entry_formed& rhs) ;
-
+  gshare_entry_formed& operator=(const gshare_entry_formed& rhs);
 };
 
 class gshare_prediction {
@@ -115,7 +115,7 @@ public:
   bool tag_match;
   // TODO - update - we do not want to return "everything" including tag, bad design, but ok for now
   gshare_entry_formed info;
-  uint16_t     index;
+  uint16_t            index;
 
   // Default constructor for uninitialized instance
   gshare_prediction() = default;
@@ -135,27 +135,27 @@ public:
 
 class gshare {
 public:
-friend class gshare_entry_formed;
+  friend class gshare_entry_formed;
 
-	uint32_t NUM_GSHARE_ENTRIES_SHIFT;
-	 uint32_t NUM_GSHARE_ENTRIES; // (1 << 10)
+  uint32_t NUM_GSHARE_ENTRIES_SHIFT;
+  uint32_t NUM_GSHARE_ENTRIES;  // (1 << 10)
 
- uint8_t NUM_PAGES_PER_GROUP; // 8
+  uint8_t NUM_PAGES_PER_GROUP;  // 8
 
- uint8_t PAGE_OFFSET_SIZE; // (6)
- uint32_t PAGE_SIZE; // (1 << PAGE_OFFSET_SIZE)
+  uint8_t  PAGE_OFFSET_SIZE;  // (6)
+  uint32_t PAGE_SIZE;         // (1 << PAGE_OFFSET_SIZE)
 
- uint8_t PAGE_TABLE_INDEX_SIZE; // (6)
- uint8_t NUM_PAGE_TABLE_ENTRIES; // (1 << PAGE_TABLE_INDEX_SIZE)
-	
-	vector<uint64_t>  pages;	// only contains page numbers, size = 64 - PAGE_OFFSET_SIZE
-	vector<bool>  page_valid;
-	//vector<uint8_t> page_repl_ctr;
-	vector<uint8_t> fifo;
-	int random;
-	//int seed = 0;
+  uint8_t PAGE_TABLE_INDEX_SIZE;   // (6)
+  uint8_t NUM_PAGE_TABLE_ENTRIES;  // (1 << PAGE_TABLE_INDEX_SIZE)
 
-	// table of predictions - not of pages
+  vector<uint64_t> pages;  // only contains page numbers, size = 64 - PAGE_OFFSET_SIZE
+  vector<bool>     page_valid;
+  // vector<uint8_t> page_repl_ctr;
+  vector<uint8_t> fifo;
+  int             random;
+  // int seed = 0;
+
+  // table of predictions - not of pages
   vector<gshare_entry> table;
   gshare_prediction    prediction;
   // FILE *gshare_log;
@@ -170,10 +170,10 @@ friend class gshare_entry_formed;
 public:
   // constructor
   gshare();
-  
-  	void read_env_variables();
-	void populate_dependent_globals();
-	void gshare_resize();
+
+  void read_env_variables();
+  void populate_dependent_globals();
+  void gshare_resize();
 
   void start_log() {
     // gshare_log = fopen("gshare_trace.txt", "w");
@@ -193,16 +193,16 @@ public:
   // Also how to infer the prediction - does it return taken, not taken ?
   gshare_prediction predict(uint64_t PC, uint16_t index, uint16_t tag);
 
-  uint8_t get_group();
-  uint8_t get_entry_in_group(uint8_t group);
+  uint8_t  get_group();
+  uint8_t  get_entry_in_group(uint8_t group);
   uint64_t get_a_page_index();
-  void update_page_repl_ctr(uint8_t page_index);
-  
+  void     update_page_repl_ctr(uint8_t page_index);
+
   void allocate(vector<uint64_t>& PCs, vector<uint8_t>& poses, uint16_t update_gshare_index, uint16_t update_gshare_tag);
 
   void update(gshare_prediction& prediction, bool prediction_correct);
-  
-  void size ();
+
+  void size();
 
 #ifdef DEBUG_UTILIZATION
   void get_gshare_utilization(uint64_t* buffer);

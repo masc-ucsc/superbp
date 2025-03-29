@@ -14,8 +14,8 @@
 #include "batage.hpp"
 #endif
 
-//#define DEBUG_FTQ
-//#define DEBUG_ALLOC
+// #define DEBUG_FTQ
+// #define DEBUG_ALLOC
 
 /*#ifdef DEBUG_FTQ
 FILE* fp = fopen ("ftq_log.txt", w+);
@@ -52,7 +52,7 @@ public:
   uint64_t fetch_pc;
   insn_t   insn;          // 1 per instructionhuq_entry
   uint64_t branchTarget;  // 1 per instruction - TODO Check if required
-  uint8_t inst_offset_from_fpc;
+  uint8_t  inst_offset_from_fpc;
 
   /* Changes for SS predictor
   hit - vector of banks that hit, stays the same for single tag; for multi tag - one vector per pc
@@ -90,7 +90,7 @@ public:
 
   // Constructor - to allocate entry
   ftq_entry(const bool &predDir1, const bool &highconf1, const bool &resolveDir1, const uint64_t &pc1, const insn_t &insn1,
-            const uint64_t &branchTarget1, const uint64_t &fetch_pc, const uint8_t& inst_offset_from_fpc, const batage *bp);
+            const uint64_t &branchTarget1, const uint64_t &fetch_pc, const uint8_t &inst_offset_from_fpc, const batage *bp);
   /*: predDir {predDir1}, resolveDir {resolveDir1}, pc {pc1}, branchTarget
      {branchTarget1}, hit {predictor.pred.hit}, s {predictor.pred.s}, meta
      {predictor.pred.meta}, bp {predictor.pred.bp}, cat
@@ -111,13 +111,13 @@ public:
   // Move assignment since queue must contain entire ftq_entry (not just
   // pointer), since allocated entry will get "destructed"
   ftq_entry &operator=(ftq_entry &&src) {
-    predDir      = std::move(src.predDir);
-    highconf     = std::move(src.highconf);
-    resolveDir   = std::move(src.resolveDir);
-    pc           = std::move(src.pc);
-    insn         = std::move(src.insn);
-    branchTarget = std::move(src.branchTarget);
-    fetch_pc     = std::move(src.fetch_pc);
+    predDir              = std::move(src.predDir);
+    highconf             = std::move(src.highconf);
+    resolveDir           = std::move(src.resolveDir);
+    pc                   = std::move(src.pc);
+    insn                 = std::move(src.insn);
+    branchTarget         = std::move(src.branchTarget);
+    fetch_pc             = std::move(src.fetch_pc);
     inst_offset_from_fpc = std::move(src.inst_offset_from_fpc);
 
     hit   = std::move(src.hit);
@@ -147,7 +147,7 @@ public:
   // Destructor - must check if any updates necessary
   ~ftq_entry() = default;
 #endif  // BATAGE
-};      // class ftq_entry
+};  // class ftq_entry
 
 using ftq_entry_ptr = ftq_entry *;
 
@@ -176,19 +176,20 @@ public:
   bool     is_ftq_empty(void);
   uint16_t get_num_free_ftq_entries(void);
   void allocate_ftq_entry(const bool &predDir, const bool &highconf, const bool &resolveDir, const uint64_t &pc, const insn_t &insn,
-                          const uint64_t &branchTarget,
-                          const uint64_t &fetch_pc, const uint8_t& inst_offset_from_fpc);  // , histories* hist_ptr);
+                          const uint64_t &branchTarget, const uint64_t &fetch_pc,
+                          const uint8_t &inst_offset_from_fpc);  // , histories* hist_ptr);
   void set_ftq_index(uint16_t index);
   bool get_predDir_from_ftq(uint16_t index);
-  void ftq_update_resolvedinfo(uint16_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget, const uint8_t inst_offset_from_fpc);
+  void ftq_update_resolvedinfo(uint16_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget,
+                               const uint8_t inst_offset_from_fpc);
   void get_ftq_data(ftq_entry *ftq_data_ptr);
   void deallocate_ftq_entry(void);
   void nuke_ftq();
 };
 
 #ifdef SUPERBP
-void          allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI &IMLI_inst);
-void          get_ftq_data(IMLI &IMLI_inst);
+void allocate_ftq_entry(AddrType branch_PC, AddrType branch_target, IMLI &IMLI_inst);
+void get_ftq_data(IMLI &IMLI_inst);
 #elif defined BATAGE
 
 #endif

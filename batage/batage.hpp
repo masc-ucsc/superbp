@@ -29,7 +29,7 @@
 #define SBP_TAGBITS   12
 #define SBP_BHYSTBITS 2
 
-//extern uint32_t SBP_NUMG;
+// extern uint32_t SBP_NUMG;
 
 // #define SINGLE_TAG
 #ifdef SINGLE_TAG
@@ -189,7 +189,7 @@ class histories {
 public:
   std::vector<uint8_t> SBP_LOGGE;
   uint32_t             SBP_NUMG;
-  uint32_t NUM_GSHARE_ENTRIES;
+  uint32_t             NUM_GSHARE_ENTRIES;
 
   path_history        bh;    // global history of branch directions
   path_history        ph;    // path history (target address bits)
@@ -198,7 +198,7 @@ public:
   SBP_folded_history *cht;   // compressed length = SBP_TAGBITS
   SBP_folded_history *chtt;  // compressed length = SBP_TAGBITS-1
 
-  void get_predictor_vars(const batage *bp, const gshare* fp);
+  void get_predictor_vars(const batage *bp, const gshare *fp);
   histories() = default;
 
   histories(const batage *bp);
