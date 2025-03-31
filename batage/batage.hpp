@@ -305,11 +305,11 @@ public:
   tagged_entry &getgp(int i, uint32_t offset_within_packet);
   tagged_entry &getge(int i, uint32_t offset_within_entry);
   uint32_t      get_offset_within_entry(uint32_t offset_within_packet, int table);
-  prediction   &predict_vec(uint32_t fetch_pc, const histories &p);
+  prediction   &predict_vec(uint64_t fetch_pc, const histories &p);
   void          update_bimodal(bool taken, uint32_t offset_within_packet);
   void          update_entry_p(int i, uint32_t offset_within_packet, bool taken);
   void          update_entry_e(int i, uint32_t offset_within_packet, uint32_t offset_within_entry, bool taken);
-  void          update(uint32_t pc, uint32_t fetch_pc, uint32_t offset_within_packet, bool taken, const histories &p, bool noalloc);
+  void          update(uint64_t pc, uint64_t fetch_pc, uint32_t offset_within_packet, bool taken, const histories &p, bool noalloc);
   int           size();
 #ifdef BANK_INTERLEAVING
   void check_bank_conflicts();
