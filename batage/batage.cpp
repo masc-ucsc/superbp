@@ -710,11 +710,11 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
 #ifdef SBP_PC_SHIFT
   uint64_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> SBP_PC_SHIFT);
 #ifndef SINGLE_TAG
-  vector<uint64_t> hash_pc;
+  vector<uint64_t> hash_pc_vec;
   uint64_t         pc;
   for (int i = 0; i < FETCHWIDTH; i++) {
     pc = fetch_pc + (i << 1);
-    hash_pc.push_back(pc ^ (pc >> SBP_PC_SHIFT));
+    hash_pc_vec.push_back(pc ^ (pc >> SBP_PC_SHIFT));
   }
 #else
   uint64_t hash_pc = fetch_pc ^ (fetch_pc >> SBP_PC_SHIFT);
@@ -737,6 +737,7 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
   }
 
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++) {
+  uint64_t hash_pc = hash_pc_vec[offset_within_packet];
     for (int i = 0; i < SBP_NUMG; i++) {
 #ifdef BANK_INTERLEAVING
       bank[i] = p.phybank(i);
@@ -761,7 +762,7 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
       int j = 0;
       for (j = 0; j < INFO_PER_ENTRY[i]; j++) {
         tag = getge(i, j).tag;
-        if (tag == p.gtag(hash_pc[offset_within_packet], i)) {
+        if (tag == p.gtag(hash_pc, i)) {
 #ifdef DEBUG
           fprintf(stderr, "For offset_within_packet = %d, bank = %d hit at subentry = %d\n", offset_within_packet, i, j);
 #endif  // DEBUG
@@ -775,7 +776,7 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
 #else  // MT_PLUS
 #ifndef SINGLE_TAG
       tag = getgp(i, offset_within_packet).tag;
-      if (tag == p.gtag(hash_pc[offset_within_packet], i))
+      if (tag == p.gtag(hash_pc, i))
 #else
       tag = getgb(i).tag;
       if (tag == p.gtag(hash_fetch_pc, i))
@@ -848,11 +849,14 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
   b_bi.clear();
   b2_bi2.clear();
 
+	int b_val, b2_val;
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++) {
-    b_bi.push_back(b[bi][offset_within_packet]);
-    b2_bi2.push_back(b2[bi2][offset_within_packet]);
+  	b_val = b[bi][offset_within_packet];
+  	b2_val = b2[bi2][offset_within_packet];
+    b_bi.push_back(b_val);
+    b2_bi2.push_back(b2_val);
     //s[offset_within_packet].push_back(dualcounter(b_bi[offset_within_packet], b2_bi2[offset_within_packet]));
-    s[offset_within_packet].push_back(dualcounter(b[bi][offset_within_packet], b2[bi2][offset_within_packet] ));
+    s[offset_within_packet].push_back(dualcounter(b_val, b2_val));
   }
 
 #ifdef DEBUG
@@ -894,10 +898,12 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
   bool i_pred           = false;
   bool i_highconf       = false;
 
+ int bp_insn;
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++) {
+  bp_insn = bp[offset_within_packet];
     // predict[offset_within_entry] = s[offset_within_entry][bp].pred();
-    i_pred     = s[offset_within_packet][bp[offset_within_packet]].pred();
-    i_highconf = (s[offset_within_packet][bp[offset_within_packet]]
+    i_pred     = s[offset_within_packet][bp_insn].pred();
+    i_highconf = (s[offset_within_packet][bp_insn]
                       .veryhighconf()) /* || (s[offset_within_packet][bp[offset_within_packet]].highconf()) */;
     pred_out.prediction_vector.push_back(i_pred);
     pred_out.highconf.push_back(i_highconf);
@@ -907,7 +913,7 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
       {
         pred_out.gshare_tag = hash_fetch_pc;
       } else {
-        pred_out.gshare_tag = tags[offset_within_packet][bp[offset_within_packet]];
+        pred_out.gshare_tag = tags[offset_within_packet][bp_insn];
       }  // gi[bp[offset_within_packet]];
       gshare_tag_saved = true;
     }
