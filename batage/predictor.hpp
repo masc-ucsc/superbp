@@ -53,7 +53,7 @@ public:
   gshare_prediction GetFastPrediction(uint64_t PC, int index, int tag);
   prediction&       GetPrediction(uint64_t PC);
 
-  void     Updatetables(uint64_t PC, uint64_t fetch_pc, uint32_t offset_within_entry, bool resolveDir);
+  void     Updatetables(uint64_t PC, uint64_t fetch_pc, uint32_t offset_within_packet, bool resolveDir);
   void     Updatehistory(bool resolveDir, uint64_t branchTarget);
   void     TrackOtherInst(uint64_t PC, bool branchDir, uint64_t branchTarget);
   uint32_t get_allocs(int table);

@@ -179,8 +179,8 @@ public:
                           const uint64_t &branchTarget, const uint64_t &fetch_pc,
                           const uint8_t &inst_offset_from_fpc);  // , histories* hist_ptr);
   void set_ftq_index(uint16_t index);
-  bool get_predDir_from_ftq(uint16_t index);
-  void ftq_update_resolvedinfo(uint16_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget,
+  bool get_predDir_from_ftq(uint8_t index);
+  void ftq_update_resolvedinfo(uint8_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget,
                                const uint8_t inst_offset_from_fpc);
   void get_ftq_data(ftq_entry *ftq_data_ptr);
   void deallocate_ftq_entry(void);

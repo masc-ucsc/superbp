@@ -46,7 +46,7 @@ bool highconfT_in_packet = false;
 #endif  // GSHARE || Ideal_2T
 
 #ifdef Ideal_2T
-int8_t pos_0;
+uint8_t pos_0;
 #endif  // Ideal_2T
 
 FILE* pc_trace;
@@ -141,9 +141,9 @@ static uint8_t bb_over = 0, fb_over = 0;
 #ifdef SUPERSCALAR
 // index into ftq, used to interact with ftq, increases by 1 for each instruction for every instruction pushed to ftq till
 // fetchboundaryend
-static int16_t inst_index_in_fetch = 0, last_inst_index_in_fetch;  // starts from 0 after every redirect
+static uint8_t inst_index_in_fetch = 0, last_inst_index_in_fetch;  // starts from 0 after every redirect
 // offset from fetch_pc, used for pos
-static int16_t inst_offset_from_fpc = 0, last_inst_offset_from_fpc;  // starts from 0 after every redirect
+static uint8_t inst_offset_from_fpc = 0, last_inst_offset_from_fpc;  // starts from 0 after every redirect
 #endif
 
 extern uint64_t maxinsns, skip_insns;
@@ -912,7 +912,7 @@ If gshare_tracking is in progress -
 */
 
 #ifdef GSHARE
-void branchprof::resolve_gshare(int i /* inst_offset_from_fpc */, bool update_predDir, bool update_resolveDir, uint64_t target) {
+void branchprof::resolve_gshare(uint8_t i /* inst_offset_from_fpc */, bool update_predDir, bool update_resolveDir, uint64_t target) {
   if (last_gshare_pred_inst.tag_match) {
     if (i == 0) {
       gshare_pos1_correct = false;

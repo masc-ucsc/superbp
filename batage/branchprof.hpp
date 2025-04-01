@@ -56,7 +56,7 @@ public:
   void copy_ftq_data_to_predictor(PREDICTOR* bp, ftq_entry* ftq_data_ptr);
   void update_counters_pc_minus_1_branch();
   void get_gshare_prediction(uint64_t temp_pc, int index, int tag);
-  void resolve_gshare(int i, bool update_predDir, bool update_resolveDir, uint64_t target);
+  void resolve_gshare(uint8_t i, bool update_predDir, bool update_resolveDir, uint64_t target);
   void branchprof_exit(PREDICTOR*);
 // void branchprof_exit(char* logfile);
 #ifdef FTQ

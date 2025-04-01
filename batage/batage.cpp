@@ -871,7 +871,7 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
   std::cerr << "44444" << "\n";
 #endif  // DEBUG
 
-  // bp = index within s
+  // bp = index within s[offset_within_packet] that provides prediction -> i_pred     = s[offset_within_packet][bp_insn].pred();
   bp.clear();
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++) {
     int t = 0;
@@ -1113,7 +1113,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
     std::cerr << "33333 \n";
 #endif  // DEBUG_POS
   }
-#else   // POS
+#else   // POS or MT_PLUS
   // offset_within_entry = get_offset_within_entry ( offset_within_packet,  bp[offset_within_packet]);
   if ((bp[offset_within_packet] < (int)hit[offset_within_packet].size())
       && s[offset_within_packet][bp[offset_within_packet]].highconf()
@@ -1126,7 +1126,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
   } else {
     update_entry_p(bp[offset_within_packet], offset_within_packet, taken);
   }
-#endif  // POS
+#endif  // POS or MT_PLUS
 
   // update at bp+1
 #if (defined(POS) || defined(MT_PLUS))

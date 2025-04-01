@@ -125,9 +125,9 @@ void ftq::set_ftq_index(uint16_t index) {
   next_free_index     = index;
 }
 
-bool ftq::get_predDir_from_ftq(uint16_t index) { return mem[index].predDir; }
+bool ftq::get_predDir_from_ftq(uint8_t index) { return mem[index].predDir; }
 
-void ftq::ftq_update_resolvedinfo(uint16_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget,
+void ftq::ftq_update_resolvedinfo(uint8_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget,
                                   const uint8_t inst_offset_from_fpc) {
   // ftq[index].pc = branch_pc;
   mem[index].insn                 = insn;
