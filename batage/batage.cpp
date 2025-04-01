@@ -1098,7 +1098,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
     std::cerr << "22222 \n";
 #endif  // DEBUG_POS
     // TODO Check
-    if ((int)hit[offset_within_packet].size() > 0) {
+    if (bp[offset_within_packet] < (int)hit[offset_within_packet].size()) {
       auto sz = bp[offset_within_packet];
       if (sz >= poses[offset_within_packet].size()) {
         std::cerr << "OVERFLOW\n";
@@ -1108,6 +1108,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
     {
       offset_within_entry = offset_within_packet;
     }
+
     update_entry_e(bp[offset_within_packet], offset_within_packet, offset_within_entry, taken);
 #ifdef DEBUG_POS
     std::cerr << "33333 \n";
