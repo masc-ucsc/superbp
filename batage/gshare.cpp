@@ -35,7 +35,7 @@ gshare_entry::gshare_entry() {
   allocated = false;
 #endif
   // TODO - Update from 2
-  hist_patch.resize(2);  // NUM_TAKEN_BRANCHES
+  //hist_patch.resize(2);  // NUM_TAKEN_BRANCHES
   poses.resize(2);       // NUM_TAKEN_BRANCHES
 
   //   PCs.resize(2);         // NUM_TAKEN_BRANCHES
@@ -55,16 +55,35 @@ gshare_entry_formed::gshare_entry_formed() {
   allocated = false;
 #endif
   // TODO - Update from 2
-  hist_patch.resize(2);  // NUM_TAKEN_BRANCHES
+  //hist_patch.resize(2);  // NUM_TAKEN_BRANCHES
   poses.resize(2);       // NUM_TAKEN_BRANCHES
   PCs.resize(2);         // NUM_TAKEN_BRANCHES
 }
+
+    // Copy constructor
+    gshare_entry_formed::gshare_entry_formed(const gshare_entry_formed& other)
+        : ctr{other.ctr},
+          tag{other.tag},
+          poses{other.poses},    // vector's copy constructor handles deep copy
+          PCs{other.PCs}        // same for PCs vector
+    {}
+
+    // Copy assignment operator
+   gshare_entry_formed& gshare_entry_formed::operator=(const gshare_entry_formed& other) {
+        if (this != &other) {  // protect against self-assignment
+            ctr = other.ctr;
+            tag = other.tag;
+            poses = other.poses;  // vector's assignment handles deep copy
+            PCs = other.PCs;      // same for PCs vector
+        }
+        return *this;
+    }
 
 gshare_entry_formed::gshare_entry_formed(const uint64_t PC, const gshare_entry& rhs, vector<uint64_t>& pages,
                                          uint8_t PAGE_OFFSET_SIZE) {
   ctr        = rhs.ctr;
   tag        = rhs.tag;
-  hist_patch = rhs.hist_patch;
+  //hist_patch = rhs.hist_patch;
   poses      = rhs.poses;
 
   uint64_t         PC_page_num = (PC >> PAGE_OFFSET_SIZE);
@@ -77,13 +96,13 @@ gshare_entry_formed::gshare_entry_formed(const uint64_t PC, const gshare_entry& 
   PCs = targets;
 }
 
-gshare_entry_formed& gshare_entry_formed::operator=(const gshare_entry_formed& rhs) {
-  ctr        = rhs.ctr;
-  tag        = rhs.tag;
-  hist_patch = rhs.hist_patch;
-  poses      = rhs.poses;
+gshare_entry_formed& gshare_entry_formed::operator=(const gshare_entry_formed&& rhs) {
+  ctr        = std::move(rhs.ctr);
+  tag        = std::move(rhs.tag);
+  //hist_patch = rhs.hist_patch;
+  poses      = std::move(rhs.poses);
 
-  PCs = rhs.PCs;
+  PCs = std::move(rhs.PCs);
   return *this;
 }
 
@@ -320,7 +339,7 @@ void gshare::allocate(vector<uint64_t>& PCs, vector<uint8_t>& poses, uint16_t up
 }
 
 void gshare::update(gshare_prediction& upd_pred, bool prediction_correct) {
-  uint16_t index     = upd_pred.index;
+  uint16_t index     = upd_pred.index % NUM_GSHARE_ENTRIES;
   bool     tag_match = upd_pred.tag_match;
   uint8_t  ctr       = table[index].ctr;
   if (tag_match) {

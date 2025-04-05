@@ -126,6 +126,7 @@ void ftq::set_ftq_index(uint16_t index) {
 }
 
 bool ftq::get_predDir_from_ftq(uint8_t index) { return mem[index].predDir; }
+bool ftq::get_conf_from_ftq(uint8_t index) { return mem[index].highconf; }
 
 void ftq::ftq_update_resolvedinfo(uint8_t index, uint64_t branch_pc, insn_t insn, bool resolveDir, uint64_t branchTarget,
                                   const uint8_t inst_offset_from_fpc) {

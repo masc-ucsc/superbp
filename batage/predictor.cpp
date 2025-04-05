@@ -62,8 +62,9 @@ void PREDICTOR::fetchBoundaryEnd() { branchprof_inst.fetchBoundaryEnd(); }
 
 void PREDICTOR::handle_insn(uint64_t pc, uint32_t insn_raw) { branchprof_inst.handle_insn(pc, insn_raw); }
 
-bool PREDICTOR::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken, bool* p_gshare_correct) {
-  return branchprof_inst.handle_insn_desesc(pc, branchTarget, insn_type, taken, p_gshare_correct);
+void PREDICTOR::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken,  bool* p_batage_pred, bool* p_batage_conf, bool* p_gshare_use) {
+  branchprof_inst.handle_insn_desesc(pc, branchTarget, insn_type, taken, p_batage_pred, p_batage_conf, p_gshare_use);
+  return;
 }
 
 gshare_prediction PREDICTOR::GetFastPrediction(uint64_t PC, int index, int tag) { return (fast_pred.predict(PC, index, tag)); }

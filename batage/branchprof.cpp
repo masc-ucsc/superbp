@@ -1422,7 +1422,7 @@ void branchprof::handle_insn(uint64_t pc, uint32_t insn_raw) {
   }
 }
 
-bool branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken, bool* p_gshare_correct) {
+void branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken,  bool* p_batage_pred, bool* p_batage_conf, bool* p_gshare_use)  {
   // 16 instructions of any size, fetch_pc saved in fetchboundarybegin
   // aligned_fetch_pc = (pc >> ((pred->LOG2FETCHWIDTH) + 2)) << ((pred->LOG2FETCHWIDTH) + 2);
   inst_index_in_fetch++;
@@ -1475,9 +1475,14 @@ bool branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t 
           }
   }*/
 
+// bool* p_batage_pred, bool* p_batage_conf, bool* p_gshare_use
+	*p_batage_pred  = bp->ftq_inst.get_predDir_from_ftq(inst_index_in_fetch);
+	*p_batage_conf  = bp->ftq_inst.get_conf_from_ftq(inst_index_in_fetch);
+	*p_gshare_use = false;
   if (/*(gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) ||*/ (
       last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1]))) {
     predDir = true;
+    *p_gshare_use = true;
     if (!(bp->ftq_inst.get_predDir_from_ftq(inst_index_in_fetch))) {
       gshare_batage_2nd_pred_mismatch++;
     }
@@ -1485,7 +1490,7 @@ bool branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t 
 #endif
   // Get predDir for the instruction
   {
-    predDir = bp->ftq_inst.get_predDir_from_ftq(inst_index_in_fetch);
+    predDir = *p_batage_pred;
   }
 
 #ifdef DEBUG
@@ -1537,6 +1542,8 @@ last_misprediction = misprediction;
   if (i0_done == false) {
     i0_done = true;
   }
+  /* 
   *p_gshare_correct =  gshare_prediction_correct; // (last_gshare_pred_inst.hit && predDir);
   return predDir;
+  */
 }

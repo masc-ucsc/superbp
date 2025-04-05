@@ -55,7 +55,7 @@ public:
 #endif
   uint8_t         ctr;
   uint16_t        tag;
-  vector<uint8_t> hist_patch;
+  //vector<uint8_t> hist_patch;
   vector<uint8_t> poses;
 
   // vector<uint64_t> PCs;
@@ -66,13 +66,14 @@ public:
 public:
   // constructor
   gshare_entry();
+  ~gshare_entry() = default;
 
   // Copy assignment
   /*
   gshare_entry& operator=(const gshare_entry& rhs) {
     ctr        = rhs.ctr;
     tag        = rhs.tag;
-    hist_patch = rhs.hist_patch;
+    //hist_patch = rhs.hist_patch;
     poses      = rhs.poses;
 
     //PCs        = rhs.PCs;
@@ -96,7 +97,7 @@ public:
 #endif
   uint8_t         ctr;
   uint16_t        tag;
-  vector<uint8_t> hist_patch;
+  //vector<uint8_t> hist_patch;
   vector<uint8_t> poses;
 
   vector<uint64_t> PCs;
@@ -104,9 +105,15 @@ public:
 public:
   // constructor
   gshare_entry_formed();
+    ~gshare_entry_formed() = default;
+    
+    gshare_entry_formed(const gshare_entry_formed& other);
+    gshare_entry_formed& operator=(const gshare_entry_formed& other);
+    
   gshare_entry_formed(const uint64_t PC, const gshare_entry& rhs, vector<uint64_t>& pages, uint8_t PAGE_OFFSET_SIZE);
-  // Copy assignment
-  gshare_entry_formed& operator=(const gshare_entry_formed& rhs);
+
+  // Move assignment
+  gshare_entry_formed& operator=(const gshare_entry_formed&& rhs);
 };
 
 class gshare_prediction {

@@ -48,7 +48,7 @@ public:
   void fetchBoundaryBegin(uint64_t PC);
   void fetchBoundaryEnd();
   void handle_insn(uint64_t pc, uint32_t insn_raw);
-  bool handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken, bool* p_gshare_correct);
+  void handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t insn_type, bool taken,  bool* p_batage_pred, bool* p_batage_conf, bool* p_gshare_use);
 
   gshare_prediction GetFastPrediction(uint64_t PC, int index, int tag);
   prediction&       GetPrediction(uint64_t PC);
