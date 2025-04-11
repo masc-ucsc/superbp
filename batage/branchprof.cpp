@@ -24,31 +24,6 @@ bool predDir, last_predDir, resolveDir, last_resolveDir;
 uint64_t branchTarget;
 */
 
-uint8_t  partial_pop;
-uint32_t update_gshare_index, update_gshare_tag;
-
-#ifdef GSHARE
-// gshare allocate
-gshare_prediction gshare_pred_inst, last_gshare_pred_inst;
-bool              gshare_pos1_correct, gshare_pos0_correct, gshare_prediction_correct;
-uint8_t           highconf_ctr = 0;
-vector<uint64_t>  gshare_PCs;
-vector<uint8_t>   gshare_poses;
-uint64_t          num_gshare_allocations, num_gshare_predictions, num_gshare_correct_predictions, gshare_batage_1st_pred_mismatch,
-    gshare_batage_2nd_pred_mismatch, num_gshare_jump_correct_predictions, num_gshare_jump_mispredictions, num_gshare_tag_match;
-int gshare_index;
-int gshare_tag;
-#endif
-
-#if (defined(GSHARE) || defined(Ideal_2T))
-bool gshare_tracking     = false;
-bool highconfT_in_packet = false;
-#endif  // GSHARE || Ideal_2T
-
-#ifdef Ideal_2T
-uint8_t pos_0;
-#endif  // Ideal_2T
-
 FILE* pc_trace;
 
 #ifdef DEBUG_GSHARE
@@ -79,17 +54,6 @@ uint64_t sum_bb_size, sum_fb_size;
 uint32_t bb_count, fb_count;
 uint8_t  running_bb_size, running_fb_size;
 #endif  // EN_BB_FB_COUNT
-
-#ifdef SUPERSCALAR
-#ifdef FTQ
-#include "ftq.hpp"
-#include "huq.hpp"
-ftq_entry ftq_data;  // Only 1 instance - assuming the updates for superscalar
-                     // will be done 1 by 1, so they may reuse the same instance
-huq_entry huq_data;
-
-#endif  // FTQ
-#endif  // SUPERSCALAR
 
 // extern uint64_t instruction_count;    // total # of instructions - including skipped and benchmark instructions
 /*
@@ -133,18 +97,10 @@ static insn_t last_insn, insn;
 static bool last_misprediction, misprediction;
 bool i0_done = false;
 */
-prediction batage_prediction;
 
 #ifdef EN_BB_FB_COUNT
 static uint8_t bb_over = 0, fb_over = 0;
 #endif  // EN_BB_FB_COUNT
-#ifdef SUPERSCALAR
-// index into ftq, used to interact with ftq, increases by 1 for each instruction for every instruction pushed to ftq till
-// fetchboundaryend
-static uint8_t inst_index_in_fetch = 0, last_inst_index_in_fetch;  // starts from 0 after every redirect
-// offset from fetch_pc, used for pos
-static uint8_t inst_offset_from_fpc = 0, last_inst_offset_from_fpc;  // starts from 0 after every redirect
-#endif
 
 extern uint64_t maxinsns, skip_insns;
 
