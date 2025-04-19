@@ -421,12 +421,8 @@ int histories::size() {
 
 tagged_entry::tagged_entry() {
   tag = 0;
-#ifdef POS
   pos = -1;
-#endif  // POS
-#ifdef NOT_MRU
   mru = -1;
-#endif
   dualc.reset();
 }
 
@@ -534,11 +530,12 @@ void batage::populate_dependent_globals() {
     SBP_LOGG[i]             = (int)ceil(log2(ORIG_ENTRIES_PER_TABLE[i]));
     LOGGE_ORIG[i]           = (SBP_LOGG[i] - SBP_LOGE[i]);
     SS_ENTRIES_PER_TABLE[i] = (ORIG_ENTRIES_PER_TABLE[i] / INFO_PER_ENTRY[i]);
-#ifndef SINGLE_TAG
+if (!SINGLE_TAG)
+{
     NEW_ENTRIES_PER_TABLE[i] = 0;
     SBP_LOGGE[i]             = (LOGGE_ORIG[i]);
     ENTRIES_PER_TABLE[i]     = (SS_ENTRIES_PER_TABLE[i] + NEW_ENTRIES_PER_TABLE[i]);
-#endif  // SINGLE_TAG
+}  // SINGLE_TAG
   }
 
   LOGFE      = ((int)log2(FETCHWIDTH));
@@ -587,12 +584,12 @@ void batage::batage_resize() {
   allocs.resize(SBP_NUMG);
 
   tags.resize(FETCHWIDTH);
-#if (defined(POS) || defined(MT_PLUS))
+if (POS || MT_PLUS) {
   poses.resize(FETCHWIDTH);
   // random = 0x05af5a0f ^ 0x5f0aa05f;
   srand(time(NULL));
   random = rand();
-#endif  // POS
+}  // POS || MT_PLUS
 }
 
 batage::batage() {
@@ -689,11 +686,11 @@ fprintf (stderr, "This should not be happening\n");
 return 0;
 */
 // TODO Check if this should be used for POS also
-#ifdef XIANGSHAN
+if (XIANGSHAN) {
   return (offset_within_packet % INFO_PER_ENTRY[table]);
-#else
+ } else {
   return (offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY[table]));
-#endif
+}
 }
 
 /*
@@ -709,16 +706,16 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
 
 #ifdef SBP_PC_SHIFT
   uint64_t hash_fetch_pc = fetch_pc ^ (fetch_pc >> SBP_PC_SHIFT);
-#ifndef SINGLE_TAG
   vector<uint64_t> hash_pc_vec;
   uint64_t         pc;
+if (!SINGLE_TAG) {
   for (int i = 0; i < FETCHWIDTH; i++) {
     pc = fetch_pc + (i << 1);
     hash_pc_vec.push_back(pc ^ (pc >> SBP_PC_SHIFT));
   }
-#else
+} else {
   uint64_t hash_pc = fetch_pc ^ (fetch_pc >> SBP_PC_SHIFT);
-#endif  // SINGLE_TAG
+}  // SINGLE_TAG
 #endif  // SBP_PC_SHIFT
 
   uint32_t offset_within_entry, offset_within_packet;  // = hash_pc % INFO_PER_ENTRY;
@@ -731,9 +728,9 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
     hit[offset_within_packet].clear();
     s[offset_within_packet].clear();
     tags[offset_within_packet].clear();
-#if (defined(POS) || defined(MT_PLUS))
+if (POS || MT_PLUS) {
     poses[offset_within_packet].clear();
-#endif
+} // POS || MT_PLUS
   }
 
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++) {
@@ -744,7 +741,7 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
 #ifdef DEBUG
 // fprintf (stderr, "For predict, bank[%d] = %d \n ", i, bank[i]);
 #endif  // DEBUG
-#endif
+#endif // BANK_INTERLEAVING
       gi[i] = p.gindex(hash_fetch_pc, i, this);
 
 // TODO - Try different i for gshare index
@@ -758,7 +755,7 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
 #endif  // DEBUG
 
       int tag;
-#ifdef MT_PLUS
+if (MT_PLUS) {
       int j = 0;
       for (j = 0; j < INFO_PER_ENTRY[i]; j++) {
         tag = getge(i, j).tag;
@@ -773,23 +770,29 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
           break;
         }
       }
-#else  // MT_PLUS
-#ifndef SINGLE_TAG
+} else {  // MT_PLUS
+
+
+bool match;
+if (!SINGLE_TAG) {
       tag = getgp(i, offset_within_packet).tag;
-      if (tag == p.gtag(hash_pc, i))
-#else
+	match = (tag == p.gtag(hash_pc, i));	 
+} else {
       tag = getgb(i).tag;
-      if (tag == p.gtag(hash_fetch_pc, i))
-#endif
-      {
-#ifndef POS
+	match = (tag == p.gtag(hash_fetch_pc, i));
+}
+      
+
+if (match)
+{
+if (!POS) {
 #ifdef DEBUG
         fprintf(stderr, "bank %d hit for offset %d\n", i, offset_within_packet);
 #endif  // DEBUG
         hit[offset_within_packet].push_back(i);
         s[offset_within_packet].push_back(getgp(i, offset_within_packet).dualc);
         tags[offset_within_packet].push_back(tag);
-#else   // POS
+} else {   // POS
         int j;
         for (j = 0; j < INFO_PER_ENTRY[i]; j++) {
           if (getge(i, j).pos == offset_within_packet) {
@@ -804,9 +807,9 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
             break;
           }
         }
-#endif  // POS
+}  // POS
       }
-#endif  // MT_PLUS
+} // MT_PLUS
 
 #ifdef DEBUG
       std::cerr << "22222" << "\n";
@@ -837,8 +840,8 @@ prediction &batage::predict_vec(uint64_t fetch_pc, const histories &p) {
 #ifdef BANK_INTERLEAVING
 #ifndef SIMFASTER
   check_bank_conflicts();
-#endif
-#endif
+#endif // SIMFASTER
+#endif // BANK_INTERLEAVING
 
 #ifdef DEBUG
   std::cerr << "33333" << "\n";
@@ -963,11 +966,11 @@ void batage::update_entry_e(int i, uint32_t offset_within_packet, uint32_t offse
 
   if (i < (int)hit[offset_within_packet].size()) {
     getge(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
-#ifdef NOT_MRU
+if (NOT_MRU) {
     if (getge(hit[offset_within_packet][i], offset_within_entry).dualc.pred() == taken) {
       getgb(hit[offset_within_packet][i]).mru = offset_within_entry;
     }
-#endif
+} // NOT_MRU
   } else {
     update_bimodal(taken, offset_within_packet);
   }
@@ -1024,7 +1027,7 @@ void batage::update(uint64_t pc, uint64_t fetch_pc, uint32_t offset_within_packe
       }
     }
   }
-#endif
+#endif // USE_META
 
 #ifdef BANK_INTERLEAVING
 #ifdef DEBUG
@@ -1032,7 +1035,7 @@ void batage::update(uint64_t pc, uint64_t fetch_pc, uint32_t offset_within_packe
 fprintf (stderr, "For update, bank[%d] = %d \n ", i, bank[i]);
 }*/
 #endif  // DEBUG
-#endif
+#endif // BANK_INTERLEAVING
 #ifdef DEBUG
 /*  for (int i = 0; i < SBP_NUMG; i++) {
 fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
@@ -1046,7 +1049,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
   offset_within_entry = poses[offset_within_packet][i]
   */
 // update from 0 to bp-1
-#if (defined(POS) || defined(MT_PLUS))
+if (POS || MT_PLUS) {
   for (int i = 0; i < bp[offset_within_packet]; i++) {
     if ((meta >= 0) || s[offset_within_packet][i].lowconf()
         || (s[offset_within_packet][i].pred() != s[offset_within_packet][bp[offset_within_packet]].pred())
@@ -1056,15 +1059,15 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
       getge(hit[offset_within_packet][i], offset_within_entry).dualc.update(taken);
     }
 
-#ifdef NOT_MRU
+if (NOT_MRU) {
     // if (s[offset_within_packet][i].pred() == s[offset_within_packet][bp[offset_within_packet]].pred())
     if (s[offset_within_packet][i].pred() == taken) {
       offset_within_entry                     = poses[offset_within_packet][i];
       getgb(hit[offset_within_packet][i]).mru = offset_within_entry;
     }
-#endif  // NOT_MRU
+}  // NOT_MRU
   }
-#else  // POS
+} else {  // POS || MT_PLUS
   for (int i = 0; i < bp[offset_within_packet]; i++) {
     // offset_within_entry = get_offset_within_entry (offset_within_packet, i);
     if ((meta >= 0) || s[offset_within_packet][i].lowconf()
@@ -1073,11 +1076,10 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
       getgp(hit[offset_within_packet][i], offset_within_packet).dualc.update(taken);
     }
   }
-#endif
+} // POS || MT_PLUS
 
   // update at bp
-#if (defined(POS) || defined(MT_PLUS))
-
+if (POS || MT_PLUS) {
 #ifdef DEBUG_POS
   std::cerr << "00000 \n";
 #endif  // DEBUG_POS
@@ -1114,7 +1116,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
     std::cerr << "33333 \n";
 #endif  // DEBUG_POS
   }
-#else   // POS or MT_PLUS
+} else {   // POS or MT_PLUS
   // offset_within_entry = get_offset_within_entry ( offset_within_packet,  bp[offset_within_packet]);
   if ((bp[offset_within_packet] < (int)hit[offset_within_packet].size())
       && s[offset_within_packet][bp[offset_within_packet]].highconf()
@@ -1127,10 +1129,10 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
   } else {
     update_entry_p(bp[offset_within_packet], offset_within_packet, taken);
   }
-#endif  // POS or MT_PLUS
+}  // POS or MT_PLUS
 
   // update at bp+1
-#if (defined(POS) || defined(MT_PLUS))
+if (POS || MT_PLUS) {
 
 #ifdef DEBUG_POS
   std::cerr << "44444 \n";
@@ -1150,12 +1152,12 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
 #ifdef DEBUG_POS
   std::cerr << "55555 \n";
 #endif  // DEBUG_POS
-#else   // POS
+} else {   // POS || MT_PLUS
   if (!s[offset_within_packet][bp[offset_within_packet]].highconf()
       && (bp[offset_within_packet] < (int)hit[offset_within_packet].size())) {
     update_entry_p(bp[offset_within_packet] + 1, offset_within_packet, taken);
   }
-#endif  // POS
+}  // POS || MT_PLUS
 
   // ALLOCATE
   // TODO Check what to do for these getg (for allocation)
@@ -1182,7 +1184,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
     allocation, it exits the loop with break, so no more updates/ allocations after first allocation
     */
     while (--i >= 0) {
-#if (defined(POS) || defined(MT_PLUS))
+if ((POS) || (MT_PLUS)) {
       int max_conf             = -1;
       offset_within_entry      = 0;
       bool free_subentry_avail = false;
@@ -1191,90 +1193,85 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
        Also check decaying all subentries rather than just one if no subentry is free
        Also LRU and random */
 
-#if (defined(RANDOM_ALLOCS) || defined(NOT_MRU))
-#ifdef NOT_MRU
+if ((RANDOM_ALLOCS) || (NOT_MRU)) {
       do {
-#endif  // NOT_MRU
         offset_within_entry = random % INFO_PER_ENTRY[i];
         random              = rand();  //(random ^ (random >> 5) ^ (random << 5));
-#ifdef NOT_MRU
-      } while (offset_within_entry == getgb(i).mru);
-#endif  // NOT_MRU
-#else   // RANDOM_ALLOCS_or_NOT_MRU
+      } while (NOT_MRU && (offset_within_entry == getgb(i).mru));
+} else {   // RANDOM_ALLOCS_or_NOT_MRU
 
       random = rand();  //(random ^ (random >> 5)^ (random << 5));
       int r  = random % 2;
       for (int j = r ? 0 : INFO_PER_ENTRY[i] - 1; r ? (j < INFO_PER_ENTRY[i]) : (j >= 0); r ? (j++) : (j--)) {
-#ifdef MT_PLUS
+if (MT_PLUS) {
         if ((getge(i, j).dualc.is_counter_reset()) && (getge(i, j).tag == 0)) {
           offset_within_entry = j;
           free_subentry_avail = true;
           break;
         }
-#else   // MT_PLUS
+} else {   // MT_PLUS
         if ((getge(i, j).pos == -1) && (getge(i, j).tag == 0)) {
           offset_within_entry = j;
           free_subentry_avail = true;
           break;
         }
-#endif  // MT_PLUS
+}  // MT_PLUS
 
-#ifdef CONFLEVEL
+if (CONFLEVEL) {
         // TODO Check behavior of conflevel, may require <
         if (getge(i, j).dualc.conflevel(meta) > max_conf) {
           max_conf            = getge(i, j).dualc.conflevel(meta);
           offset_within_entry = j;
         }
-#endif  // CONFLEVEL
+}  // CONFLEVEL
       }
 
       if (free_subentry_avail == true) {
         goto JUST_ALLOCATE;
       }
-#ifdef DEFAULT_MAP
-      else {
+else if (DEFAULT_MAP) {
+
         offset_within_entry = get_offset_within_entry(offset_within_packet, i);
-      }
-#endif  // DEFAULT_MAP
-#endif  // RANDOM_ALLOCS
+}  // DEFAULT_MAP
+}  // RANDOM_ALLOCS
 
       if (getge(i, offset_within_entry).dualc.highconf()) {
 #ifdef USE_CD
         if ((int)(rando() % MINDP) >= ((cd * MINDP) / (CDMAX + 1))) {
           getge(i, offset_within_entry).dualc.decay();
         }
-#else
+#else // USE_CD
         if ((rando() % 4) == 0) {
           getge(i, offset_within_entry).dualc.decay();
         }
-#endif
+#endif // USE_CD
         if (!getge(i, offset_within_entry).dualc.veryhighconf()) {
           mhc++;
         }
       } else {
         // TODO Check what to do for these three - allocation should be same for SINGLE_TAG and MULTI_TAG
       JUST_ALLOCATE:
-#ifdef POS
+if (POS) {
         getgb(i).tag                      = p.gtag(hash_fetch_pc, i);
         getge(i, offset_within_entry).pos = offset_within_packet;
         allocs[i]++;
-#endif
-#ifdef MT_PLUS
+}
+if (MT_PLUS) {
         getge(i, offset_within_entry).tag = p.gtag(hash_pc, i);
         allocs[i]++;
-#endif
-#ifdef NOT_MRU
+}
+if (NOT_MRU) {
         getgb(i).mru = offset_within_entry;
-#endif  // NOT_MRU
+}  // NOT_MRU
 
 #ifdef DEBUG_ALLOC
         fprintf(stderr, "pc = %llx Allocated entry in bank %d\n", pc, i);
 #endif  // DEBUG_ALLOC
 
-#ifdef MT_PLUS
+if (MT_PLUS) {
         getge(i, offset_within_entry).dualc.reset();
         getge(i, offset_within_entry).dualc.update(taken);
-#else  // MT_PLUS
+} else {  // MT_PLUS
 #ifdef BANK_INTERLEAVING
         uint32_t offset_within_entry_bank_i = offset_within_packet / (FETCHWIDTH / INFO_PER_ENTRY(bank[i]));
         for (uint32_t offset = 0; offset < INFO_PER_ENTRY(bank[i]); offset++) {
@@ -1283,7 +1280,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
             getge(bank[i], offset).dualc.update(taken);
           }
         }
-#else
+#else // BANK_INTERLEAVING
         for (uint32_t offset = 0; offset < INFO_PER_ENTRY[i]; offset++) {
           getge(i, offset).dualc.reset();
           if (offset == offset_within_entry) {
@@ -1291,17 +1288,17 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
           }
         }
 #endif  // BANK_INTERLEAVING
-#endif  // MT_PLUS
+}  // MT_PLUS
         cat += CATR_NUM - mhc * CATR_DEN;
         cat = min(CATMAX, max(0, cat));
 #ifdef USE_CD
         cd += CDR_NUM - mhc * CDR_DEN;
         cd = min(CDMAX, max(0, cd));
-#endif
+#endif // USE_CD
         break;
       }
 
-#else  // POS
+} else { // POS
 
       offset_within_entry = get_offset_within_entry(offset_within_packet, i);
 
@@ -1310,26 +1307,26 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
         if ((int)(rando() % MINDP) >= ((cd * MINDP) / (CDMAX + 1))) {
           getgp(i, offset_within_packet).dualc.decay();
         }
-#else
+#else // USE_CD
         if ((rando() % 4) == 0) {
           getgp(i, offset_within_packet).dualc.decay();
         }
-#endif
+#endif // USE_CD
         if (!getgp(i, offset_within_packet).dualc.veryhighconf()) {
           mhc++;
         }
       } else {
         // TODO Check what to do for these three - allocation should be same for SINGLE_TAG and MULTI_TAG
 
-#ifndef SINGLE_TAG
+if (!SINGLE_TAG) {
         getgp(i, offset_within_packet).tag = p.gtag(hash_pc, i);
-#else   // SINGLE_TAG
+} else {   // SINGLE_TAG
         getgb(i).tag = p.gtag(hash_fetch_pc, i);
-#endif  // SINGLE_TAG
+}  // SINGLE_TAG
 
 #ifdef BANK_INTERLEAVING
         allocs[bank[i]]++;
-#else
+#else // BANK_INTERLEAVING
         allocs[i]++;
 #endif  // BANK_INTERLEAVING
 
@@ -1337,10 +1334,10 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
         fprintf(stderr, "pc = %llx Allocated entry in bank %d\n", pc, i);
 #endif  // DEBUG
 
-#ifndef SINGLE_TAG
+if (!SINGLE_TAG) {
         getgp(i, offset_within_packet).dualc.reset();
         getgp(i, offset_within_packet).dualc.update(taken);
-#else  // SINGLE_TAG
+} else {  // SINGLE_TAG
 #ifdef BANK_INTERLEAVING
         uint32_t offset_within_entry_bank_i = get_offset_within_entry(offset_within_packet, bank[i]);
         for (uint32_t offset = 0; offset < INFO_PER_ENTRY(bank[i]); offset++) {
@@ -1349,7 +1346,7 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
             getge(bank[i], offset).dualc.update(taken);
           }
         }
-#else
+#else // BANK_INTERLEAVING
         for (uint32_t offset = 0; offset < INFO_PER_ENTRY[i]; offset++) {
           getge(i, offset).dualc.reset();
           if (offset == offset_within_entry) {
@@ -1358,17 +1355,17 @@ fprintf (stderr, "For update, gi[%d] = %d \n ", i, gi[i]);
         }
 #endif  // BANK_INTERLEAVING
 
-#endif  // SINGLE_TAG
+}  // SINGLE_TAG
 
         cat += CATR_NUM - mhc * CATR_DEN;
         cat = min(CATMAX, max(0, cat));
 #ifdef USE_CD
         cd += CDR_NUM - mhc * CDR_DEN;
         cd = min(CDMAX, max(0, cd));
-#endif
+#endif //USE_CD
         break;
       }
-#endif  // POS
+} // POS
 
 #ifdef DEBUG_ALLOC
       std::cerr << "Done allocate \n";
@@ -1383,7 +1380,7 @@ int batage::size() {
   bimodal_size = (1 << SBP_LOGB) + (SBP_BHYSTBITS << SBP_LOGB2);
   fprintf(stderr, "Bimodal size = %u bits\n", bimodal_size);
 
-  for (int i = 0; i < SBP_NUMG; i++) {
+  for (uint32_t i = 0; i < SBP_NUMG; i++) {
     fprintf(stderr,
             "table %d, ORIG_ENTRIES_PER_TABLE = %d, SBP_LOGG = %d, SS_ENTRIES_PER_TABLE = %d, LOGGE_ORIG = %d, ENTRIES_PER_TABLE = "
             "%d, SBP_LOGGE = %d\n",
@@ -1395,20 +1392,20 @@ int batage::size() {
             ENTRIES_PER_TABLE[i],
             SBP_LOGGE[i]);
 
-#ifndef SINGLE_TAG
+if (!SINGLE_TAG) {
     table_size = (((dualcounter::size() + SBP_TAGBITS) * INFO_PER_ENTRY[i]) * ENTRIES_PER_TABLE[i]);
-#else   // SINGLE_TAG
+} else {   // SINGLE_TAG
     table_size = ((((dualcounter::size() + POSBITS) * INFO_PER_ENTRY[i]) + SBP_TAGBITS) * ENTRIES_PER_TABLE[i]);
-#endif  // SINGLE_TAG
+} // SINGLE_TAG
     totsize += table_size;
   }
 
   fprintf(stderr, "Total size = %u bits\n", totsize);
 
-#ifdef SINGLE_TAG
+if (SINGLE_TAG) {
   // fprintf (stderr, " NEW_ENTRIES_PER_TABLE = %u \n", NEW_ENTRIES_PER_TABLE[i]);
   /*fprintf (stderr, " LOST_ENTRIES_PER_TABLE = %u, LOST_ENTRIES_TOTAL = %u \n", LOST_ENTRIES_PER_TABLE, LOST_ENTRIES_TOTAL);*/
-#endif  // SINGLE_TAG
+}  // SINGLE_TAG
 
   return totsize;  // number of bits
   // the storage for counters 'cat', 'meta' and 'cd' is neglected here

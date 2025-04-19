@@ -31,30 +31,6 @@
 
 // extern uint32_t SBP_NUMG;
 
-// #define SINGLE_TAG
-#ifdef SINGLE_TAG
-#define POS
-#ifdef POS
-#define POSBITS 4
-#else  // POS
-#define POSBITS 0
-#endif  // POS
-#else   // SINGLE_TAG
-#define XIANGSHAN
-#ifdef XIANGSHAN
-// #define CONT_MAP
-#define MT_PLUS
-#endif  // XIANGSHAN
-#endif  // SINGLE_TAG
-
-#if (defined(POS) || defined(MT_PLUS))
-// Exactly one of these must be defined
-#define CONFLEVEL
-// #define DEFAULT_MAP
-// #define RANDOM_ALLOCS
-// #define NOT_MRU
-#endif  //  (defined (POS) || defined (MT_PLUS))
-
 #define NUM_ENTRIES (14016)  // (14016)
 
 // #define SBP_LOGG (11)
@@ -218,12 +194,11 @@ public:
 class tagged_entry {
 public:
   int tag;
-#ifdef POS
+
   int pos;
-#endif  // POS
-#ifdef NOT_MRU
-  int mru;
-#endif
+
+  uint32_t mru;
+
   dualcounter dualc;
   tagged_entry();
 };
@@ -241,6 +216,45 @@ public:
 class batage {
 public:
   friend class histories;
+
+/*
+// #define SINGLE_TAG
+#ifdef SINGLE_TAG
+#define POS
+#ifdef POS
+#define POSBITS 4
+#else  // POS
+#define POSBITS 0
+#endif  // POS
+#else   // SINGLE_TAG
+#define XIANGSHAN
+#ifdef XIANGSHAN
+// #define CONT_MAP
+#define MT_PLUS
+#endif  // XIANGSHAN
+#endif  // SINGLE_TAG
+
+#if (defined(POS) || defined(MT_PLUS))
+// Exactly one of these must be defined
+#define CONFLEVEL
+// #define DEFAULT_MAP
+// #define RANDOM_ALLOCS
+// #define NOT_MRU
+#endif  //  (defined (POS) || defined (MT_PLUS))
+*/
+
+//default
+bool SINGLE_TAG = false;
+bool POS = false;
+uint8_t POSBITS = 0;
+
+bool XIANGSHAN = true;
+bool BOOM = false;
+bool MT_PLUS = true;
+bool CONFLEVEL = true;
+bool DEFAULT_MAP = false;
+bool RANDOM_ALLOCS = false;
+bool NOT_MRU = false;
 
   // static std::vector<uint8_t> SBP_LOGGE;
   std::vector<uint8_t> SBP_LOGGE;
@@ -293,9 +307,9 @@ public:
   bool *check;
 #endif
   vector<uint32_t> allocs;
-#if (defined(POS) || defined(MT_PLUS))
+
   int random;
-#endif
+
   uint32_t get_allocs(int table);
   void     read_env_variables();
   void     populate_dependent_globals();
