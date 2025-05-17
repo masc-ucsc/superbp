@@ -110,6 +110,12 @@ bool dualcounter::veryhighconf() {
   return ((n[0] == 0) && (n[1] >= 4)) || ((n[1] == 0) && (n[0] >= 4));
 }
 
+bool dualcounter::ultrahighconf() {
+  ASSERT(nmax == 7);
+  // the formula below works with nmax=7 (see the BATAGE paper)
+  return ((n[0] == 0) && (n[1] >= 6)) || ((n[1] == 0) && (n[0] >= 6));
+}
+
 int dualcounter::sum() { return n[1] + n[0]; }
 
 int dualcounter::diff() { return abs(n[1] - n[0]); }
@@ -899,18 +905,20 @@ if (!POS) {
   pred_out.highconf.clear();
   bool gshare_tag_saved = false;
   bool i_pred           = false;
-  bool i_highconf       = false;
+  bool gshare_highconf       = false;
+  bool bias_highconf       = false;
 
  int bp_insn;
   for (offset_within_packet = 0; offset_within_packet < FETCHWIDTH; offset_within_packet++) {
   bp_insn = bp[offset_within_packet];
     // predict[offset_within_entry] = s[offset_within_entry][bp].pred();
     i_pred     = s[offset_within_packet][bp_insn].pred();
-    i_highconf = (s[offset_within_packet][bp_insn]
-                      .veryhighconf()) /* || (s[offset_within_packet][bp[offset_within_packet]].highconf()) */;
+    bias_highconf = (s[offset_within_packet][bp_insn].ultrahighconf());
+    gshare_highconf = (s[offset_within_packet][bp_insn].veryhighconf());
+    
     pred_out.prediction_vector.push_back(i_pred);
-    pred_out.highconf.push_back(i_highconf);
-    if ((i_pred) && (i_highconf) && !gshare_tag_saved) {
+    pred_out.highconf.push_back(bias_highconf);
+    if ((i_pred) && (gshare_highconf) && !gshare_tag_saved) {
       // TODO - Must be accounting for Bimodal, but that hits number of gshare predictions
       if (hit.empty())  // Bimodal
       {

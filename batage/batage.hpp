@@ -120,6 +120,7 @@ public:
   bool       lowconf();
   bool       highconf();
   bool       veryhighconf();
+  bool       ultrahighconf();
   int        sum();
   int        diff();
   bool       saturated();
