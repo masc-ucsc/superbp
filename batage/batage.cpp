@@ -913,21 +913,23 @@ if (!POS) {
   bp_insn = bp[offset_within_packet];
     // predict[offset_within_entry] = s[offset_within_entry][bp].pred();
     i_pred     = s[offset_within_packet][bp_insn].pred();
-    bias_highconf = (s[offset_within_packet][bp_insn].ultrahighconf());
+    // bias_highconf = (s[offset_within_packet][bp_insn].ultrahighconf());
+    bias_highconf = (s[offset_within_packet][bp_insn].veryhighconf());
     gshare_highconf = (s[offset_within_packet][bp_insn].veryhighconf());
     
-    pred_out.prediction_vector.push_back(i_pred);
-    pred_out.highconf.push_back(bias_highconf);
     if ((i_pred) && (gshare_highconf) && !gshare_tag_saved) {
       // TODO - Must be accounting for Bimodal, but that hits number of gshare predictions
       if (hit.empty())  // Bimodal
       {
         pred_out.gshare_tag = hash_fetch_pc;
+        bias_highconf = false; // No high-conf from bimodal
       } else {
         pred_out.gshare_tag = tags[offset_within_packet][bp_insn];
       }  // gi[bp[offset_within_packet]];
       gshare_tag_saved = true;
     }
+    pred_out.prediction_vector.push_back(i_pred);
+    pred_out.highconf.push_back(bias_highconf);
   }
   // pred_out.gshare_index = pred_out.gshare_tag;
   pred_out.gshare_index = p.gshare_index(hash_fetch_pc, ((SBP_NUMG / 2) + 1), this);
