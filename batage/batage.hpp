@@ -134,7 +134,8 @@ class path_history {
 public:
   int       ptr;      // pointer into the path history
   int       hlength;  // history length
-  unsigned *h;        // history data - array of unsigned ints
+  //unsigned *h;        // history data - array of unsigned ints
+std::vector<unsigned> h;
   void      init(int hlen);
   void      insert(unsigned val);
   unsigned &operator[](int n);
@@ -170,10 +171,13 @@ public:
 
   path_history        bh;    // global history of branch directions
   path_history        ph;    // path history (target address bits)
+  /*
   SBP_folded_history *chg;   // compressed length = SBP_LOGGE
   SBP_folded_history *chgg;  // compressed length = SBP_LOGGE-hashparam
   SBP_folded_history *cht;   // compressed length = SBP_TAGBITS
   SBP_folded_history *chtt;  // compressed length = SBP_TAGBITS-1
+*/
+std::vector<SBP_folded_history> chg, chgg, cht,chtt;
 
   void get_predictor_vars(const batage *bp, const gshare *fp);
   histories() = default;
@@ -282,12 +286,14 @@ bool NOT_MRU = false;
   // int b2[1 << SBP_LOGB2E][FETCHWIDTH]; // bimodal hystereses
   vector<vector<int>> b2;
 
-  tagged_entry ***g;    // tagged entries
+  //tagged_entry ***g;    // tagged entries
+std::vector<std::vector<std::vector<tagged_entry>>> g;
   int             bi;   // hash for the bimodal prediction
   int             bi2;  // hash for the bimodal hysteresis
   vector<int>     b_bi;
   vector<int>     b2_bi2;
-  int            *gi;  // Hashes for/Indices into the tagged banks
+  //int            *gi;  // Hashes for/Indices into the tagged banks
+std::vector<int> gi;
 
   vector<vector<int>> hit;  // tell which banks have a hit - stays same for single tag SS - a vector each for multitag SS
 

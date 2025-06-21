@@ -42,7 +42,8 @@ ftq_entry::ftq_entry(const bool &predDir1, const bool &highconf1, const bool &re
     , bi2{bp->bi2}
     , b_bi{bp->b_bi}
     , b2_bi2{bp->b2_bi2}
-    , gi{ptr2vec(bp->gi, bp->SBP_NUMG)} {}
+    //, gi{ptr2vec(bp->gi, bp->SBP_NUMG)} 
+    , gi{bp->gi} {}
 
 ftq::ftq(batage *p) {
   bp                  = p;

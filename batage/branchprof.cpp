@@ -834,7 +834,8 @@ void branchprof::copy_ftq_data_to_predictor(PREDICTOR* bp, ftq_entry* ftq_data_p
   bp->pred.bi2    = ftq_data_ptr->bi2;
   bp->pred.b_bi   = ftq_data_ptr->b_bi;
   bp->pred.b2_bi2 = ftq_data_ptr->b2_bi2;
-  memcpy(bp->pred.gi, &((ftq_data_ptr->gi)[0]), sizeof(int) * bp->pred.SBP_NUMG);
+  //memcpy(bp->pred.gi, &((ftq_data_ptr->gi)[0]), sizeof(int) * bp->pred.SBP_NUMG);
+  bp->pred.gi = ftq_data_ptr->gi;
 }
 // #endif // FTQ
 
