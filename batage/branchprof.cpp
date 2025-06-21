@@ -1423,6 +1423,9 @@ void branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t 
   }
 
 // TODO - Did not update yet for GSHARE case since handling is different from Dromajo
+	*p_batage_pred  = bp->ftq_inst.get_predDir_from_ftq(inst_index_in_fetch);
+	*p_batage_conf  = bp->ftq_inst.get_conf_from_ftq(inst_index_in_fetch);
+	*p_gshare_use = false;
 #ifdef GSHARE
   /*if (gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0]))
   {
@@ -1433,9 +1436,7 @@ void branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t 
   }*/
 
 // bool* p_batage_pred, bool* p_batage_conf, bool* p_gshare_use
-	*p_batage_pred  = bp->ftq_inst.get_predDir_from_ftq(inst_index_in_fetch);
-	*p_batage_conf  = bp->ftq_inst.get_conf_from_ftq(inst_index_in_fetch);
-	*p_gshare_use = false;
+	//printf ("y");
   if (/*(gshare_pred_inst.hit && (inst_index_in_fetch == gshare_pred_inst.info.poses[0])) ||*/ (
       last_gshare_pred_inst.hit && (inst_index_in_fetch == last_gshare_pred_inst.info.poses[1]))) {
     predDir = true;
@@ -1448,6 +1449,7 @@ void branchprof::handle_insn_desesc(uint64_t pc, uint64_t branchTarget, uint8_t 
   // Get predDir for the instruction
   {
     predDir = *p_batage_pred;
+    //printf ("n");
   }
 
 #ifdef DEBUG
