@@ -3,17 +3,17 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
 
 cc_library(
-    name = "batage",
-    srcs = glob(
-        ["*.cpp"],
-        exclude = ["*_test*.cpp", "*_bench*.cpp", "emulator.cpp"],
-    ),
-    hdrs = glob(["*.hpp"]),
-    includes = ["."],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//gold:gold",
-        "@dromajo",
-    ]
+  name = "batage",
+  srcs = glob(
+    ["*.cpp"],
+    exclude = ["*_test*.cpp", "*_bench*.cpp", "emulator.cpp"],
+  ),
+  hdrs = glob(["*.hpp"]),
+  includes = ["."],
+  visibility = ["//visibility:public"],
+  deps = [
+    "@fmt//:fmt",
+    "@dromajo",
+  ]
 )
 

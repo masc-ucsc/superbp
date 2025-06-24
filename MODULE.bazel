@@ -1,0 +1,43 @@
+module(
+    name = "superbp",
+    version = "0.2.1",
+)
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+bazel_dep(name = "rules_cc", version = "0.1.2")
+bazel_dep(name = "rules_foreign_cc", version = "0.15.0")
+
+bazel_dep(name = "abseil-cpp", version = "20250512.1") # version = "20240722.1")
+bazel_dep(name = "google_benchmark", version = "1.9.4")
+bazel_dep(name = "googletest", version = "1.17.0")
+
+# fmt
+http_archive(
+    name = "fmt",
+    url = "https://github.com/fmtlib/fmt/archive/refs/heads/master.zip",
+    strip_prefix = "fmt-master",
+    build_file = "//packages:fmt.BUILD",
+)
+
+# Dromajo
+http_archive(
+    name = "dromajo",
+    build_file = "//packages:dromajo.BUILD",
+    patches = ["//packages:dromajo.patch"],
+    strip_prefix = "dromajo-866b264a093551ff5442f241d90bea9ac7eb3431",
+    urls = [
+        "https://github.com/masc-ucsc/dromajo/archive/866b264a093551ff5442f241d90bea9ac7eb3431.zip",
+    ],
+)
+
+# libelf (needed by dromajo in OSX)
+http_archive(
+    name = "libelf",
+    build_file = "//packages:libelf.BUILD",
+    sha256 = "c0627b45c29a151e4e1105988ad7ce9bf83b52cbbca0a1db06c7fcad69b85c4b",
+    strip_prefix = "libelf-ba3c81450b91d1935fff01bae191a59d7653d2a5",
+    urls = [
+        "https://github.com/masc-ucsc/libelf/archive/ba3c81450b91d1935fff01bae191a59d7653d2a5.zip",
+    ],
+)
+

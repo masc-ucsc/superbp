@@ -1,34 +1,27 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
 
 cc_library(
-    name = "gold",
-    srcs = glob(
-        ["*.cpp"],
-        exclude = ["*test*.cpp", "*bench*.cpp"],
-    ),
-    hdrs = glob(["*.hpp"]),
-    visibility = ["//visibility:public"],
-    deps = [
-      "@fmt",
-    ],
+  name = "headers",
+  hdrs = glob(["*.hpp"]),
 )
-
 cc_test(
-    name = "gold_test",
-    srcs = ["gold_test.cpp"],
-    deps = [
-      ":gold",
-      "//batage:batage",
-        "@com_google_googletest//:gtest_main",
-    ],
+  name = "gold_test",
+  srcs = ["gold_test.cpp"],
+  deps = [
+    ":headers",
+    "@fmt//:fmt",
+    "//batage:batage",
+    "@googletest//:gtest_main",
+  ],
 )
 
 cc_binary(
-    name = "gold_bench",
-    srcs = ["gold_bench.cpp"],
-    deps = [
-      ":gold",
-      # "@dromajo",
-      "@com_google_benchmark//:benchmark",
-    ],
+  name = "gold_bench",
+  srcs = ["gold_bench.cpp"],
+  deps = [
+    ":headers",
+    "@fmt//:fmt",
+    # "@dromajo",
+    "@google_benchmark//:benchmark",
+  ],
 )
