@@ -180,6 +180,7 @@ public:
 
   void read_env_variables();
   void populate_dependent_globals();
+  void init_fifo();
   void gshare_resize();
 
   void start_log() {
@@ -202,7 +203,7 @@ public:
 
   uint8_t  get_group();
   uint8_t  get_entry_in_group(uint8_t group);
-  uint64_t get_a_page_index();
+ uint64_t get_a_page_index(uint64_t target_page_num);
   void     update_page_repl_ctr(uint8_t page_index);
 
   void allocate(vector<uint64_t>& PCs, vector<uint8_t>& poses, uint16_t update_gshare_index, uint16_t update_gshare_tag);

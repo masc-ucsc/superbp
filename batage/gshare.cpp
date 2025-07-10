@@ -1,6 +1,18 @@
+#include <cassert>
+#include "time.h"
 #include "gshare.hpp"
 
-#include "time.h"
+//#define SIMFASTER
+
+#ifdef SIMFASTER
+#define ASSERT(cond)
+#else
+#define ASSERT(cond)                                                 \
+  if (!(cond)) {                                                     \
+    fprintf(stderr, "file %s assert line %d\n", __FILE__, __LINE__); \
+    abort();                                                         \
+  }
+#endif
 
 void gshare::read_env_variables() {
   char* temp;
@@ -106,12 +118,27 @@ gshare_entry_formed& gshare_entry_formed::operator=(const gshare_entry_formed&& 
   return *this;
 }
 
+void gshare::init_fifo()
+{
+	uint32_t num_groups = (NUM_PAGE_TABLE_ENTRIES / NUM_PAGES_PER_GROUP);
+	for (uint32_t i = 0; i < num_groups; i++)
+	{fifo[i] = num_groups-(i+1);}
+}
 void gshare::gshare_resize() {
   pages.resize(NUM_PAGE_TABLE_ENTRIES);
   page_valid.resize(NUM_PAGE_TABLE_ENTRIES);
   // page_repl_ctr.resize(NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP);
   fifo.resize(NUM_PAGE_TABLE_ENTRIES / NUM_PAGES_PER_GROUP);
+  init_fifo();
   table.resize(NUM_GSHARE_ENTRIES);
+  
+  printf ("NUM_PAGE_TABLE_ENTRIES = %u\n", NUM_PAGE_TABLE_ENTRIES);
+  printf ("NUM_PAGES_PER_GROUP = %u\n", NUM_PAGES_PER_GROUP);
+  
+  uint32_t num_groups = (NUM_PAGE_TABLE_ENTRIES / NUM_PAGES_PER_GROUP);
+    printf ("num_groups = %u\n", num_groups);
+  ASSERT (NUM_PAGE_TABLE_ENTRIES >= num_groups * NUM_PAGES_PER_GROUP);
+//std::cerr << "[gshare_resize] page_valid resized to " << page_valid.size() << std::endl;
 
   size();
 }
@@ -218,34 +245,68 @@ gshare_prediction gshare::predict(uint64_t PC, uint16_t index, uint16_t tag) {
 uint8_t gshare::get_group() {
   // return LRU
   uint8_t num_groups = (NUM_PAGE_TABLE_ENTRIES / NUM_PAGES_PER_GROUP);
+ASSERT(fifo[num_groups - 1] < num_groups);
+ASSERT(fifo[num_groups - 1] < fifo.size());
   return fifo[num_groups - 1];
 }
 
 uint8_t gshare::get_entry_in_group(uint8_t group) {
-  // If any entry has page_valid = 0, then use it, but skip group 0, index 0, that is reserved for same page
-  for (int i = group ? 1 : 0; i < NUM_PAGES_PER_GROUP; i++) {
-    if (page_valid[(group * NUM_PAGES_PER_GROUP) + i] == 0) {
-      return i;
+//std::cerr << "[get_entry_in_group] page_valid.size() = " << page_valid.size() << std::endl;
+
+    uint8_t num_groups = (NUM_PAGE_TABLE_ENTRIES / NUM_PAGES_PER_GROUP);
+ ASSERT(group < num_groups);
+// If any entry has page_valid = 0, then use it, but skip group 0, index 0, that is reserved for same page
+  for (uint8_t i = group ? 0 : 1; i < NUM_PAGES_PER_GROUP; i++) {
+  uint8_t index = ((group * NUM_PAGES_PER_GROUP) + i);
+ ASSERT(index < NUM_PAGE_TABLE_ENTRIES);
+ ASSERT(index < page_valid.size());
+    if (page_valid[index] == false) {
+    //printf("1, group = %u, group_index = %u \n", group, i);
+      return index;
     }
   }
   // If no entry has page_valid = 0, choose random
   // return (random ^ (random >> 5) ^ (random << 5)) % NUM_PAGES_PER_GROUP;
   // TODO Check to handle index 0 - that is not index in the group, it is index in
-  return group ? (rand() % NUM_PAGES_PER_GROUP) : ((rand() % (NUM_PAGES_PER_GROUP - 1)) + 1);
+
+  uint8_t group_index = group ? (rand() % NUM_PAGES_PER_GROUP) : ((rand() % (NUM_PAGES_PER_GROUP - 1)) + 1);
+ ASSERT(group_index < NUM_PAGES_PER_GROUP);
+uint8_t final_index = (group * NUM_PAGES_PER_GROUP) + group_index;
+ ASSERT(final_index < NUM_PAGE_TABLE_ENTRIES);
+   //printf("2, group = %u, group_index = %u \n", group, group_index);
+  return (final_index);
 }
 
-uint64_t gshare::get_a_page_index() {
-  // TODO
+uint64_t gshare::get_a_page_index(uint64_t target_page_num) {
+  // If that page number is already present, maybe by some other branch
+  for (uint64_t i = 0; i < NUM_PAGE_TABLE_ENTRIES; i++)
+  {
+  		ASSERT(i < pages.size());
+  		ASSERT(i < page_valid.size());
+  		if (target_page_num == pages[i])
+  			{
+  				page_valid[i] = true; // if it was not true, it will become now, else stays true
+  				update_page_repl_ctr(i);
+  				return i;
+  			}
+  }
+
   uint8_t group = get_group();
-  return get_entry_in_group(group);
+ ASSERT(group < (NUM_PAGE_TABLE_ENTRIES/NUM_PAGES_PER_GROUP));
+uint64_t entry = get_entry_in_group(group);
+  ASSERT(entry < NUM_PAGE_TABLE_ENTRIES);
+  return entry;
 }
 
 void gshare::update_page_repl_ctr(uint8_t page_index) {
   uint8_t num_groups = (NUM_PAGE_TABLE_ENTRIES / NUM_PAGES_PER_GROUP);
-  uint8_t group      = page_index % NUM_PAGES_PER_GROUP;
+  uint8_t group      = page_index / NUM_PAGES_PER_GROUP;
+ASSERT(group < num_groups);
+ASSERT(group < fifo.size());
   uint8_t sel_index;
   for (int i = 0; i < num_groups; i++) {
-    if (i == group) {
+  ASSERT(i < fifo.size());
+    if (fifo[i] == group) {
       sel_index = i;
     }
   }
@@ -297,13 +358,23 @@ void gshare::allocate(vector<uint64_t>& PCs, vector<uint8_t>& poses, uint16_t up
       uint64_t target_page_num    = (PCs[i + 1] >> PAGE_OFFSET_SIZE);
       uint16_t target_page_offset = (PCs[i + 1] << (64 - PAGE_OFFSET_SIZE)) >> (64 - PAGE_OFFSET_SIZE);
       // TODO - Check page_table_index and saving the page number and comparison
-      uint64_t page_index    = get_a_page_index();
+      table[index].page_offset[i]      = target_page_offset;
+      if (PCs0_page_num == target_page_num)
+      {
+      		table[index].page_table_index[i] = 0;
+      }
+      else
+      {
+      		uint64_t page_index    = get_a_page_index(target_page_num);
+      		ASSERT(page_index < NUM_PAGE_TABLE_ENTRIES);
+      		ASSERT(page_index < pages.size());
+      		ASSERT(page_index < page_valid.size());
       pages[page_index]      = target_page_num;
       page_valid[page_index] = true;
       // TODO Check update page_repl_ctr for this and others
       update_page_repl_ctr(page_index);
-      table[index].page_table_index[i] = (PCs0_page_num == target_page_num) ? 0 : page_index;
-      table[index].page_offset[i]      = target_page_offset;
+      		table[index].page_table_index[i] = page_index;
+      }
     }
 
     decay_ctr++;
