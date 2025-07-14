@@ -9,6 +9,7 @@ cc_library(
     exclude = ["*_test*.cpp", "*_bench*.cpp", "emulator.cpp"],
   ),
   hdrs = glob(["*.hpp"]),
+  defines = ["GSHARE=1"],
   includes = ["."],
   visibility = ["//visibility:public"],
   deps = [
