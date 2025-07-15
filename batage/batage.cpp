@@ -164,15 +164,16 @@ int dualcounter::size() {
 
 void path_history::init(int hlen) {
   // Just allocates a history vector, initializes to 0 and sets ptr = 0
-  /*hlength = hlen;
+  hlength = hlen;
+printf ("using arrays for histories \n");
   h       = new unsigned[hlen];
   for (int i = 0; i < hlength; i++) {
     h[i] = 0;
   }
-  ptr = 0;*/
-    h.assign(hlen, 0);
-    hlength = hlen;
   ptr = 0;
+  /*  h.assign(hlen, 0);
+    hlength = hlen;
+  ptr = 0;*/
 }
 
 void path_history::insert(unsigned val) {
@@ -227,8 +228,9 @@ void histories::get_predictor_vars(const batage *bp, const gshare *fp) {
   SBP_LOGGE          = bp->SBP_LOGGE;
   NUM_GSHARE_ENTRIES = fp->NUM_GSHARE_ENTRIES;
 
-  //int *hist  = new int[SBP_NUMG];
-std::vector<int> hist(SBP_NUMG);
+  int *hist  = new int[SBP_NUMG];
+
+//std::vector<int> hist(SBP_NUMG);
   int  prevh = 0;
 
   for (int i = 0; i < SBP_NUMG; i++) {
@@ -241,16 +243,16 @@ std::vector<int> hist(SBP_NUMG);
 
   bh.init(SBP_MAXHIST + 1);
   ph.init(SBP_MAXPATH + 1);
-  /*
+
   chg  = new SBP_folded_history[SBP_NUMG];
   chgg = new SBP_folded_history[SBP_NUMG];
   cht  = new SBP_folded_history[SBP_NUMG];
   chtt = new SBP_folded_history[SBP_NUMG];
-*/
+/*
 chg.resize(SBP_NUMG);
 chgg.resize(SBP_NUMG);
 cht.resize(SBP_NUMG);
-chtt.resize(SBP_NUMG);
+chtt.resize(SBP_NUMG);*/
 
   for (int i = 0; i < SBP_NUMG; i++) {
     chg[i].init(hist[i], SBP_LOGGE[i], 1);
@@ -560,7 +562,7 @@ if (!SINGLE_TAG)
 }
 
 void batage::batage_resize() {
-  /*g = new tagged_entry **[SBP_NUMG];
+  g = new tagged_entry **[SBP_NUMG];
 
   for (int i = 0; i < SBP_NUMG; i++) {
 #ifdef DEBUG_BATAGE
@@ -571,9 +573,10 @@ void batage::batage_resize() {
       g[i][j] = new tagged_entry[INFO_PER_ENTRY[i]];
     }
   }
-
+printf ("using arrays for g and gi \n");
   gi = new int[SBP_NUMG];
-*/
+
+/*
 g.resize(SBP_NUMG);
 
 for (int i = 0; i < SBP_NUMG; i++) {
@@ -588,8 +591,7 @@ for (int i = 0; i < SBP_NUMG; i++) {
         g[i][j].resize(INFO_PER_ENTRY[i]);
     }
 }
-//gi = new int[SBP_NUMG];
-gi.resize(SBP_NUMG);
+gi.resize(SBP_NUMG); */
 
   b.resize(1 << SBP_LOGBE);
   for (int i = 0; i < (1 << SBP_LOGBE); i++) {
