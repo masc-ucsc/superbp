@@ -38,7 +38,7 @@ public:
 
   uint64_t num_fetches;
 
-  uint64_t fetch_pc, last_fetch_pc;
+  uint64_t fetch_pc = 0, last_fetch_pc;
 
 #ifdef GSHARE
   // gshare allocate
@@ -80,9 +80,9 @@ public:
 
   // index into ftq, used to interact with ftq, increases by 1 for each instruction for every instruction pushed to ftq till
   // fetchboundaryend
-  uint8_t inst_index_in_fetch, last_inst_index_in_fetch;  // starts from 0 after every redirect
+  uint8_t inst_index_in_fetch = 0, last_inst_index_in_fetch;  // starts from 0 after every redirect
   // offset from fetch_pc, used for pos
-  uint8_t inst_offset_from_fpc, last_inst_offset_from_fpc;  // starts from 0 after every redirect
+  uint8_t inst_offset_from_fpc = 0, last_inst_offset_from_fpc;  // starts from 0 after every redirect
 
   branchprof(ftq* f, huq* h, batage* b, PREDICTOR* bp_ptr);
   /*{
