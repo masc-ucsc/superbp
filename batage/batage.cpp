@@ -948,7 +948,7 @@ if (!POS) {
     
     if ((i_pred) && (gshare_highconf) && !gshare_tag_saved) {
       // TODO - Must be accounting for Bimodal, but that hits number of gshare predictions
-      if (hit.empty())  // Bimodal
+      if (hit[offset_within_packet].empty())  // Bimodal
       {
         pred_out.gshare_tag = hash_fetch_pc;
         bias_highconf = false; // No high-conf from bimodal
